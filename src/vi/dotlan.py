@@ -26,12 +26,13 @@ import time
 import six
 import requests
 import logging
+from vi.evegate import secondsTillDowntime
 
 from bs4 import BeautifulSoup
 from vi import states
 from vi.cache.cache import Cache
 
-from . import evegate
+# from . import evegate
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
@@ -78,7 +79,7 @@ class Map(object):
         if not svg:
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg, evegate.secondsTillDowntime() + 60 * 60)
+                cache.putIntoCache("map_" + self.region, svg, secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
                 svg = cache.getFromCache("map_" + self.region, True)
@@ -509,7 +510,8 @@ def convertRegionName(name):
 
 # this is for testing:
 if __name__ == "__main__":
-    map = Map("Providence", "Providence.svg")
-    s = map.systems["I7S-1S"]
+    map = Map("Delve")
+    # map = Map("Providence", "Providence.svg")
+    s = map.systems["1DQ1-A"]
     s.setStatus(states.ALARM)
     logging.error(map.svg)

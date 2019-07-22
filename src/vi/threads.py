@@ -22,7 +22,7 @@ import logging
 import six
 
 from six.moves import queue
-from PyQt4.QtCore import QThread, SIGNAL, QTimer
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal
 from vi import evegate
 from vi import koschecker
 from vi.cache.cache import Cache
@@ -31,6 +31,7 @@ from vi.resources import resourcePath
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 
 class AvatarFindThread(QThread):
+    avatar_update = pyqtSignal(str, str)
 
     def __init__(self):
         QThread.__init__(self)
@@ -80,7 +81,8 @@ class AvatarFindThread(QThread):
                         cache.putAvatar(charname, avatar)
                 if avatar:
                     logging.debug("AvatarFindThread emit avatar_update for %s" % charname)
-                    self.emit(SIGNAL("avatar_update"), chatEntry, avatar)
+                    self.avatar_update.emit(chatEntry, avatar)
+                    # self.emit(PYQT_SIGNAL("avatar_update"), chatEntry, avatar)
             except Exception as e:
                 logging.error("Error in AvatarFindThread : %s", e)
 
@@ -92,6 +94,7 @@ class AvatarFindThread(QThread):
 
 
 class KOSCheckerThread(QThread):
+    kos_result = pyqtSignal(str, int, bool)
 
     def __init__(self):
         QThread.__init__(self)
@@ -141,7 +144,8 @@ class KOSCheckerThread(QThread):
 
             logging.info("KOSCheckerThread emitting kos_result for: state = {0}, text = {1}, requestType = {2}, hasKos = {3}".format(
                     "ok", text, requestType, hasKos))
-            self.emit(SIGNAL("kos_result"), "ok", text, requestType, hasKos)
+            self.kos_result.emit(text, requestType, hasKos)
+            # self.emit(PYQT_SIGNAL("kos_result"), "ok", text, requestType, hasKos)
 
     def quit(self):
         self.active = False
@@ -150,6 +154,7 @@ class KOSCheckerThread(QThread):
 
 
 class MapStatisticsThread(QThread):
+    statistic_data_update = pyqtSignal(tuple)
 
     def __init__(self):
         QThread.__init__(self)
@@ -166,7 +171,8 @@ class MapStatisticsThread(QThread):
 
     def run(self):
         self.refreshTimer = QTimer()
-        self.connect(self.refreshTimer, SIGNAL("timeout()"), self.requestStatistics)
+        # self.connect(self.refreshTimer, PYQT_SIGNAL("timeout()"), self.requestStatistics)
+        self.refreshTimer.timeout.connect(self.requestStatistics)
         while True:
             # Block waiting for requestStatistics() to enqueue a token
             self.queue.get()
@@ -183,7 +189,8 @@ class MapStatisticsThread(QThread):
                 requestData = {"result": "error", "text": six.text_type(e)}
             self.lastStatisticsUpdate = time.time()
             self.refreshTimer.start(self.pollRate)
-            self.emit(SIGNAL("statistic_data_update"), requestData)
+            self.statistic_data_update.emit(requestData)
+            # self.emit(PYQT_SIGNAL("statistic_data_update"), requestData)
             logging.debug("MapStatisticsThread emitted statistic_data_update")
 
 

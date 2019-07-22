@@ -20,10 +20,10 @@
 import os
 import stat
 import time
-import logging
+# import logging
 
-from PyQt4 import QtCore
-from PyQt4.QtCore import SIGNAL
+from PyQt5 import QtCore
+from PyQt5.QtCore import pyqtSignal
 
 """
 There is a problem with the QFIleWatcher on Windows and the log
@@ -40,6 +40,8 @@ if a new file was created. We watch only the newest (last 24h), not all!
 DEFAULT_MAX_AGE = 60 * 60 * 24
 
 class FileWatcher(QtCore.QThread):
+    file_change = pyqtSignal(str)
+
     def __init__(self, path, maxAge=DEFAULT_MAX_AGE):
         QtCore.QThread.__init__(self)
         self.path = path
@@ -69,7 +71,8 @@ class FileWatcher(QtCore.QThread):
                 if not stat.S_ISREG(pathStat.st_mode):
                     continue
                 if modified < pathStat.st_size:
-                    self.emit(SIGNAL("file_change"), path)
+                    self.file_change.emit(path)
+                    # self.emit(PYQT_SIGNAL("file_change"), path)
                 self.files[path] = pathStat.st_size
 
 

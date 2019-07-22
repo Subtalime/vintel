@@ -203,7 +203,7 @@
            </widget>
           </item>
           <item>
-           <widget class="PanningWebView" name="mapView">
+           <widget class="PanningWebView" name="mapView" native="true">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
@@ -227,7 +227,7 @@
             <property name="layoutDirection">
              <enum>Qt::LeftToRight</enum>
             </property>
-            <property name="url">
+            <property name="url" stdset="0">
              <url>
               <string>about:blank</string>
              </url>
@@ -341,7 +341,7 @@
      <x>0</x>
      <y>0</y>
      <width>936</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -376,12 +376,11 @@
     <property name="title">
      <string>Region</string>
     </property>
-    <addaction name="catchRegionAction"/>
-    <addaction name="providenceRegionAction"/>
+    <addaction name="delveRegionAction"/>
     <addaction name="queriousRegionAction"/>
     <addaction name="separator"/>
-    <addaction name="providenceCatchRegionAction"/>
-    <addaction name="providenceCatchCompactRegionAction"/>
+    <addaction name="delveQueriousRegionAction"/>
+    <addaction name="delveQueriousCompactRegionAction"/>
     <addaction name="chooseRegionAction"/>
     <addaction name="separator"/>
     <addaction name="jumpbridgeDataAction"/>
@@ -584,48 +583,48 @@
     <string>Transparency</string>
    </property>
   </action>
-  <action name="providenceRegionAction">
+  <action name="queriousRegionAction_2">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Providence</string>
+    <string>Querious</string>
    </property>
    <property name="regionName" stdset="0">
-    <string>providence</string>
+    <string>querious</string>
    </property>
   </action>
-  <action name="catchRegionAction">
+  <action name="delveRegionAction">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Catch</string>
+    <string>Delve</string>
    </property>
    <property name="regionName" stdset="0">
-    <string>catch</string>
+    <string>delve</string>
    </property>
   </action>
-  <action name="providenceCatchRegionAction">
+  <action name="delveQueriousRegionAction">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Provi / Catch</string>
+    <string>Delve / Querious</string>
    </property>
    <property name="regionName" stdset="0">
-    <string>providencecatch</string>
+    <string>delvequerious</string>
    </property>
   </action>
-  <action name="providenceCatchCompactRegionAction">
+  <action name="delveQueriousCompactRegionAction">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Provi / Catch (compact)</string>
+    <string>Delve / Querious (compact)</string>
    </property>
    <property name="regionName" stdset="0">
-    <string>Providence-catch</string>
+    <string>delve-querious</string>
    </property>
   </action>
   <action name="queriousRegionAction">
