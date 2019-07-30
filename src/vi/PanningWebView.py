@@ -4,8 +4,6 @@ from PyQt5.QtCore import QCoreApplication, Qt, pyqtSignal
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 
-# class PanningWebView(QWebView):
-# class PanningWebView(QtWebEngine):
 class PanningWebView(QWebEngineView):
     scroll_detected = pyqtSignal()
 

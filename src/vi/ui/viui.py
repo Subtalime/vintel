@@ -27,7 +27,7 @@ import vi.version
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
 
-from PyQt5.QtCore import QPoint, pyqtSignal
+from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 
 from vi import amazon_s3, evegate
 from vi import dotlan, filewatcher
@@ -59,7 +59,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # file_change = pyqtSignal()
     # newer_version = pyqtSignal()
     chat_message_added = pyqtSignal(ChatEntryWidget)
-    avatar_loaded = pyqtSignal()
+    avatar_loaded = pyqtSignal(str, bytes)
 
     def __init__(self, pathToLogs, trayIcon, backGroundColor):
 
@@ -101,16 +101,18 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.knownPlayerNames = set(self.knownPlayerNames.split(","))
         else:
             self.knownPlayerNames = set()
-            diagText = "Vintel scans EVE system logs and remembers your characters as they change systems.\n\nSome features (clipboard KOS checking, alarms, etc.) may not work until your character(s) have been registered. Change systems, with each character you want to monitor, while Vintel is running to remedy this."
+            diagText = "Vintel scans EVE system logs and remembers your characters as they change systems.\n\nSome " \
+                       "features (clipboard KOS checking, alarms, etc.) may not work until your character(s) have " \
+                       "been registered. Change systems, with each character you want to monitor, while Vintel is " \
+                       "running to remedy this."
             QMessageBox.warning(None, "Known Characters not Found", diagText, QMessageBox.Ok)
-            # QMessageBox.warning(None, "Known Characters not Found", diagText, "Ok")
 
         # Set up user's intel rooms
         roomnames = self.cache.getFromCache("room_names")
         if roomnames:
             roomnames = roomnames.split(",")
         else:
-            roomnames = (u"TheCitadel", u"North Provi Intel", u"North Catch Intel", "North Querious Intel")
+            roomnames = (u"delve.imperium", u"querious.imperium")
             self.cache.putIntoCache("room_names", u",".join(roomnames), 60 * 60 * 24 * 365 * 5)
         self.roomnames = roomnames
 
@@ -316,15 +318,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Also set up our app menus
             if not regionName:
-                self.providenceCatchRegionAction.setChecked(True)
-            elif regionName.startswith("Providencecatch"):
-                self.providenceCatchRegionAction.setChecked(True)
-            elif regionName.startswith("Catch"):
-                self.catchRegionAction.setChecked(True)
-            elif regionName.startswith("Providence"):
-                self.providenceRegionAction.setChecked(True)
+                self.providenceDelveRegionAction.setChecked(True)
+            elif regionName.startswith("Delvequerious"):
+                self.delveQueriousRegionAction.setChecked(True)
             elif regionName.startswith("Querious"):
                 self.queriousRegionAction.setChecked(True)
+            elif regionName.startswith("Delve"):
+                self.delveRegionAction.setChecked(True)
             else:
                 self.chooseRegionAction.setChecked(True)
         self.jumpbridgesButton.setChecked(False)
@@ -601,7 +601,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Make sure we have positioned the window before we nil the initial position;
             # even though we set it, it may not take effect until the map is fully loaded
-            # self.mapView.scroll(a2=scrollPosition)
+            self.mapView.scroll(scrollPosition.x(), scrollPosition.y())
             scrollPosition = self.mapView.page().scrollPosition()
             # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
             if scrollPosition.x() or scrollPosition.y():
@@ -678,7 +678,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.chooseRegionAction.setChecked(False)
         if menuAction:
             menuAction.setChecked(True)
-            regionName = six.text_type(menuAction.property("regionName").toString())
+            regionName = six.text_type(menuAction.property("regionName"))
             regionName = dotlan.convertRegionName(regionName)
             Cache().putIntoCache("region_name", regionName, 60 * 60 * 24 * 365)
             self.setupMap()
@@ -703,7 +703,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if (self.chatListWidget.verticalScrollBar().value() == self.chatListWidget.verticalScrollBar().maximum()):
             scrollToBottom = True
         chatEntryWidget = ChatEntryWidget(message)
-        listWidgetItem = QtGui.QListWidgetItem(self.chatListWidget)
+        listWidgetItem = QtWidgets.QListWidgetItem(self.chatListWidget)
         listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
         self.chatListWidget.addItem(listWidgetItem)
         self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)

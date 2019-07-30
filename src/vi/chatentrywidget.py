@@ -24,8 +24,7 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         self.avatarLabel.setPixmap(self.questionMarkPixmap)
         self.message = message
         self.updateText()
-        # self.connect(self.textLabel, PYQT_SIGNAL("linkActivated(QString)"), self.linkClicked)
-        self.textLabel.linkActivated().connect(self.linkClicked)
+        self.textLabel.linkActivated.connect(self.linkClicked)
         if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
             ChatEntryWidget.TEXT_SIZE = 8
         self.changeFontSize(self.TEXT_SIZE)
@@ -38,7 +37,6 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         function, parameter = link.split("/", 1)
         if function == "mark_system":
             self.mark_system.emit(parameter)
-            # self.emit(PYQT_SIGNAL("mark_system"), parameter)
         elif function == "link":
             webbrowser.open(parameter)
 

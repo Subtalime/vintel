@@ -76,7 +76,7 @@ class Map(object):
             svg = cache.getFromCache("map_" + self.region)
         else:
             svg = svgFile
-        if not svg:
+        if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
                 cache.putIntoCache("map_" + self.region, svg, secondsTillDowntime() + 60 * 60)
@@ -194,6 +194,8 @@ class Map(object):
     def _getSvgFromDotlan(self, region):
         url = self.DOTLAN_BASIC_URL.format(region)
         content = requests.get(url).text
+        if content.startswith("region not found"):
+            raise Exception(content)
         return content
 
     def addSystemStatistics(self, statistics):

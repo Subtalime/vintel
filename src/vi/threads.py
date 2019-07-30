@@ -23,15 +23,16 @@ import six
 
 from six.moves import queue
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal
+
 from vi import evegate
 from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
-
+from vi.chatentrywidget import ChatEntryWidget
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 
 class AvatarFindThread(QThread):
-    avatar_update = pyqtSignal(str, str)
+    avatar_update = pyqtSignal(ChatEntryWidget, bytes)
 
     def __init__(self):
         QThread.__init__(self)
@@ -154,7 +155,7 @@ class KOSCheckerThread(QThread):
 
 
 class MapStatisticsThread(QThread):
-    statistic_data_update = pyqtSignal(tuple)
+    statistic_data_update = pyqtSignal(dict)
 
     def __init__(self):
         QThread.__init__(self)
