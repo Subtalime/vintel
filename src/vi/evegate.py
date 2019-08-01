@@ -151,16 +151,14 @@ def getAvatarForPlayer(charname):
     try:
         charId = charnameToId(charname)
         if charId:
-            url = ESI_BASIC_URL + "/characters/{}/protrait".format(charId)
+            url = ESI_BASIC_URL + "/characters/{}/portrait".format(charId)
             content = requests.get(url)
             if len(content.content) > 0:
                 char = json.loads(content.content)
-                avatar = char["px64x64"]
-
-            # imageUrl = "http://image.eveonline.com/Character/{id}_{size}.jpg"
-            # avatar = requests.get(imageUrl.format(id=charId, size=32)).content
+                imageurl = char["px64x64"]
+                avatar = requests.get(imageurl).content
     except Exception as e:
-        logging.error("Exception during getAvatarForPlayer: %s", e)
+        logging.error("Exception during getAvatarForPlayer \"%s\" (%d) %r: %s", charname, charId, char, e)
         avatar = None
     return avatar
 

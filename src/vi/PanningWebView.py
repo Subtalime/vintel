@@ -1,7 +1,7 @@
 
 from PyQt5.QtGui import *
-from PyQt5.QtCore import QCoreApplication, Qt, pyqtSignal
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtCore import QCoreApplication, Qt, pyqtSignal, QPointF
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 
 
 class PanningWebView(QWebEngineView):
@@ -9,7 +9,8 @@ class PanningWebView(QWebEngineView):
 
     def __init__(self, parent=None):
         # super(PanningWebView).__init__(self)
-        super(PanningWebView, self).__init__()
+        super().__init__(parent)
+        # super(PanningWebView, self).__init__()
         self.pressed = False
         self.scrolling = False
         self.ignored = []
@@ -17,6 +18,21 @@ class PanningWebView(QWebEngineView):
         self.offset = 0
         self.handIsClosed = False
         self.clickedInScrollBar = False
+        self.initialMapPosition = None
+
+    def loadFinished(self, ok):
+        super(QWebEngineView, self).loadFinished(ok)
+        if not ok:
+            return
+        if self.initialMapPosition is None:
+            scrollPosition = QPointF(self.mapView.page().scrollPosition())
+        else:
+            scrollPosition = self.initialMapPosition
+        self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
+                                              format(scrollPosition.x(),scrollPosition.y())))
+        scrollPosition = self.mapView.page().scrollPosition()
+        if scrollPosition.x() == 0 and scrollPosition.y() == 0:
+            self.initialMapPosition = None
 
 
     def mousePressEvent(self, mouseEvent):
@@ -105,7 +121,9 @@ class PanningWebView(QWebEngineView):
 
 
     def pointInScroller(self, position, orientation):
-        rect = self.page().mainFrame().scrollBarGeometry(orientation)
+        rect = self.page().geometryChangeRequested(orientation)
+        # rect = self.page().mainFrame.scrollBarGeometry(orientation)
+        # rect = self.page().mainFrame().scrollBarGeometry(orientation)
         leftTop = self.mapToGlobal(Qt.QPoint(rect.left(), rect.top()))
         rightBottom = self.mapToGlobal(Qt.QPoint(rect.right(), rect.bottom()))
         globalRect = Qt.QRect(leftTop.x(), leftTop.y(), rightBottom.x(), rightBottom.y())

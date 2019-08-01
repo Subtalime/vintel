@@ -7,6 +7,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from vi.PanningWebView import PanningWebView
 
 
 class Ui_MainWindow(object):
@@ -323,4 +324,3 @@ class Ui_MainWindow(object):
         self.queriousRegionAction.setProperty("regionName", _translate("MainWindow", "querious"))
 
 
-from vi.PanningWebView import PanningWebView

@@ -38,8 +38,8 @@ from vi.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, KOSCheckerThread, MapStatisticsThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
-from PyQt5.QtGui import QClipboard
-from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon
+from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
+    QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon
 from PyQt5.uic import loadUi
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
@@ -94,6 +94,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.frameButton.setVisible(False)
         self.scanIntelForKosRequestsEnabled = True
         self.mapPositionsDict = {}
+        self.content = None
 
         # Load user's toon names
         self.knownPlayerNames = self.cache.getFromCache("known_player_names")
@@ -593,7 +594,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def setMapContent(self, content):
         try:
             if self.initialMapPosition is None:
-                scrollPosition = self.mapView.page().scrollPosition()
+                scrollPosition = QPointF(self.mapView.page().scrollPosition())
             else:
                 scrollPosition = self.initialMapPosition
             self.mapView.setHtml(content)
@@ -601,11 +602,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Make sure we have positioned the window before we nil the initial position;
             # even though we set it, it may not take effect until the map is fully loaded
-            self.mapView.scroll(scrollPosition.x(), scrollPosition.y())
-            scrollPosition = self.mapView.page().scrollPosition()
-            # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
-            if scrollPosition.x() or scrollPosition.y():
-                self.initialMapPosition = None
+            self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
+                                                  format(scrollPosition.x(),scrollPosition.y())))
+            # scrollPosition = self.mapView.page().scrollPosition()
+            # if self.initialMapPosition != scrollPosition:
+            self.initialMapPosition = scrollPosition
         except Exception as e:
             logging.error("Problem with setMapContent: %r", e)
 
