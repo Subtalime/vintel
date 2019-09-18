@@ -27,7 +27,7 @@ import six
 import requests
 import logging
 from vi.evegate import secondsTillDowntime
-
+from vi.version import URL
 from bs4 import BeautifulSoup
 from vi import states
 from vi.cache.cache import Cache
@@ -89,7 +89,7 @@ class Map(object):
                         "temporary problem (like dotlan is not reachable), or " \
                         "everythig went to hell. Sorry. This makes no sense " \
                         "without the map.\n\nRemember the site for possible " \
-                        "updates: https://github.com/Xanthos-Eve/vintel".format(type(e), six.text_type(e))
+                        "updates: {2}".format(type(e), six.text_type(e), URL)
                     raise DotlanException(t)
         # Create soup from the svg
         self.soup = BeautifulSoup(svg, 'html.parser')

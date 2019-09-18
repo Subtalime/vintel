@@ -23,6 +23,7 @@ class Ui_Dialog(object):
         self.testSoundButton = QtWidgets.QPushButton(self.widget)
         self.testSoundButton.setGeometry(QtCore.QRect(10, 30, 103, 26))
         self.testSoundButton.setObjectName("testSoundButton")
+        self.testSoundButton.setEnabled(True)
         self.closeButton = QtWidgets.QPushButton(self.widget)
         self.closeButton.setGeometry(QtCore.QRect(10, 240, 103, 26))
         self.closeButton.setObjectName("closeButton")
@@ -42,6 +43,7 @@ class Ui_Dialog(object):
         self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
         self.horizontalLayout.addLayout(self.gridLayout)
         self.horizontalLayout_2.addLayout(self.horizontalLayout)
+        self.stopSoundButton.setEnabled(False)
 
         self.retranslateUi(Dialog)
         QtCore.QMetaObject.connectSlotsByName(Dialog)

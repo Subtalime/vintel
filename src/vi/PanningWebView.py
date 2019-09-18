@@ -1,8 +1,15 @@
 
 from PyQt5.QtGui import *
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import QCoreApplication, Qt, pyqtSignal, QPointF
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+from . import MapViewPage
 
+class UPanningWebView(QtWidgets.QWidget):
+    def __init__(self, parent=None, url=None, html_file=None):
+        super().__init__(parent)
+        self.view = PanningWebView()
+        self.page = MapViewPage()
 
 class PanningWebView(QWebEngineView):
     scroll_detected = pyqtSignal()
@@ -12,6 +19,11 @@ class PanningWebView(QWebEngineView):
         super().__init__(parent)
         # super(PanningWebView, self).__init__()
         self.pressed = False
+        # self.webView = QWebEngineView()
+        self.mapView = self;
+        # self.page = self.webView.page()
+        # self.page = MapViewPage(self.webView)
+        # self.webView.setPage(self.page)
         self.scrolling = False
         self.ignored = []
         self.position = None
@@ -128,3 +140,4 @@ class PanningWebView(QWebEngineView):
         rightBottom = self.mapToGlobal(Qt.QPoint(rect.right(), rect.bottom()))
         globalRect = Qt.QRect(leftTop.x(), leftTop.y(), rightBottom.x(), rightBottom.y())
         return globalRect.contains(self.mapToGlobal(position))
+

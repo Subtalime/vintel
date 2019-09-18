@@ -94,11 +94,6 @@
                    <height>19</height>
                   </size>
                  </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>11</pointsize>
-                  </font>
-                 </property>
                  <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                  </property>
@@ -154,11 +149,6 @@
                    <height>19</height>
                   </size>
                  </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>11</pointsize>
-                  </font>
-                 </property>
                  <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                  </property>
@@ -180,11 +170,6 @@
                    <width>16777215</width>
                    <height>19</height>
                   </size>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>11</pointsize>
-                  </font>
                  </property>
                  <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
@@ -379,8 +364,6 @@
     <addaction name="delveRegionAction"/>
     <addaction name="queriousRegionAction"/>
     <addaction name="separator"/>
-    <addaction name="delveQueriousRegionAction"/>
-    <addaction name="delveQueriousCompactRegionAction"/>
     <addaction name="chooseRegionAction"/>
     <addaction name="separator"/>
     <addaction name="jumpbridgeDataAction"/>

@@ -26,7 +26,7 @@ import vi.version
 
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
-
+from PyQt5.QtWidgets import QDialog
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 
 from vi import amazon_s3, evegate
@@ -203,8 +203,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.chooseChatRoomsAction.triggered.connect(self.showChatroomChooser)
         self.delveRegionAction.triggered.connect(lambda : self.handleRegionMenuItemSelected(self.delveRegionAction))
         self.queriousRegionAction.triggered.connect(lambda : self.handleRegionMenuItemSelected(self.queriousRegionAction))
-        self.delveQueriousRegionAction.triggered.connect(lambda : self.handleRegionMenuItemSelected(self.delveQueriousRegionAction))
-        self.delveQueriousCompactRegionAction.triggered.connect(lambda : self.handleRegionMenuItemSelected(self.delveQueriousCompactRegionAction))
 
         self.chooseRegionAction.triggered.connect(self.showRegionChooser)
         # self.connect(self.showChatAction, PYQT_SIGNAL("triggered()"), self.changeChatVisibility)
@@ -284,6 +282,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         except dotlan.DotlanException as e:
             logging.error(e)
             QMessageBox.critical(None, "Error getting map", six.text_type(e), QMessageBox.Ok)
+            # Workaround for invalid Cache-Content
+            if regionName != "Delve":
+                self.cache.putIntoCache("region_name", "Delve")
+                return self.setupMap(initialize)
             sys.exit(1)
 
         if self.dotlan.outdatedCacheError:
@@ -315,6 +317,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Clicking links
             # TODO: Web-Widget
+            # self.mapView.page().link_clicked.connect(self.mapLinkClicked)
             # self.mapView.connect(self.mapView, PYQT_SIGNAL("linkClicked(const QUrl&)"), self.mapLinkClicked)
 
             # Also set up our app menus
@@ -769,7 +772,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def showInfo(self):
-        infoDialog = QtGui.QDialog(self)
+        infoDialog = QDialog(self)
         loadUi(resourcePath("vi/ui/Info.ui"), infoDialog)
         infoDialog.versionLabel.setText(u"Version: {0}".format(vi.version.VERSION))
         infoDialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
@@ -779,17 +782,18 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def showSoundSetup(self):
-        dialog = QtGui.QDialog(self)
-        loadUi(resourcePath("vi/ui/SoundSetup.ui"), dialog)
-        dialog.volumeSlider.setValue(SoundManager().soundVolume)
-        dialog.volumeSlider.valueChanged.connect(SoundManager().setSoundVolume())
-        # dialog.connect(dialog.volumeSlider, PYQT_SIGNAL("valueChanged(int)"), SoundManager().setSoundVolume)
-        # dialog.connect(dialog.testSoundButton, PYQT_SIGNAL("clicked()"), SoundManager().playSound)
-        dialog.testSoundButton.clicked.connect(SoundManager().playSound())
-        # dialog.connect(dialog.closeButton, PYQT_SIGNAL("clicked()"), dialog.accept)
-        dialog.closeButton.clicked.connect(dialog.accept)
-        dialog.show()
-
+        SoundManager().configureSound(self)
+        # dialog = QDialog(self)
+        # loadUi(resourcePath("vi/ui/SoundSetup.ui"), dialog)
+        # dialog.volumeSlider.setValue(SoundManager().soundVolume)
+        # dialog.volumeSlider.valueChanged.connect(SoundManager().setSoundVolume)
+        # # dialog.connect(dialog.volumeSlider, PYQT_SIGNAL("valueChanged(int)"), SoundManager().setSoundVolume)
+        # # dialog.connect(dialog.testSoundButton, PYQT_SIGNAL("clicked()"), SoundManager().playSound)
+        # dialog.testSoundButton.clicked.connect(SoundManager().playAlarmSound(dialog))
+        # dialog.stopSoundButton.clicked.connect(SoundManager().stopAlarmSound(dialog))
+        # # dialog.connect(dialog.closeButton, PYQT_SIGNAL("clicked()"), dialog.accept)
+        # dialog.closeButton.clicked.connect(dialog.accept)
+        # dialog.show()
 
     def systemTrayActivated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
