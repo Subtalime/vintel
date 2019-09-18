@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>247</width>
+    <width>262</width>
     <height>300</height>
    </rect>
   </property>
@@ -45,6 +45,19 @@
         </property>
         <property name="text">
          <string>Close</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="stopSoundButton">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>80</y>
+          <width>101</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Stop Test</string>
         </property>
        </widget>
       </widget>

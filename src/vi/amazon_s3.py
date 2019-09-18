@@ -40,11 +40,14 @@ def getJumpbridgeData(region):
             data = []
             url = "https://s3.amazonaws.com/vintel-resources/{region}_jb.txt"
             resp = requests.get(url.format(region=region))
-            for line in resp.iter_lines(decode_unicode=True):
-                splits = line.strip().split()
-                if len(splits) == 3:
-                    data.append(splits)
-            cache.putIntoCache(cacheKey, json.dumps(data), 60 * 60 * 12)
+            if resp.ok:
+                for line in resp.iter_lines(decode_unicode=True):
+                    splits = line.strip().split()
+                    if len(splits) == 3:
+                        data.append(splits)
+                cache.putIntoCache(cacheKey, json.dumps(data), 60 * 60 * 12)
+            else:
+                logging.error("Getting Jumpbridgedata for region \"%s\" failed with: %s", region, resp.status_code)
         return data
     except Exception as e:
         logging.error("Getting Jumpbridgedata failed with: %s", e)
