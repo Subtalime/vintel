@@ -54,6 +54,7 @@ CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
 
 from vi.ui.MainWindow import Ui_MainWindow
 
+
 # class MainWindow(QMainWindow):
 class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # file_change = pyqtSignal()
@@ -72,7 +73,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if backGroundColor:
             self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
         self.setupUi(self)
-        self.setWindowTitle("Vintel " + vi.version.VERSION + "{dev}".format(dev="-SNAPSHOT" if vi.version.SNAPSHOT else ""))
+        self.setWindowTitle(
+            "Vintel " + vi.version.VERSION + "{dev}".format(dev="-SNAPSHOT" if vi.version.SNAPSHOT else ""))
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -151,13 +153,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.setupMap(True)
         # self.connectNotify(self.updateMapView())
 
-
     def paintEvent(self, event):
         opt = QStyleOption()
         opt.initFrom(self)
         painter = QStylePainter(self)
-        self.style().drawPrimitive(QStyle.PE_Widget, opt,  painter, self)
-
+        self.style().drawPrimitive(QStyle.PE_Widget, opt, painter, self)
 
     def recallCachedSettings(self):
         try:
@@ -165,8 +165,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         except Exception as e:
             logging.error(e)
             # todo: add a button to delete the cache / DB
-            self.trayIcon.showMessage("Settings error", "Something went wrong loading saved state:\n {0}".format(str(e)), 1)
-
+            self.trayIcon.showMessage("Settings error",
+                                      "Something went wrong loading saved state:\n {0}".format(str(e)), 1)
 
     def wireUpUIConnections(self):
         # Wire up general UI connections
@@ -194,15 +194,15 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.infoAction.triggered.connect(self.showInfo)
         # self.connect(self.infoAction, PYQT_SIGNAL("triggered()"), self.showInfo)
 
-
         # self.connect(self.showChatAvatarsAction, PYQT_SIGNAL("triggered()"), self.changeShowAvatars)
         self.showChatAvatarsAction.triggered.connect(self.changeShowAvatars)
         # self.connect(self.alwaysOnTopAction, PYQT_SIGNAL("triggered()"), self.changeAlwaysOnTop)
         self.alwaysOnTopAction.triggered.connect(self.changeAlwaysOnTop)
         # self.connect(self.chooseChatRoomsAction, PYQT_SIGNAL("triggered()"), self.showChatroomChooser)
         self.chooseChatRoomsAction.triggered.connect(self.showChatroomChooser)
-        self.delveRegionAction.triggered.connect(lambda : self.handleRegionMenuItemSelected(self.delveRegionAction))
-        self.queriousRegionAction.triggered.connect(lambda : self.handleRegionMenuItemSelected(self.queriousRegionAction))
+        self.delveRegionAction.triggered.connect(lambda: self.handleRegionMenuItemSelected(self.delveRegionAction))
+        self.queriousRegionAction.triggered.connect(
+            lambda: self.handleRegionMenuItemSelected(self.queriousRegionAction))
 
         self.chooseRegionAction.triggered.connect(self.showRegionChooser)
         # self.connect(self.showChatAction, PYQT_SIGNAL("triggered()"), self.changeChatVisibility)
@@ -232,7 +232,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.mapView.page().scrollPositionChanged().connect(self.mapPositionChanged)
         self.mapView.scroll_detected.connect(self.mapPositionChanged)
 
-
     def setupThreads(self):
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
@@ -260,7 +259,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.connect(self.statisticsThread, PYQT_SIGNAL("statistic_data_update"), self.updateStatisticsOnMap)
         self.statisticsThread.start()
         # statisticsThread is blocked until first call of requestStatistics
-
 
     def setupMap(self, initialize=False):
         self.mapTimer.stop()
@@ -296,7 +294,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             logging.warn(diagText)
             QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
-
         # Load the jumpbridges
         logging.critical("Load jump bridges")
         self.setJumpbridges(self.cache.getFromCache("jumpbridge_url"))
@@ -310,8 +307,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Add a contextual menu to the mapView
             def mapContextMenuEvent(event):
-                #if QApplication.activeWindow() or QApplication.focusWidget():
+                # if QApplication.activeWindow() or QApplication.focusWidget():
                 self.mapView.contextMenu.exec_(self.mapToGlobal(QPoint(event.x(), event.y())))
+
             self.mapView.contextMenuEvent = mapContextMenuEvent
             self.mapView.contextMenu = self.trayIcon.contextMenu()
 
@@ -322,9 +320,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Also set up our app menus
             if not regionName:
-                self.providenceDelveRegionAction.setChecked(True)
-            elif regionName.startswith("Delvequerious"):
-                self.delveQueriousRegionAction.setChecked(True)
+                self.delveRegionAction.setChecked(True)
             elif regionName.startswith("Querious"):
                 self.queriousRegionAction.setChecked(True)
             elif regionName.startswith("Delve"):
@@ -343,7 +339,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.filewatcherThread.paused = False
         logging.critical("Map setup complete")
 
-
     # def eventFilter(self, obj, event):
     #     if event.type() == QtCore.QEvent.WindowDeactivate:
     #         self.enableContextMenu(False)
@@ -352,7 +347,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     #         self.enableContextMenu(True)
     #         return True
     #     return False
-
 
     def startClipboardTimer(self):
         """
@@ -363,12 +357,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.clipboardTimer.timeout.connect(self.clipboardChanged)
         self.clipboardTimer.start(CLIPBOARD_CHECK_INTERVAL_MSECS)
 
-
     def stopClipboardTimer(self):
         if self.clipboardTimer:
             self.clipboardTimer.timeout.disconnect(self.clipboardChanged)
             self.clipboardTimer.stop()
-
 
     def closeEvent(self, event):
         """
@@ -380,9 +372,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.cache.putIntoCache("known_player_names", value, 60 * 60 * 24 * 30)
 
         # Program state to cache (to read it on next startup)
-        settings = ((None, "restoreGeometry", str(self.saveGeometry())), (None, "restoreState", str(self.saveState())),
-                    ("splitter", "restoreGeometry", str(self.splitter.saveGeometry())),
-                    ("splitter", "restoreState", str(self.splitter.saveState())),
+        # settings = ((None, "restoreGeometry", str(self.saveGeometry())), (None, "restoreState", str(self.saveState())),
+        #             ("splitter", "restoreGeometry", str(self.splitter.saveGeometry())),
+        #             ("splitter", "restoreState", str(self.splitter.saveState())),
+        settings = ((None, "restoreGeometry", str(self.saveGeometry())), (None, "restoreState",
+                                                                          self.saveState()),
+                    ("splitter", "restoreGeometry", self.splitter.saveGeometry()),
+                    ("splitter", "restoreState", self.splitter.saveState()),
                     ("mapView", "setZoomFactor", self.mapView.zoomFactor()),
                     (None, "changeChatFontSize", ChatEntryWidget.TEXT_SIZE),
                     (None, "changeOpacity", self.opacityGroup.checkedAction().opacity),
@@ -397,6 +393,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     (None, "changeUseSpokenNotifications", self.useSpokenNotificationsAction.isChecked()),
                     (None, "changeKosCheckClipboard", self.kosClipboardActiveAction.isChecked()),
                     (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled))
+
         self.cache.putIntoCache("settings", str(settings), 60 * 60 * 24 * 30)
 
         # Stop the threads
@@ -419,13 +416,16 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def notifyNewerVersion(self, newestVersion):
-        self.trayIcon.showMessage("Newer Version", ("An update is available for Vintel.\nhttps://github.com/Xanthos-Eve/vintel"), 1)
+        self.trayIcon.showMessage("Newer Version",
+                                  ("An update is available for Vintel.\nhttps://github.com/Xanthos-Eve/vintel"), 1)
+
 
     def changeChatVisibility(self, newValue=None):
         if newValue is None:
             newValue = self.showChatAction.isChecked()
         self.showChatAction.setChecked(newValue)
         self.chatbox.setVisible(newValue)
+
 
     def changeKosCheckClipboard(self, newValue=None):
         if newValue is None:
@@ -436,11 +436,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         else:
             self.stopClipboardTimer()
 
+
     def changeAutoScanIntel(self, newValue=None):
         if newValue is None:
             newValue = self.autoScanIntelAction.isChecked()
         self.autoScanIntelAction.setChecked(newValue)
         self.scanIntelForKosRequestsEnabled = newValue
+
 
     def changeUseSpokenNotifications(self, newValue=None):
         if SoundManager().platformSupportsSpeech():
@@ -452,6 +454,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.useSpokenNotificationsAction.setChecked(False)
             self.useSpokenNotificationsAction.setEnabled(False)
 
+
     def changeOpacity(self, newValue=None):
         if newValue is not None:
             for action in self.opacityGroup.actions():
@@ -460,21 +463,23 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         action = self.opacityGroup.checkedAction()
         self.setWindowOpacity(action.opacity)
 
+
     def changeSound(self, newValue=None, disable=False):
         if disable:
             self.activateSoundAction.setChecked(False)
             self.activateSoundAction.setEnabled(False)
             self.soundSetupAction.setEnabled(False)
-            #self.soundButton.setEnabled(False)
+            # self.soundButton.setEnabled(False)
             QMessageBox.warning(None, "Sound disabled",
-                                      "The lib 'pyglet' which is used to play sounds cannot be found, ""so the "
-                                      "soundsystem is disabled.\nIf you want sound, please install the 'pyglet' "
-                                      "library. This warning will not be shown again.", QMessageBox.Ok)
+                                "The lib 'pyglet' which is used to play sounds cannot be found, ""so the "
+                                "soundsystem is disabled.\nIf you want sound, please install the 'pyglet' "
+                                "library. This warning will not be shown again.", QMessageBox.Ok)
         else:
             if newValue is None:
                 newValue = self.activateSoundAction.isChecked()
             self.activateSoundAction.setChecked(newValue)
             SoundManager().soundActive = newValue
+
 
     def changeAlwaysOnTop(self, newValue=None):
         if newValue is None:
@@ -486,6 +491,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         else:
             self.setWindowFlags(self.windowFlags() & (~QtCore.Qt.WindowStaysOnTopHint))
         self.show()
+
 
     def changeFrameless(self, newValue=None):
         if newValue is None:
@@ -504,6 +510,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             cm.framelessCheck.setChecked(newValue)
         self.show()
 
+
     def changeShowAvatars(self, newValue=None):
         if newValue is None:
             newValue = self.showChatAvatarsAction.isChecked()
@@ -511,6 +518,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         ChatEntryWidget.SHOW_AVATAR = newValue
         for entry in self.chatEntries:
             entry.avatarLabel.setVisible(newValue)
+
 
     def changeChatFontSize(self, newSize):
         if newSize:
@@ -596,23 +604,22 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def setMapContent(self, content):
         try:
-            if self.initialMapPosition is None:
+            if self.initialMapPosition is None or self.initialMapPosition == QPointF(0,0):
                 scrollPosition = QPointF(self.mapView.page().scrollPosition())
             else:
                 scrollPosition = self.initialMapPosition
             self.mapView.setHtml(content)
             # self.mapView.page().setLinkDelegationPolicy(QWebPage.DelegateAllLinks)
-
+            # self.mapView.page().scrollPositionChanged(scrollPosition)
             # Make sure we have positioned the window before we nil the initial position;
             # even though we set it, it may not take effect until the map is fully loaded
             self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
-                                                  format(scrollPosition.x(),scrollPosition.y())))
+                                                  format(scrollPosition.x(), scrollPosition.y())))
             # scrollPosition = self.mapView.page().scrollPosition()
             # if self.initialMapPosition != scrollPosition:
             self.initialMapPosition = scrollPosition
         except Exception as e:
             logging.error("Problem with setMapContent: %r", e)
-
 
 
     def loadInitialMapPositions(self, newDictionary):
@@ -636,6 +643,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             scrollPosition = self.mapView.page().scrollPosition()
             # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
             self.mapPositionsDict[regionName] = (scrollPosition.x(), scrollPosition.y())
+
 
     def showChatroomChooser(self):
         chooser = ChatroomChooser(self)
@@ -677,8 +685,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def handleRegionMenuItemSelected(self, menuAction=None):
         self.delveRegionAction.setChecked(False)
         self.queriousRegionAction.setChecked(False)
-        self.delveQueriousRegionAction.setChecked(False)
-        self.delveQueriousCompactRegionAction.setChecked(False)
         self.chooseRegionAction.setChecked(False)
         if menuAction:
             menuAction.setChecked(True)
@@ -699,7 +705,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         chooser.new_region_chosen.connect(handleRegionChosen)
         # self.connect(chooser, PYQT_SIGNAL("new_region_chosen"), handleRegionChosen)
         chooser.show()
-
 
 
     def addMessageToIntelChat(self, message):
@@ -795,6 +800,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # dialog.closeButton.clicked.connect(dialog.accept)
         # dialog.show()
 
+
     def systemTrayActivated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             if self.isMinimized():
@@ -873,4 +879,3 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                                 if len(chars) > 0 and message.user not in chars:
                                     self.trayIcon.showNotification(message, system.name, ", ".join(chars), distance)
                 self.setMapContent(self.dotlan.svg)
-
