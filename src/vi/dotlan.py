@@ -512,6 +512,7 @@ def convertRegionName(name):
 
 # this is for testing:
 if __name__ == "__main__":
+    # map = Map("Delve", "Delve")
     map = Map("Delve")
     # map = Map("Providence", "Providence.svg")
     s = map.systems["1DQ1-A"]

@@ -99,7 +99,8 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
 
     def changeAlarmDistance(self):
-        self.alarm_distance.emit(self.alarm_distance)
+        distance = self.alarmDistance
+        self.alarm_distance.emit(distance)
         # self.emit(PYQT_SIGNAL("alarm_distance"), distance)
 
     def changeFrameless(self):

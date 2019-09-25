@@ -1,5 +1,6 @@
 import six
 import requests
+import logging
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QDialog
 from PyQt5.QtCore import pyqtSignal
@@ -31,5 +32,4 @@ class JumpbridgeChooser(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             self.set_jump_bridge_url.emit(url)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(None, "Finding Jumpbridgedata failed", "Error: {0}".format(six.text_type(e)),
-                                 QMessageBox.Ok)
+            logging.error("Finding Jumpbridgedata failed", e)

@@ -125,6 +125,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 snd = self.SOUNDS[name]
                 audioFile = resourcePath("vi/ui/res/{0}".format(snd))
             self._soundThread.queue.put((audioFile, message, abbreviatedMessage))
+            self._soundThread.queue.put(("", "", ""))
 
     def quit(self):
         if self.soundAvailable:
@@ -216,7 +217,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                     except Exception as e:
                         self.player.next_source()
                 elif self.isDarwin:
-                    subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
+                    subprocess.call(["afplay -v {0} {1}".format(self.volume, filename)], shell=True)
             except Exception as e:
                 logging.error("SoundThread.playAudioFile exception: %s", e)
 

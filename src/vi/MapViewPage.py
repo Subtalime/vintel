@@ -8,16 +8,15 @@ class MapViewPage(QWebEnginePage):
     mark_system = pyqtSignal(str)
 
     def __init__(self, parent=None):
-        super(MapViewPage, self).__init__(parent)
+        super().__init__(parent)
 
     def createWindow(self, QWebEnginePage_WebWindowType):
-        page = MapViewPage(self)
-        page.urlChanged.connect(self.open_browser)
-        return page
+        # page = MapViewPage(self)
+        self.urlChanged.connect(self.open_browser)
+        return self
 
     def openBrowser(self, url):
         page = self.sender()
-
 
     def acceptNavigationRequest(self, QUrl, QWebEnginePage_NavigationType, abool):
         if QWebEnginePage_NavigationType == QWebEnginePage.NavigationTypeLinkClicked:

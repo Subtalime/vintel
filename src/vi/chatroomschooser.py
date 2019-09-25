@@ -1,4 +1,5 @@
 import six
+import logging
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtCore import pyqtSignal
@@ -24,6 +25,7 @@ class ChatroomChooser(QtWidgets.QDialog, Ui_Dialog):
     def saveClicked(self):
         text = six.text_type(self.roomnamesField.toPlainText())
         rooms = [six.text_type(name.strip()) for name in text.split(",")]
+        logging.debug("Added rooms: {}".format(rooms))
         self.accept()
         self.rooms_changed.emit(rooms)
 

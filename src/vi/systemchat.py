@@ -1,5 +1,6 @@
 import six
 from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtWidgets import QDialog, QListWidgetItem
 from PyQt5.QtCore import pyqtSignal
 from vi.chatentrywidget import ChatEntryWidget
 from vi import states
@@ -11,7 +12,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     location_set = pyqtSignal(str, str)
 
     def __init__(self, parent, chatType, selector, chatEntries, knownPlayerNames):
-        QtGui.QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
         self.setupUi(self)
         self.parent = parent
@@ -27,14 +28,14 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         for name in knownPlayerNames:
             self.playerNamesBox.addItem(name)
         self.setWindowTitle("Chat for {0}".format(titleName))
-        self.closeButton.clicked.connect(self.closeDialog())
+        self.closeButton.clicked.connect(self.closeDialog)
         # self.connect(self.closeButton, PYQT_SIGNAL("clicked()"), self.closeDialog)
         # self.connect(self.alarmButton, PYQT_SIGNAL("clicked()"), self.setSystemAlarm)
-        self.alarmButton.clicked.connect(self.setSystemAlarm())
+        self.alarmButton.clicked.connect(self.setSystemAlarm)
         # self.connect(self.clearButton, PYQT_SIGNAL("clicked()"), self.setSystemClear)
-        self.clearButton.clicked.connect(self.setSystemClear())
+        self.clearButton.clicked.connect(self.setSystemClear)
         # self.connect(self.locationButton, PYQT_SIGNAL("clicked()"), self.locationSet)
-        self.locationButton.clicked.connect(self.locationSet())
+        self.locationButton.clicked.connect(self.locationSet)
 
 
     def _addMessageToChat(self, message, avatarPixmap):
@@ -43,7 +44,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
             scrollToBottom = True
         entry = ChatEntryWidget(message)
         entry.avatarLabel.setPixmap(avatarPixmap)
-        listWidgetItem = QtGui.QListWidgetItem(self.chat)
+        listWidgetItem = QListWidgetItem(self.chat)
         listWidgetItem.setSizeHint(entry.sizeHint())
         self.chat.addItem(listWidgetItem)
         self.chat.setItemWidget(listWidgetItem, entry)

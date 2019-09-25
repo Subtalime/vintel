@@ -34,7 +34,7 @@ else:
 
 import logging
 from vi.cache.dbstructure import updateDatabase
-
+from PyQt5.QtCore import QByteArray
 
 class Cache(object):
     # Cache checks PATH_TO_CACHE when init, so you can set this on a
@@ -153,13 +153,14 @@ class Cache(object):
     def recallAndApplySettings(self, responder, settingsIdentifier):
         settings = self.getFromCache(settingsIdentifier)
         if settings:
-            settings = eval(settings)
-            for setting in settings:
-                obj = responder if not setting[0] else getattr(responder, setting[0])
-                # logging.debug("{0} | {1} | {2}".format(str(obj), setting[1], setting[2]))
-                try:
-                    getattr(obj, setting[1])(setting[2])
-                except Exception as e:
-                    logging.error(e)
-
-
+            try:
+                settings = eval(settings)
+                for setting in settings:
+                    obj = responder if not setting[0] else getattr(responder, setting[0])
+                    # logging.debug("{0} | {1} | {2}".format(str(obj), setting[1], setting[2]))
+                    try:
+                        getattr(obj, setting[1])(setting[2])
+                    except Exception as e:
+                        logging.error("{}: {} [{}]".format(__file__, e, setting[1]))
+            except Exception as e:
+                logging.error("Invalid settings \"{}\"".format(str(eval(settings))), e)

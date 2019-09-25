@@ -1,55 +1,98 @@
-
+import six
 from PyQt5.QtGui import *
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QCoreApplication, Qt, pyqtSignal, QPointF
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from . import MapViewPage
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWebChannel import QWebChannel
+from PyQt5.QtCore import QCoreApplication, Qt, pyqtSignal, QPointF, QEvent, QObject, QUrl
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 
-class UPanningWebView(QtWidgets.QWidget):
-    def __init__(self, parent=None, url=None, html_file=None):
-        super().__init__(parent)
-        self.view = PanningWebView()
-        self.page = MapViewPage()
 
-class PanningWebView(QWebEngineView):
-    scroll_detected = pyqtSignal()
+class MyMapViewPage(QWebEnginePage):
+    link_clicked = pyqtSignal(QUrl)
+    scroll_detected = pyqtSignal(QPointF)
+
+    def __init__(self, *args, **kwargs):
+        super(MyMapViewPage, self).__init__(*args, **kwargs)
+        self.channel = QWebChannel()
+        self.scrollPositionChanged.connect(self.onScrollPos)
+
+    def zoomChanged(self, value):
+        self.setZoomFactor(value)
+
+    def onScrollPos(self, qPointF):
+        self.scroll_detected.emit(qPointF)
+
+    def acceptNavigationRequest(self, qUrl, QWebEnginePage_NavigationType, abool):
+        if QWebEnginePage_NavigationType == QWebEnginePage.NavigationTypeLinkClicked:
+            self.link_clicked.emit(qUrl)
+            return False
+        return super(MyMapViewPage, self).acceptNavigationRequest(qUrl, QWebEnginePage_NavigationType, abool)
+
+
+class PanningWebView(QWidget):
+# class PanningWebView(QWebEngineView):
+    zoom_factor = pyqtSignal(float)
 
     def __init__(self, parent=None):
-        # super(PanningWebView).__init__(self)
         super().__init__(parent)
-        # super(PanningWebView, self).__init__()
         self.pressed = False
-        # self.webView = QWebEngineView()
-        self.mapView = self;
-        # self.page = self.webView.page()
-        # self.page = MapViewPage(self.webView)
-        # self.webView.setPage(self.page)
-        self.scrolling = False
-        self.ignored = []
-        self.position = None
-        self.offset = 0
-        self.handIsClosed = False
-        self.clickedInScrollBar = False
-        self.initialMapPosition = None
+        self._parent = parent
+        self._page = MyMapViewPage()
+        self.view = QWebEngineView()
+        self.view.setPage(self.page())
+        self.mapView = self._page
+        self.vl = QVBoxLayout()
+        self.vl.addWidget(self.view)
+        self.setLayout(self.vl)
 
-    def loadFinished(self, ok):
-        super(QWebEngineView, self).loadFinished(ok)
+    def setZoomFactor(self, value):
+        return self.page().setZoomFactor(value)
+
+    def zoomFactor(self):
+        return self.page().zoomFactor()
+
+    # imitate QWebEngineView
+    def page(self):
+        return self._page
+
+    # not seemed to be triggered ever
+    def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
+        print("{} {} {} {}".format(a0, self, a0.parent(), a1.type()))
+        # print(a0.children())
+        if  a0 == self:
+        # if self.mapView and a0 == self.mapView:
+            if a1.type() == QEvent.MouseMove:
+                return self.mouseMoveEventHandler(a1)
+            if a1.type() == QEvent.MouseButtonPress:
+                return self.mousePressEventHandler(a1)
+            if a1.type() == QEvent.MouseButtonRelease:
+                return self.mouseReleaseEventHandler(a1)
+        return False
+
+    def setHtml(self, p_str, baseUrl=None, *args, **kwargs):
+        self.page().setHtml(p_str, baseUrl, args, kwargs)
+
+    @QtCore.pyqtSlot(bool)
+    def _loadFinished(self, ok):
         if not ok:
             return
+        # if self.mapView is None:
+        #     self.mapView = self.page()
+        #     for child in self.children():
+        #         if child == self.mapView:
+        #             self.installEventFilter(child)
         if self.initialMapPosition is None:
-            scrollPosition = QPointF(self.mapView.page().scrollPosition())
+            scrollPosition = QPointF(self.mapView.scrollPosition())
         else:
             scrollPosition = self.initialMapPosition
-        self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
+        self.mapView.runJavaScript(str("window.scrollTo({}, {});".
                                               format(scrollPosition.x(),scrollPosition.y())))
-        scrollPosition = self.mapView.page().scrollPosition()
+        self.initialMapPosition = self.mapView.scrollPosition()
         if scrollPosition.x() == 0 and scrollPosition.y() == 0:
             self.initialMapPosition = None
 
-
-    def mousePressEvent(self, mouseEvent):
+    def mousePressEventHandler(self, mouseEvent):
         pos = mouseEvent.pos()
-
         if self.pointInScroller(pos, Qt.Vertical) or self.pointInScroller(pos, Qt.Horizontal):
             self.clickedInScrollBar = True
             self.scroll_detected.emit()
@@ -77,7 +120,8 @@ class PanningWebView(QWebEngineView):
         return QActionEvent.MouseButtonPress(self, mouseEvent)
 
 
-    def mouseReleaseEvent(self, mouseEvent):
+    def mouseReleaseEventHandler(self, mouseEvent):
+        super(PanningWebView, self).mouseReleaseEvent(mouseEvent)
         if self.clickedInScrollBar:
             self.clickedInScrollBar = False
         else:
@@ -110,7 +154,9 @@ class PanningWebView(QWebEngineView):
         return QCoreApplication.mouseReleaseEvent(self, mouseEvent)
 
 
-    def mouseMoveEvent(self, mouseEvent):
+    def mouseMoveEventHandler(self, mouseEvent):
+        super(PanningWebView, self).mouseMoveEvent(mouseEvent)
+
         if not self.clickedInScrollBar:
             if self.scrolling:
                 if not self.handIsClosed:
@@ -129,7 +175,7 @@ class PanningWebView(QWebEngineView):
                 self.scroll_detected.emit()
                 return
         # return QWebView.mouseMoveEvent(self, mouseEvent)
-        return QActionEvent.MouseButtonPress(self, mouseEvent)
+        # return QActionEvent.MouseButtonPress(self, mouseEvent)
 
 
     def pointInScroller(self, position, orientation):

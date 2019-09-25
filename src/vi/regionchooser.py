@@ -43,6 +43,7 @@ class RegionChooser(QtWidgets.QDialog, Ui_Dialog):
                     logging.error(e)
                     correct = False
                 if not correct:
+                    logging.warning("Unable to find region \"{}\"".format(text))
                     QMessageBox.warning(self, u"No such region!", u"I can't find a region called '{0}'".format(text),
                                         QMessageBox.Ok)
             else:

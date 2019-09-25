@@ -20,6 +20,7 @@
 import datetime
 import os
 import time
+import logging
 import six
 if six.PY2:
     from io import open
@@ -29,8 +30,7 @@ from vi import states
 from PyQt5.QtWidgets import QMessageBox
 
 
-from .parser_functions import parseStatus
-from .parser_functions import parseUrls, parseShips, parseSystems
+from .parser_functions import parseStatus, parseUrls, parseShips, parseSystems
 
 # Names the local chatlogs could start with (depends on l10n of the client)
 LOCAL_NAMES = ("Local", "Lokal", six.text_type("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439"))
@@ -50,31 +50,37 @@ class ChatParser(object):
         self.knownMessages = []  # message we allready analyzed
         self.locations = {}  # informations about the location of a char
         self.ignoredPaths = []
-        self._collectInitFileData(path)
+        self.collectInitFileData()
 
-    def _collectInitFileData(self, path):
+    def collectInitFileData(self):
         currentTime = time.time()
         maxDiff = 60 * 60 * 24  # what is 1 day in seconds
-        for filename in os.listdir(path):
-            fullPath = os.path.join(path, filename)
+        for filename in os.listdir(self.path):
+            fullPath = os.path.join(self.path, filename)
             fileTime = os.path.getmtime(fullPath)
             if currentTime - fileTime < maxDiff:
                 self.addFile(fullPath)
 
+    def getListeners(self):
+        characters = []
+        for filename in self.fileData:
+            if "charname" in self.fileData[filename]:
+                characters.append(self.fileData[filename]["charname"])
+        return characters
+
     def addFile(self, path):
-        lines = None
-        content = ""
+        # lines = None
         filename = os.path.basename(path)
         roomname = filename[:-20]
         try:
             with open(path, "r", encoding='utf-16-le') as f:
                 content = f.read()
+            lines = content.split("\n")
         except Exception as e:
             self.ignoredPaths.append(path)
-            QMessageBox.warning(None, "Read a log file failed!", "File: {0} - problem: {1}".format(path, six.text_type(e)), "OK")
+            logging.warning("Failed to read log file \"{}\"".format(path), e)
             return None
 
-        lines = content.split("\n")
         if path not in self.fileData or (roomname in LOCAL_NAMES and "charname" not in self.fileData.get(path, [])):
             self.fileData[path] = {}
             if roomname in LOCAL_NAMES:
@@ -91,7 +97,7 @@ class ChatParser(object):
                         self.fileData[path]["charname"] = charname
                         self.fileData[path]["sessionstart"] = sessionStart
                         break
-        self.fileData[path]["lines"] = len(lines)
+            self.fileData[path]["lines"] = len(lines)
         return lines
 
     def _lineToMessage(self, line, roomname):
@@ -102,6 +108,7 @@ class ChatParser(object):
         try:
             timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
         except ValueError:
+            logging.error("Invalid Timestamp in Room \"{}\"".format(roomname))
             return None
         # finding the username of the poster
         userEnds = line.find(">")
@@ -208,7 +215,7 @@ class ChatParser(object):
             self.fileData[path] = {"lines": 13}
         oldLength = self.fileData[path]["lines"]
         lines = self.addFile(path)
-        if path in self.ignoredPaths:
+        if path in self.ignoredPaths or lines is None:
             return []
         for line in lines[oldLength - 1:]:
             line = line.strip()
