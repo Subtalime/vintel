@@ -381,8 +381,14 @@
     <addaction name="framelessWindowAction"/>
     <addaction name="menuTransparency"/>
    </widget>
+   <widget class="QMenu" name="menuCharacters">
+    <property name="title">
+     <string>Characters</string>
+    </property>
+   </widget>
    <addaction name="menu"/>
    <addaction name="menuChat"/>
+   <addaction name="menuCharacters"/>
    <addaction name="menuSound"/>
    <addaction name="menuRegion"/>
    <addaction name="menuWindow"/>

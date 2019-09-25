@@ -46,6 +46,7 @@ from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridgechooser import JumpbridgeChooser
 from vi.systemchat import SystemChat
 from vi.regionchooser import RegionChooser
+from vi.characters import CharacterMenu
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -148,9 +149,20 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         elif sys.platform.startswith("linux"):
             pass
         self.wireUpUIConnections()
+        self.menuChars = CharacterMenu(self.knownPlayerNames, "Monitor")
+        self.updateCharacterMenu()
         self.recallCachedSettings()
         self.setupThreads()
         self.setupMap(True)
+
+
+    def updateCharacterMenu(self):
+        self.menuChars.loadItems(self.knownPlayerNames)
+        self.menuCharacters.addMenu(self.menuChars.menu)
+        self.menuChars.menu.triggered.connect(self.char_menu_clicked)
+
+    def char_menu_clicked(self, action):
+        print("Menu action clicked {}".format(action))
 
     def paintEvent(self, event):
         opt = QStyleOption()
@@ -312,11 +324,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             # Add a contextual menu to the mapView
             def mapContextMenuEvent(event):
                 # if QApplication.activeWindow() or QApplication.focusWidget():
-                self.mapView.contextMenu.exec_(self.mapToGlobal(QPoint(event.x(), event.y())))
+                self.mapView.view.contextMenu.exec_(self.mapToGlobal(QPoint(event.x(), event.y())))
 
             # TODO: this stopped working after changing PanningWebView to QWidget
-            self.mapView.contextMenuEvent = mapContextMenuEvent
-            self.mapView.contextMenu = self.trayIcon.contextMenu()
+            self.mapView.view.contextMenuEvent = mapContextMenuEvent
+            self.mapView.view.contextMenu = self.trayIcon.contextMenu()
 
             # Clicking links
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)

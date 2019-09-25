@@ -45,6 +45,9 @@ class PanningWebView(QWidget):
         self.vl.addWidget(self.view)
         self.setLayout(self.vl)
 
+
+
+
     def setZoomFactor(self, value):
         return self.page().setZoomFactor(value)
 

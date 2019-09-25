@@ -1,6 +1,44 @@
 from vi.cache.cache import Cache
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QMenu, QAction, QListWidgetItem
+from PyQt5.QtCore import Qt
 import logging
 
+class CharacterMenu(QWidget):
+    def __init__(self, characters, menuname, parent=None):
+        super(CharacterMenu, self).__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.listWidget = QListWidget()
+
+        self.layout.addWidget(self.listWidget)
+        self.menu = QMenu(menuname)
+        self.loadItems(characters)
+
+    def loadItems(self, characters):
+        if self.listWidget.count() > 0:
+            self.removeItems()
+        for name in characters:
+            action = QAction(name, self.menu)
+            action_name = str(name).replace(' ', '_').replace('-', '_')
+            action.setData(action_name + "_action")
+            self.menu.addAction(action)
+            item = QListWidgetItem(name)
+            item.setData(Qt.UserRole, action_name + "_action")
+            self.listWidget.addItem(item)
+
+    def removeItems(self):
+        for item in range(self.listWidget.count()):
+            it = self.listWidget.takeItem(self.listWidget.row(self.listWidget.item(item)))
+            action = it.data(Qt.UserRole)
+            self.menu.removeAction(action)
+        # self.sync_data()
+
+    def sync_data(self):
+        save_items = {}
+        for i in range(self.listWidget.count()):
+            it = self.listWidget.item(i)
+            action = it.data(Qt.UserRole)
+            save_items[it.text()] = action.data()
+        # here we could save them in settings
 
 class Characters:
     knownPlayers = dict()

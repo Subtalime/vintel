@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'MainWindow.ui'
+# Form implementation generated from reading ui file 'src\vi\ui\MainWindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.12.1
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from vi.PanningWebView import PanningWebView
 
 
 class Ui_MainWindow(object):
@@ -46,9 +45,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.frameButton = QtWidgets.QPushButton(self.mapbuttonwidget)
         self.frameButton.setMaximumSize(QtCore.QSize(16777215, 19))
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        self.frameButton.setFont(font)
         self.frameButton.setFocusPolicy(QtCore.Qt.NoFocus)
         self.frameButton.setObjectName("frameButton")
         self.horizontalLayout_2.addWidget(self.frameButton)
@@ -69,9 +65,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.zoomOutButton)
         self.jumpbridgesButton = QtWidgets.QPushButton(self.mapbuttonwidget)
         self.jumpbridgesButton.setMaximumSize(QtCore.QSize(16777215, 19))
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        self.jumpbridgesButton.setFont(font)
         self.jumpbridgesButton.setFocusPolicy(QtCore.Qt.NoFocus)
         self.jumpbridgesButton.setCheckable(True)
         self.jumpbridgesButton.setChecked(False)
@@ -79,9 +72,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.jumpbridgesButton)
         self.statisticsButton = QtWidgets.QPushButton(self.mapbuttonwidget)
         self.statisticsButton.setMaximumSize(QtCore.QSize(16777215, 19))
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        self.statisticsButton.setFont(font)
         self.statisticsButton.setFocusPolicy(QtCore.Qt.NoFocus)
         self.statisticsButton.setCheckable(True)
         self.statisticsButton.setObjectName("statisticsButton")
@@ -157,6 +147,8 @@ class Ui_MainWindow(object):
         self.menuWindow.setObjectName("menuWindow")
         self.menuTransparency = QtWidgets.QMenu(self.menuWindow)
         self.menuTransparency.setObjectName("menuTransparency")
+        self.menuCharacters = QtWidgets.QMenu(self.menubar)
+        self.menuCharacters.setObjectName("menuCharacters")
         MainWindow.setMenuBar(self.menubar)
         self.infoAction = QtWidgets.QAction(MainWindow)
         self.infoAction.setObjectName("infoAction")
@@ -227,12 +219,12 @@ class Ui_MainWindow(object):
         self.delveRegionAction = QtWidgets.QAction(MainWindow)
         self.delveRegionAction.setCheckable(True)
         self.delveRegionAction.setObjectName("delveRegionAction")
-        # self.delveQueriousRegionAction = QtWidgets.QAction(MainWindow)
-        # self.delveQueriousRegionAction.setCheckable(True)
-        # self.delveQueriousRegionAction.setObjectName("delveQueriousRegionAction")
-        # self.delveQueriousCompactRegionAction = QtWidgets.QAction(MainWindow)
-        # self.delveQueriousCompactRegionAction.setCheckable(True)
-        # self.delveQueriousCompactRegionAction.setObjectName("delveQueriousCompactRegionAction")
+        self.delveQueriousRegionAction = QtWidgets.QAction(MainWindow)
+        self.delveQueriousRegionAction.setCheckable(True)
+        self.delveQueriousRegionAction.setObjectName("delveQueriousRegionAction")
+        self.delveQueriousCompactRegionAction = QtWidgets.QAction(MainWindow)
+        self.delveQueriousCompactRegionAction.setCheckable(True)
+        self.delveQueriousCompactRegionAction.setObjectName("delveQueriousCompactRegionAction")
         self.queriousRegionAction = QtWidgets.QAction(MainWindow)
         self.queriousRegionAction.setCheckable(True)
         self.queriousRegionAction.setObjectName("queriousRegionAction")
@@ -260,6 +252,7 @@ class Ui_MainWindow(object):
         self.menuWindow.addAction(self.menuTransparency.menuAction())
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menuChat.menuAction())
+        self.menubar.addAction(self.menuCharacters.menuAction())
         self.menubar.addAction(self.menuSound.menuAction())
         self.menubar.addAction(self.menuRegion.menuAction())
         self.menubar.addAction(self.menuWindow.menuAction())
@@ -284,6 +277,7 @@ class Ui_MainWindow(object):
         self.menuRegion.setTitle(_translate("MainWindow", "Region"))
         self.menuWindow.setTitle(_translate("MainWindow", "Window"))
         self.menuTransparency.setTitle(_translate("MainWindow", "Transparency"))
+        self.menuCharacters.setTitle(_translate("MainWindow", "Characters"))
         self.infoAction.setText(_translate("MainWindow", "Info"))
         self.alwaysOnTopAction.setText(_translate("MainWindow", "Always On Top"))
         self.opac100.setText(_translate("MainWindow", "Opacity 100%"))
@@ -314,7 +308,22 @@ class Ui_MainWindow(object):
         self.queriousRegionAction_2.setProperty("regionName", _translate("MainWindow", "querious"))
         self.delveRegionAction.setText(_translate("MainWindow", "Delve"))
         self.delveRegionAction.setProperty("regionName", _translate("MainWindow", "delve"))
+        self.delveQueriousRegionAction.setText(_translate("MainWindow", "Delve / Querious"))
+        self.delveQueriousRegionAction.setProperty("regionName", _translate("MainWindow", "delvequerious"))
+        self.delveQueriousCompactRegionAction.setText(_translate("MainWindow", "Delve / Querious (compact)"))
+        self.delveQueriousCompactRegionAction.setProperty("regionName", _translate("MainWindow", "delve-querious"))
         self.queriousRegionAction.setText(_translate("MainWindow", "Querious"))
         self.queriousRegionAction.setProperty("regionName", _translate("MainWindow", "querious"))
 
 
+from vi.PanningWebView import PanningWebView
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())
