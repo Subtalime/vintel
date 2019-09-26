@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'src\vi\ui\MainWindow.ui'
+# Form implementation generated from reading ui file 'MainWindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.12.1
 #
@@ -228,6 +228,8 @@ class Ui_MainWindow(object):
         self.queriousRegionAction = QtWidgets.QAction(MainWindow)
         self.queriousRegionAction.setCheckable(True)
         self.queriousRegionAction.setObjectName("queriousRegionAction")
+        self.actionLogging = QtWidgets.QAction(MainWindow)
+        self.actionLogging.setObjectName("actionLogging")
         self.menu.addAction(self.autoScanIntelAction)
         self.menu.addAction(self.kosClipboardActiveAction)
         self.menu.addSeparator()
@@ -250,6 +252,7 @@ class Ui_MainWindow(object):
         self.menuWindow.addAction(self.alwaysOnTopAction)
         self.menuWindow.addAction(self.framelessWindowAction)
         self.menuWindow.addAction(self.menuTransparency.menuAction())
+        self.menuWindow.addAction(self.actionLogging)
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menuChat.menuAction())
         self.menubar.addAction(self.menuCharacters.menuAction())
@@ -314,16 +317,7 @@ class Ui_MainWindow(object):
         self.delveQueriousCompactRegionAction.setProperty("regionName", _translate("MainWindow", "delve-querious"))
         self.queriousRegionAction.setText(_translate("MainWindow", "Querious"))
         self.queriousRegionAction.setProperty("regionName", _translate("MainWindow", "querious"))
+        self.actionLogging.setText(_translate("MainWindow", "Logging"))
 
 
 from vi.PanningWebView import PanningWebView
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())

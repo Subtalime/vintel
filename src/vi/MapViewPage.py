@@ -1,34 +1,30 @@
-import six
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWebChannel import QWebChannel
+from PyQt5.QtCore import pyqtSignal, QPointF
 
 
 class MapViewPage(QWebEnginePage):
     link_clicked = pyqtSignal(str)
     mark_system = pyqtSignal(str)
+    scroll_detected = pyqtSignal(QPointF)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: 'QObject'=None):
         super().__init__(parent)
+        self.channel = QWebChannel()
+        self.scrollPositionChanged.connect(self.onScrollPos)
 
-    def createWindow(self, QWebEnginePage_WebWindowType):
-        # page = MapViewPage(self)
-        self.urlChanged.connect(self.open_browser)
-        return self
 
-    def openBrowser(self, url):
-        page = self.sender()
+    def zoomChanged(self, value: 'float'):
+        self.setZoomFactor(value)
 
-    def acceptNavigationRequest(self, QUrl, QWebEnginePage_NavigationType, abool):
+    def onScrollPos(self, qPointF: 'QPointF'):
+        self.scroll_detected.emit(qPointF)
+        return True
+
+    def acceptNavigationRequest(self, qUrl: 'QUrl', QWebEnginePage_NavigationType: 'int', abool: 'bool'):
         if QWebEnginePage_NavigationType == QWebEnginePage.NavigationTypeLinkClicked:
-            self.link_clicked.emit(QUrl)
+            self.link_clicked.emit(qUrl)
             return False
-        return super(MapViewPage, self).acceptNavigationRequest(QUrl, QWebEnginePage_NavigationType, abool)
+        return super(MapViewPage, self).acceptNavigationRequest(qUrl, QWebEnginePage_NavigationType, abool)
 
-    def linkClicked(self, link):
-        link = six.text_type(link)
-        function, parameter = link.split("/", 1)
-        if function == "mark_system":
-            self.mark_system.emit(parameter)
-        elif function == "link":
-            self.link_clicked.emit(parameter)
-            # webbrowser.open(parameter)
+

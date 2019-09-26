@@ -380,6 +380,7 @@
     <addaction name="alwaysOnTopAction"/>
     <addaction name="framelessWindowAction"/>
     <addaction name="menuTransparency"/>
+    <addaction name="actionLogging"/>
    </widget>
    <widget class="QMenu" name="menuCharacters">
     <property name="title">
@@ -625,6 +626,11 @@
    </property>
    <property name="regionName" stdset="0">
     <string>querious</string>
+   </property>
+  </action>
+  <action name="actionLogging">
+   <property name="text">
+    <string>Logging</string>
    </property>
   </action>
  </widget>

@@ -26,7 +26,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QActionGroup, QMenu
 from vi.resources import resourcePath
 from vi import states
-from vi.soundmanager import SoundManager
+from vi.sound.soundmanager import SoundManager
 
 class TrayContextMenu(QtWidgets.QMenu):
     instances = set()
