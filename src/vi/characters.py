@@ -1,6 +1,6 @@
 from vi.cache.cache import Cache
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QMenu, QAction, QListWidgetItem
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListWidget, QMenu, QAction, QListWidgetItem, QMainWindow, QMenuBar, QPushButton
+from PyQt5.QtCore import Qt, QRect
 import logging
 
 class CharacterMenu(QWidget):
@@ -14,6 +14,8 @@ class CharacterMenu(QWidget):
         self.menu_items = []
         self.loadItems(characters)
 
+    def addItems(self, characters):
+        return self.loadItems(characters)
     def loadItems(self, characters):
         if self.listWidget.count() > 0:
             self.removeItems()
@@ -31,14 +33,6 @@ class CharacterMenu(QWidget):
         for menuitem in self.menu_items:
             self.menu.removeAction(menuitem)
         self.menu_items = []
-
-        # for item in range(self.listWidget.count()):
-        #     action = it
-        #     it = self.listWidget.takeItem(self.listWidget.row(self.listWidget.item(item)))
-        #     action = it.data(Qt.UserRole)
-        #     self.menu.cur
-        #     self.menu.removeAction(action)
-        # self.sync_data()
 
     def sync_data(self):
         save_items = {}
@@ -67,9 +61,10 @@ class Characters:
                     logging.error("could not add player \"{}\"".format(name), e)
 
     def addCharacter(self, charname, status=True, location=None, store=True):
-        self.knownPlayers[charname] = self.Character(charname, status, location)
-        if store:
-            self.storeData()
+        if charname not in self.knownPlayers:
+            self.knownPlayers[charname] = self.Character(charname, status, location)
+            if store:
+                self.storeData()
 
     def delCharacter(self, charname, store=True):
         if charname in self.knownPlayers:
@@ -84,6 +79,12 @@ class Characters:
         if charname in self.knownPlayers:
             return self.knownPlayers.get(charname)
         return None
+
+    def getCharacterNames(self):
+        chars = []
+        for player in self.knownPlayers.keys():
+            chars.append(player)
+        return chars
 
     def storeData(self):
         value = ",".join(str(x) for x in self.knownPlayers.values())
@@ -133,8 +134,55 @@ class Characters:
         def __repr__(self):
             return "{}.{}.{}".format(self.charname, self.monitor, self.location)
 
+
+class CharTestMainForm(QMainWindow):
+    def __init__(self, parent=None):
+        super(CharTestMainForm, self).__init__(parent)
+        self.menubar = self.menuBar()
+        self.menubar.setGeometry(QRect(0, 0, 936, 21))
+        self.menubar.setObjectName("menubar")
+        self.chars = self.menubar.addMenu("Characters")
+        characters = ["me", "you", "them", "test", "del"]
+        self.characters = Characters()
+        for nam in characters:
+            self.characters.addCharacter(nam)
+        self.charmenu = CharacterMenu(self.characters.getCharacterNames(), "Select")
+        self.chars.addMenu(self.charmenu.menu)
+        self.charmenu.menu.triggered[QAction].connect(self.process_select)
+        self.menuButton = QPushButton("Rebuild Menu")
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.addWidget(self.menuButton)
+        self.menuButton.clicked.connect(self.rebuildmenu)
+        self.setCentralWidget(widget)
+
+        # self.menu = QMenu(self.menubar)
+        # self.menu.setObjectName("Characters")
+        # self.setMenuBar(self.menubar)
+        # self.menu.addMenu(self.charmenu.menu)
+
+
+    def rebuildmenu(self):
+        self.characters.delCharacter("test")
+        self.characters.delCharacter("del")
+        self.charmenu.removeItems()
+        self.charmenu.addItems(self.characters.getCharacterNames())
+        # self.charmenu = CharacterMenu(self.characters.getCharacterNames(), "Select")
+        self.chars.addMenu(self.charmenu.menu)
+
+    def process_select(self, q):
+        print(q.text()+" is triggered")
+
 # The main application
 if __name__ == "__main__":
+    import sys
+    from PyQt5.QtWidgets import QMainWindow, QApplication
+    app = QApplication(sys.argv)
+    form = CharTestMainForm()
+    form.resize(936, 695)
+    form.show()
+    app.exec_()
+
     chars = Characters()
     chars.addCharacter("test")
     chars.addCharacter("test", location="here")
