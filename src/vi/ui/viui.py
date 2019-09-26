@@ -158,6 +158,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def updateCharacterMenu(self):
         self.menuChars.loadItems(self.knownPlayerNames)
+        self.menuCharacters.clear()
         self.menuCharacters.addMenu(self.menuChars.menu)
         self.menuChars.menu.triggered.connect(self.char_menu_clicked)
 

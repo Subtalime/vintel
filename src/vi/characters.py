@@ -11,6 +11,7 @@ class CharacterMenu(QWidget):
 
         self.layout.addWidget(self.listWidget)
         self.menu = QMenu(menuname)
+        self.menu_items = []
         self.loadItems(characters)
 
     def loadItems(self, characters):
@@ -20,16 +21,23 @@ class CharacterMenu(QWidget):
             action = QAction(name, self.menu)
             action_name = str(name).replace(' ', '_').replace('-', '_')
             action.setData(action_name + "_action")
+            self.menu_items.append(action)
             self.menu.addAction(action)
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, action_name + "_action")
             self.listWidget.addItem(item)
 
     def removeItems(self):
-        for item in range(self.listWidget.count()):
-            it = self.listWidget.takeItem(self.listWidget.row(self.listWidget.item(item)))
-            action = it.data(Qt.UserRole)
-            self.menu.removeAction(action)
+        for menuitem in self.menu_items:
+            self.menu.removeAction(menuitem)
+        self.menu_items = []
+
+        # for item in range(self.listWidget.count()):
+        #     action = it
+        #     it = self.listWidget.takeItem(self.listWidget.row(self.listWidget.item(item)))
+        #     action = it.data(Qt.UserRole)
+        #     self.menu.cur
+        #     self.menu.removeAction(action)
         # self.sync_data()
 
     def sync_data(self):
