@@ -114,7 +114,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             #            "running to remedy this."
             # QMessageBox.warning(None, "Known Characters not Found", diagText, QMessageBox.Ok)
         self.knownPlayers = Characters()
-
+        self.menuCharacters = CharacterMenu("Characters", self, self.knownPlayers)
         # Set up user's intel rooms
         roomnames = self.cache.getFromCache("room_names")
         if roomnames:
@@ -153,19 +153,17 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         elif sys.platform.startswith("linux"):
             pass
         self.wireUpUIConnections()
-        self.menuChars = CharacterMenu("Monitor")
-        self.updateCharacterMenu()
+        # self.menuChars = CharacterMenu("Monitor")
+        # self.updateCharacterMenu()
         self.recallCachedSettings()
         self.setupThreads()
         self.setupMap(True)
 
 
     def updateCharacterMenu(self):
-        self.menuChars.removeItems()
-        self.menuChars.loadItems(self.knownPlayers)
-        self.menuCharacters.clear()
-        self.menuCharacters.addMenu(self.menuChars)
-        self.menuChars.triggered.connect(self.char_menu_clicked)
+        self.menuCharacters.removeItems()
+        self.menuCharacters.addItems(self.knownPlayers)
+        self.menuCharacters.triggered.connect(self.char_menu_clicked)
 
     def char_menu_clicked(self, action: 'QAction'):
         self.knownPlayers[action.text()].setMonitoring(action.isChecked())
@@ -874,10 +872,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def logFileChanged(self, path):
         messages = self.chatparser.fileModified(path)
+        if self.knownPlayers.addNames(self.chatparser.getListeners()):
+            self.updateCharacterMenu()
         for message in messages:
             # If players location has changed
             if message.status == states.LOCATION:
                 self.knownPlayerNames.add(message.user)
+                self.knownPlayers[message.user].setLocation(message.systems[0])
                 self.setLocation(message.user, message.systems[0])
             elif message.status == states.KOS_STATUS_REQUEST:
                 # Do not accept KOS requests from any but monitored intel channels

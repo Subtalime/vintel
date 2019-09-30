@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMenu, QListWidget, QListWidgetItem, QAction, QAbstractItemView
+from PyQt5.QtWidgets import QMenu, QListWidget, QAction, QAbstractItemView
 from vi.dotlan import Regions
 from vi.cache.cache import Cache
 from collections import OrderedDict
@@ -16,7 +16,7 @@ class RegionMenu(QMenu):
         self.regionNames = [regionName]
         self.selectedRegion = regionName
 
-    def _actionName(self, region):
+    def _actionName(self, region: 'str'):
         return str(region).replace(' ', '_').replace('-', '_') + "_action"
 
     def addItem(self, region: 'str'):
@@ -24,6 +24,7 @@ class RegionMenu(QMenu):
             return False
         action = QAction(region, self, checkable=True)
         action.setData(self._actionName(region))
+        action.setProperty("regionName", region)
         action.setObjectName(region)
         action.setChecked(region == self.selectedRegion)
         self._menu_actions[region] = action

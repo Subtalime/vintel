@@ -9,6 +9,7 @@ class CharacterMenu(QMenu):
         super(CharacterMenu, self).__init__(menuname, parent)
         self._listWidget = QListWidget()
         self._menu_actions = dict()
+        self.setObjectName("menu"+menuname)
         if characters is not None:
             self.addItems(characters)
 

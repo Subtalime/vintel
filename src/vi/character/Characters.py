@@ -14,7 +14,7 @@ class Characters(dict):
         elif len(args) > 0:
             self.pop(args[0])
 
-    def addName(self, charname: 'str', status: 'bool'=True, location: 'str'=None, store: 'bool'=False):
+    def addName(self, charname: 'str', status: 'bool'=True, location: 'str'=None, store: 'bool'=False) -> 'bool':
         if not isinstance(charname, str):
             logging.critical("addName(charname) must be of type \"str\"")
             return False
@@ -24,6 +24,18 @@ class Characters(dict):
                 self.storeData()
         else:
             logging.info("Character {} already exists".format(charname))
+            return False
+        return True
+
+    def addNames(self, charnames: 'list'):
+        if not isinstance(charnames, list):
+            logging.critical("addNames(charnames) must be of type \"list\"")
+            return False
+        newAddition = False
+        for charname in charnames:
+            if self.addName(charname):
+                newAddition = True
+        return newAddition
 
     def addCharacter(self, character: 'Character', store: 'bool'=False) -> 'bool':
         if not isinstance(character, Character):
@@ -76,6 +88,9 @@ class Characters(dict):
     def storeData(self):
         value = ",".join(str(x) for x in self.values())
         self._cache.putIntoCache("known_players", value, 60 * 60 * 24 * 30)
+
+    def __repr__(self):
+        return str(list(self.keys()))
 
 class Character:
     monitor = False

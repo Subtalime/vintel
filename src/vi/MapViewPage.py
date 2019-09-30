@@ -1,11 +1,10 @@
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import pyqtSignal, QPointF
+from PyQt5.QtCore import pyqtSignal, QPointF, QUrl
 
 
 class MapViewPage(QWebEnginePage):
-    link_clicked = pyqtSignal(str)
-    mark_system = pyqtSignal(str)
+    link_clicked = pyqtSignal(QUrl)
     scroll_detected = pyqtSignal(QPointF)
 
     def __init__(self, parent: 'QObject'=None):
@@ -26,5 +25,3 @@ class MapViewPage(QWebEnginePage):
             self.link_clicked.emit(qUrl)
             return False
         return super(MapViewPage, self).acceptNavigationRequest(qUrl, QWebEnginePage_NavigationType, abool)
-
-
