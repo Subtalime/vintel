@@ -58,7 +58,7 @@ class Regions:
             hrefs = cls.find_all('a', href=True)
             for href in hrefs:
                 self.regions[href.text] = href.attrs['href']
-            cache.putIntoCache("regions", str(",".join("{}.{}".format(key, val) for key, val in self.regions.items())))
+            cache.putIntoCache("regions", str(",".join("{}.{}".format(key, val) for key, val in self.regions.items())), 365 * 24 * 60 * 60)
         else:
             tregions = str(svg).split(",")
             for region in tregions:

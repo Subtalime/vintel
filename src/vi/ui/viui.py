@@ -221,6 +221,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.alwaysOnTopAction.triggered.connect(self.changeAlwaysOnTop)
         # self.connect(self.chooseChatRoomsAction, PYQT_SIGNAL("triggered()"), self.showChatroomChooser)
         self.chooseChatRoomsAction.triggered.connect(self.showChatroomChooser)
+        # TODO: remove these menu items and replace with dynamic Region-Menu
+        # TODO: RegionChooserList, RegionMenu
         self.delveRegionAction.triggered.connect(lambda: self.handleRegionMenuItemSelected(self.delveRegionAction))
         self.queriousRegionAction.triggered.connect(
             lambda: self.handleRegionMenuItemSelected(self.queriousRegionAction))
