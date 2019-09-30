@@ -26,7 +26,7 @@ import traceback
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
 
-from PyQt5 import QtGui, QtWidgets
+from PyQt5 import QtGui, QtWidgets, QtCore
 from vi import version
 from vi.ui import viui, systemtray
 from vi.cache import cache
@@ -47,7 +47,9 @@ def exceptHook(exceptionType, exceptionValue, tracebackObject):
         pass
 
 sys.excepthook = exceptHook
+
 backGroundColor = "#c6d9ec"
+
 
 
 class Application(QApplication):
@@ -55,6 +57,7 @@ class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
 
+        global backGroundColor
         # Set up paths
         chatLogDirectory = ""
         if len(sys.argv) > 1:
@@ -95,8 +98,9 @@ class Application(QApplication):
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:
             logLevel = logging.WARN
-        backGroundColor = vintelCache.getFromCache("background_color")
-        if backGroundColor:
+        backColor = vintelCache.getFromCache("background_color")
+        if backColor:
+            backGroundColor = backColor
             self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
         splash.show()
@@ -115,6 +119,7 @@ class Application(QApplication):
         consoleHandler = StreamHandler()
         consoleHandler.setFormatter(formatter)
         rootLogger.addHandler(consoleHandler)
+        # output logging to a Window
 
         logging.critical("")
         logging.critical("------------------- Vintel %s starting up -------------------", version.VERSION)

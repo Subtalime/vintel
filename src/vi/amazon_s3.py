@@ -25,8 +25,8 @@ from PyQt5.QtCore import QThread, pyqtSignal
 # from PyQt5.QtDBus import PYQT_SIGNAL
 from vi import version
 from vi.cache.cache import Cache
-from distutils.version import LooseVersion, StrictVersion
-
+# from distutils.version import LooseVersion, StrictVersion
+from vers import Version
 
 def getJumpbridgeData(region):
     try:
@@ -76,7 +76,8 @@ class NotifyNewVersionThread(QThread):
             try:
                 # Is there a newer version available?
                 newestVersion = getNewestVersion()
-                if newestVersion and StrictVersion(newestVersion) > StrictVersion(version.VERSION):
+                if newestVersion and Version(newestVersion) > Version(version.VERSION):
+                # if newestVersion and StrictVersion(newestVersion) > StrictVersion(version.VERSION):
                     self.newer_version.emit(newestVersion)
                     # self.emit(PYQT_SIGNAL("newer_version"), newestVersion)
                     self.alerted = True

@@ -26,15 +26,15 @@ import vi.version
 
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.QtGui import QClipboard
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 
+from vi.LogWindow import LogWindow, LogWindowHandler
 from vi import amazon_s3, evegate
 from vi import dotlan, filewatcher
 from vi import states
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
-from vi.soundmanager import SoundManager
+from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, KOSCheckerThread, MapStatisticsThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
@@ -46,7 +46,7 @@ from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridgechooser import JumpbridgeChooser
 from vi.systemchat import SystemChat
 from vi.regionchooser import RegionChooser
-from vi.characters import CharacterMenu
+from vi.character.charactermenu import CharacterMenu
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -70,12 +70,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         super(self.__class__, self).__init__()
         # QMainWindow.__init__(self)
         self.cache = Cache()
-
+        self.setupUi(self)
+        self.setWindowTitle(vi.version.DISPLAY)
         if backGroundColor:
             self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
-        self.setupUi(self)
-        self.setWindowTitle(
-            "Vintel " + vi.version.VERSION + "{dev}".format(dev="-SNAPSHOT" if vi.version.SNAPSHOT else ""))
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -98,6 +96,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.scanIntelForKosRequestsEnabled = True
         self.mapPositionsDict = {}
         self.content = None
+        self.logWindow = LogWindow()
+        logHandler = LogWindowHandler(self.logWindow)
+        formatter = logging.Formatter('%(asctime)s| %(message)s', datefmt='%m/%d %I:%M:%S')
+        logHandler.setFormatter(formatter)
+        logging.getLogger().addHandler(logHandler)
 
         # Load user's toon names
         self.knownPlayerNames = self.cache.getFromCache("known_player_names")
@@ -165,6 +168,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def char_menu_clicked(self, action):
         print("Menu action clicked {}".format(action))
 
+    # TODO: unknown where is used (Window-Paint?)
     def paintEvent(self, event):
         opt = QStyleOption()
         opt.initFrom(self)
@@ -218,6 +222,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.queriousRegionAction.triggered.connect(
             lambda: self.handleRegionMenuItemSelected(self.queriousRegionAction))
 
+        if not self.logWindow:
+            self.actionLogging.setEnabled(False)
+        self.actionLogging.triggered.connect(self.showLoggingWindow)
+
         self.chooseRegionAction.triggered.connect(self.showRegionChooser)
         # self.connect(self.showChatAction, PYQT_SIGNAL("triggered()"), self.changeChatVisibility)
         self.showChatAction.triggered.connect(self.changeChatVisibility)
@@ -252,27 +260,22 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
         self.avatarFindThread.avatar_update.connect(self.updateAvatarOnChatEntry)
-        # self.connect(self.avatarFindThread, PYQT_SIGNAL("avatar_update"), self.updateAvatarOnChatEntry)
         self.avatarFindThread.start()
 
         self.kosRequestThread = KOSCheckerThread()
         self.kosRequestThread.kos_result.connect(self.showKosResult)
-        # self.connect(self.kosRequestThread, PYQT_SIGNAL("kos_result"), self.showKosResult)
         self.kosRequestThread.start()
 
         self.filewatcherThread = filewatcher.FileWatcher(self.pathToLogs)
         self.filewatcherThread.file_change.connect(self.logFileChanged)
-        # self.connect(self.filewatcherThread, PYQT_SIGNAL("file_change"), self.logFileChanged)
         self.filewatcherThread.start()
 
         self.versionCheckThread = amazon_s3.NotifyNewVersionThread()
         self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
-        # self.versionCheckThread.connect(self.versionCheckThread, PYQT_SIGNAL("newer_version"), self.notifyNewerVersion)
         self.versionCheckThread.start()
 
         self.statisticsThread = MapStatisticsThread()
         self.statisticsThread.statistic_data_update.connect(self.updateStatisticsOnMap)
-        # self.connect(self.statisticsThread, PYQT_SIGNAL("statistic_data_update"), self.updateStatisticsOnMap)
         self.statisticsThread.start()
         # statisticsThread is blocked until first call of requestStatistics
 
@@ -343,6 +346,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 self.delveRegionAction.setChecked(True)
             else:
                 self.chooseRegionAction.setChecked(True)
+
         self.jumpbridgesButton.setChecked(False)
         self.statisticsButton.setChecked(False)
 
@@ -419,6 +423,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         except Exception:
             pass
         self.trayIcon.hide()
+        if self.logWindow:
+            self.logWindow.close()
+
         event.accept()
 
 
@@ -619,11 +626,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 self.initialMapPosition = None
             else:
                 scrollPosition = QPointF(self.mapView.page().scrollPosition())
-            zoonfactor = float(self.mapView.page().zoomFactor())
+            zoomfactor = float(self.mapView.page().zoomFactor())
             self.mapView.page().setHtml(content)
+            # page has been reloaded... go back to where we were
             # here we need to take into account the Zoom-Factor
-            self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
-                                                  format(scrollPosition.x()/zoonfactor, scrollPosition.y()/zoonfactor)))
+            if scrollPosition:
+                self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
+                                                  format(scrollPosition.x()/zoomfactor, scrollPosition.y()/zoomfactor)))
         except Exception as e:
             logging.error("Problem with setMapContent: %r", e)
 
@@ -648,6 +657,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
             self.mapPositionsDict[regionName] = (scrollPosition.x(), scrollPosition.y())
 
+    def showLoggingWindow(self):
+        if self.logWindow.isHidden():
+            self.logWindow.show()
+        if self.logWindow.isMinimized():
+            self.logWindow.setWindowState(QtCore.Qt.WindowNoState)
 
     def showChatroomChooser(self):
         chooser = ChatroomChooser(self)
@@ -720,8 +734,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
         self.chatListWidget.addItem(listWidgetItem)
         self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)
-        self.avatarFindThread.addChatEntry(chatEntryWidget)
         chatEntryWidget.mark_system.connect(self.markSystemOnMap)
+        self.avatarFindThread.addChatEntry(chatEntryWidget)
         self.chatEntries.append(chatEntryWidget)
         # self.connect(chatEntryWidget, PYQT_SIGNAL("mark_system"), self.markSystemOnMap)
         # TODO: sort this
