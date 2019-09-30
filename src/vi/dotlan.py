@@ -43,6 +43,36 @@ class DotlanException(Exception):
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
 
+DOTLAN_REGION_URL = u"http://evemaps.dotlan.net/map"
+
+class Regions:
+    def __init__(self):
+        cache = Cache()
+        self.regions = dict()
+        svg = cache.getFromCache("regions")
+        if not svg:
+            url = DOTLAN_REGION_URL
+            content = requests.get(url).text
+            soup = BeautifulSoup(content, 'html.parser')
+            cls = soup.find(class_='listmaps')
+            hrefs = cls.find_all('a', href=True)
+            for href in hrefs:
+                self.regions[href.text] = href.attrs['href']
+            cache.putIntoCache("regions", str(",".join("{}.{}".format(key, val) for key, val in self.regions.items())))
+        else:
+            tregions = str(svg).split(",")
+            for region in tregions:
+                reg = region.split(".")
+                self.regions[reg[0]] = reg[1]
+
+    def getNames(self):
+        return self.regions.keys()
+
+    def getUrlPart(self, region: 'str'):
+        return self.regions[region].replace('/map/', '')
+
+    def __repr__(self):
+        return ",".join("{}.{}".format(key, val) for key, val in self.regions.items())
 
 class Map(object):
     """
@@ -512,9 +542,10 @@ def convertRegionName(name):
 
 # this is for testing:
 if __name__ == "__main__":
-    # map = Map("Delve", "Delve")
-    map = Map("Delve")
-    # map = Map("Providence", "Providence.svg")
-    s = map.systems["1DQ1-A"]
-    s.setStatus(states.ALARM)
-    logging.error(map.svg)
+    reg = Regions()
+    print(reg.getUrlPart('Black Rise'))
+    print(reg)
+    # map = Map("Delve")
+    # s = map.systems["1DQ1-A"]
+    # s.setStatus(states.ALARM)
+    # logging.error(map.svg)

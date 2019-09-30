@@ -1,22 +1,26 @@
 import six
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtWidgets import QDialog, QListWidgetItem
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QObject
 from vi.chatentrywidget import ChatEntryWidget
 from vi import states
-
+from vi.character import Characters
 
 import vi.ui.SystemChat
+import logging
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
 
-    def __init__(self, parent, chatType, selector, chatEntries, knownPlayerNames):
+    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: 'Characters'):
         QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
+        if not isinstance(knownPlayers, Characters):
+            logging.critical("SystemChat.init(knownPlayers) is not type of \"Characters\"")
+            exit(-1)
         self.setupUi(self)
         self.parent = parent
-        self.chatType = 0
+        self.chatType = chatType
         self.selector = selector
         self.chatEntries = []
         for entry in chatEntries:
@@ -25,11 +29,11 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         if self.chatType == SystemChat.SYSTEM:
             titleName = self.selector.name
             self.system = selector
-        for name in knownPlayerNames:
-            self.playerNamesBox.addItem(name)
+        for player in knownPlayers:
+            self.playerNamesBox.addItem(player.getName())
         self.setWindowTitle("Chat for {0}".format(titleName))
-        self.closeButton.clicked.connect(self.closeDialog)
         # self.connect(self.closeButton, PYQT_SIGNAL("clicked()"), self.closeDialog)
+        self.closeButton.clicked.connect(self.closeDialog)
         # self.connect(self.alarmButton, PYQT_SIGNAL("clicked()"), self.setSystemAlarm)
         self.alarmButton.clicked.connect(self.setSystemAlarm)
         # self.connect(self.clearButton, PYQT_SIGNAL("clicked()"), self.setSystemClear)
@@ -87,5 +91,3 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
 
     def closeDialog(self):
         self.accept()
-
-

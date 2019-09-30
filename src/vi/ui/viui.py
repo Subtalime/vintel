@@ -46,7 +46,7 @@ from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridgechooser import JumpbridgeChooser
 from vi.systemchat import SystemChat
 from vi.regionchooser import RegionChooser
-from vi.character.charactermenu import CharacterMenu
+from vi.character.CharacterMenu import CharacterMenu, Characters
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -113,6 +113,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             #            "been registered. Change systems, with each character you want to monitor, while Vintel is " \
             #            "running to remedy this."
             # QMessageBox.warning(None, "Known Characters not Found", diagText, QMessageBox.Ok)
+        self.knownPlayers = Characters()
 
         # Set up user's intel rooms
         roomnames = self.cache.getFromCache("room_names")
@@ -152,7 +153,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         elif sys.platform.startswith("linux"):
             pass
         self.wireUpUIConnections()
-        self.menuChars = CharacterMenu(self.knownPlayerNames, "Monitor")
+        self.menuChars = CharacterMenu("Monitor")
         self.updateCharacterMenu()
         self.recallCachedSettings()
         self.setupThreads()
@@ -160,13 +161,15 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def updateCharacterMenu(self):
-        self.menuChars.loadItems(self.knownPlayerNames)
+        self.menuChars.removeItems()
+        self.menuChars.loadItems(self.knownPlayers)
         self.menuCharacters.clear()
-        self.menuCharacters.addMenu(self.menuChars.menu)
-        self.menuChars.menu.triggered.connect(self.char_menu_clicked)
+        self.menuCharacters.addMenu(self.menuChars)
+        self.menuChars.triggered.connect(self.char_menu_clicked)
 
-    def char_menu_clicked(self, action):
-        print("Menu action clicked {}".format(action))
+    def char_menu_clicked(self, action: 'QAction'):
+        self.knownPlayers[action.text()].setMonitoring(action.isChecked())
+        # print("Menu action clicked {}".format(action))
 
     # TODO: unknown where is used (Window-Paint?)
     def paintEvent(self, event):
@@ -384,7 +387,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if self.knownPlayerNames:
             value = ",".join(set().union(self.knownPlayerNames, self.chatparser.getListeners()))
             self.cache.putIntoCache("known_player_names", value, 60 * 60 * 24 * 30)
-
+        self.knownPlayers.storeData()
         # Program state to cache (to read it on next startup)
         settings = ((None, "restoreGeometry", bytes(self.saveGeometry())),
                     (None, "restoreState", bytes(self.saveState())),
@@ -597,7 +600,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def mapLinkClicked(self, url):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
         system = self.systems[str(systemName)]
-        sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries, list(set().union(self.chatparser.getListeners(), self.knownPlayerNames)))
+        sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries, list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
         # sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries, self.knownPlayerNames)
         self.chat_message_added.connect(sc.addChatEntry)
         self.avatar_loaded.connect(sc.newAvatarAvailable)
@@ -615,6 +618,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             system.removeLocatedCharacter(char)
         if not newSystem == "?" and newSystem in self.systems:
             self.systems[newSystem].addLocatedCharacter(char)
+            self.knownPlayers[char].setLocation(newSystem)
             self.setMapContent(self.dotlan.svg)
 
 

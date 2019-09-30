@@ -1,1 +1,1 @@
-from .charactermenu import CharacterMenu
+from .CharacterMenu import CharacterMenu

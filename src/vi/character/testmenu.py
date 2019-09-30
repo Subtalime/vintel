@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMainWindow, QPushButton
-from PyQt5.QtCore import Qt, QRect
-from .characters import Characters
-from .charactermenu import CharacterMenu
+from PyQt5.QtCore import QRect
+from vi.character.Characters import  Characters
+from vi.character.CharacterMenu import CharacterMenu
 
 class CharTestMainForm(QMainWindow):
     def __init__(self, parent=None):
@@ -13,10 +13,11 @@ class CharTestMainForm(QMainWindow):
         characters = ["me", "you", "them", "test", "del"]
         self.characters = Characters()
         for nam in characters:
-            self.characters.addCharacter(nam)
-        self.charmenu = CharacterMenu(self.characters.getCharacterNames(), "Select")
-        self.chars.addMenu(self.charmenu.menu)
-        self.charmenu.menu.triggered[QAction].connect(self.process_select)
+            self.characters.addName(nam)
+        self.charmenu = CharacterMenu("Select", self, characters=self.characters)
+        self.menubar.addMenu(self.charmenu)
+        # self.chars.addMenu(self.charmenu)
+        self.charmenu.triggered[QAction].connect(self.process_select)
         self.menuButton = QPushButton("Rebuild Menu")
         widget = QWidget()
         layout = QVBoxLayout(widget)
@@ -25,14 +26,18 @@ class CharTestMainForm(QMainWindow):
         self.setCentralWidget(widget)
 
     def rebuildmenu(self):
-        self.characters.delCharacter("test")
-        self.characters.delCharacter("del")
+        self.characters.remove("test")
+        self.characters.remove("del")
+        self.characters.addName("precious")
         self.charmenu.removeItems()
-        self.charmenu.addItems(self.characters.getCharacterNames())
-        self.chars.addMenu(self.charmenu.menu)
+        self.charmenu.addItems(self.characters)
+        # self.chars.addMenu(self.charmenu)
 
-    def process_select(self, q):
-        print(q.text()+" is triggered")
+    def process_select(self, q: 'QAction'):
+        self.characters[q.text()].setMonitoring(q.isChecked())
+
+    def closeEvent(self, *args, **kwargs):
+        self.characters.storeData()
 
 # The main application
 if __name__ == "__main__":
