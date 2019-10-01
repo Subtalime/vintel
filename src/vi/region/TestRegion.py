@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMainWindow, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMainWindow, QPushButton, QActionGroup
 from PyQt5.QtCore import QRect
 from vi.dotlan import Regions
 from vi.region.RegionMenu import RegionMenu
@@ -16,6 +16,14 @@ class RegionTestMainForm(QMainWindow):
         self.regionMenu = RegionMenu("Select", self)
         self.menubar.addMenu(self.regionMenu)
         self.regionMenu.triggered[QAction].connect(self.process_select)
+        self.groupMenu = self.menubar.addMenu("Group Test")
+        self.grouptest = QActionGroup(self, exclusive=True)
+        items = ["a", "b", "c", "d"]
+        for item in items:
+            a = QAction(item, self, checkable=True)
+            self.grouptest.addAction(a)
+            self.groupMenu.addAction(a)
+
 
     def process_select(self, qAction: 'QAction'):
         if qAction.objectName() == "region_select":
