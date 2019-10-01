@@ -44,9 +44,12 @@ from PyQt5.uic import loadUi
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridgechooser import JumpbridgeChooser
+from vi.region.RegionChooserList import RegionChooserList
 from vi.systemchat import SystemChat
 from vi.regionchooser import RegionChooser
 from vi.character.CharacterMenu import CharacterMenu, Characters
+from vi.region.RegionMenu import RegionMenu
+from vi.dotlan import Regions
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -114,7 +117,12 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             #            "running to remedy this."
             # QMessageBox.warning(None, "Known Characters not Found", diagText, QMessageBox.Ok)
         self.knownPlayers = Characters()
+        self.menubar.removeAction(self.menuCharacters.menuAction())
+        self.menubar.removeAction(self.menuRegion.menuAction())
         self.menuCharacters = CharacterMenu("Characters", self, self.knownPlayers)
+        self.menubar.insertMenu(self.menuSound.menuAction(), self.menuCharacters)
+        self.menuRegion = RegionMenu("Regions", self)
+        self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
         # Set up user's intel rooms
         roomnames = self.cache.getFromCache("room_names")
         if roomnames:
@@ -153,8 +161,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         elif sys.platform.startswith("linux"):
             pass
         self.wireUpUIConnections()
-        # self.menuChars = CharacterMenu("Monitor")
-        # self.updateCharacterMenu()
         self.recallCachedSettings()
         self.setupThreads()
         self.setupMap(True)
@@ -219,17 +225,12 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.alwaysOnTopAction.triggered.connect(self.changeAlwaysOnTop)
         # self.connect(self.chooseChatRoomsAction, PYQT_SIGNAL("triggered()"), self.showChatroomChooser)
         self.chooseChatRoomsAction.triggered.connect(self.showChatroomChooser)
-        # TODO: remove these menu items and replace with dynamic Region-Menu
-        # TODO: RegionChooserList, RegionMenu
-        self.delveRegionAction.triggered.connect(lambda: self.handleRegionMenuItemSelected(self.delveRegionAction))
-        self.queriousRegionAction.triggered.connect(
-            lambda: self.handleRegionMenuItemSelected(self.queriousRegionAction))
 
         if not self.logWindow:
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
 
-        self.chooseRegionAction.triggered.connect(self.showRegionChooser)
+        # self.chooseRegionAction.triggered.connect(self.showRegionChooser)
         # self.connect(self.showChatAction, PYQT_SIGNAL("triggered()"), self.changeChatVisibility)
         self.showChatAction.triggered.connect(self.changeChatVisibility)
         # self.connect(self.soundSetupAction, PYQT_SIGNAL("triggered()"), self.showSoundSetup)
@@ -251,11 +252,32 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.connect(self.trayIcon, PYQT_SIGNAL("quit"), self.close)
         self.trayIcon.quit_me.connect(self.close)
         # self.connect(self.jumpbridgeDataAction, PYQT_SIGNAL("triggered()"), self.showJumbridgeChooser)
-        self.jumpbridgeDataAction.triggered.connect(self.showJumbridgeChooser)
+        self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
+        # self.jumpbridgeDataAction.triggered.connect(self.showJumbridgeChooser)
         # TODO: this needs to be fixed/adapted to new WebWidget
         # self.mapView.page().scrollPosition().connect(self.mapPositionChanged)
         # self.mapView.page().scrollPositionChanged().connect(self.mapPositionChanged)
         self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
+
+    # Menu-Selection of Regions
+    def processRegionSelect(self, qAction: 'QAction'):
+        var = qAction.objectName()
+        if qAction.objectName() == "region_select":
+            self.showRegionChooser()
+        elif qAction.objectName() == "jumpbridge_select":
+            self.showJumpBridgeChooser()
+        else:
+            Cache().putIntoCache("region_name", qAction.text(), Regions.CACHE_TIME)
+            self.setupMap()
+
+    # Dialog to select Regions to monitor
+    def showRegionChooser(self):
+        def handleRegionsChosen(regionList):
+            self.menuRegion.addItems()
+
+        chooser = RegionChooserList(self)
+        chooser.new_region_range_chosen.connect(handleRegionsChosen)
+        chooser.show()
 
     def setupThreads(self):
         logging.critical("Creating threads")
@@ -339,16 +361,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Clicking links
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)
-
-            # Also set up our app menus
-            if not regionName:
-                self.delveRegionAction.setChecked(True)
-            elif regionName.startswith("Querious"):
-                self.queriousRegionAction.setChecked(True)
-            elif regionName.startswith("Delve"):
-                self.delveRegionAction.setChecked(True)
-            else:
-                self.chooseRegionAction.setChecked(True)
 
         self.jumpbridgesButton.setChecked(False)
         self.statisticsButton.setChecked(False)
@@ -673,7 +685,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         chooser.show()
 
 
-    def showJumbridgeChooser(self):
+    def showJumpBridgeChooser(self):
         url = self.cache.getFromCache("jumpbridge_url")
         chooser = JumpbridgeChooser(self, url)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)

@@ -1,9 +1,11 @@
-from PyQt5.QtWidgets import QMenu, QListWidget, QAction, QAbstractItemView
+from PyQt5.QtWidgets import QMenu, QListWidget, QAction, QAbstractItemView, QActionGroup
 from vi.cache.cache import Cache
 
 class RegionMenu(QMenu):
     def __init__(self, menuname: 'str', parent: 'QObject' = None):
         super(RegionMenu, self).__init__(menuname, parent)
+        self.group = QActionGroup(self)
+        self.group.setExclusive(True)
         self._listWidget = QListWidget()
         self._listWidget.setSelectionMode(QAbstractItemView.SingleSelection)
         self._menu_actions = dict()
@@ -23,7 +25,7 @@ class RegionMenu(QMenu):
         action.setObjectName(region)
         action.setChecked(region == self.selectedRegion)
         self._menu_actions[region] = action
-        self.addAction(action)
+        self.group.addAction(action)
         return True
 
     def _addRemainder(self):
@@ -56,6 +58,8 @@ class RegionMenu(QMenu):
 
     def removeItems(self):
         try:
+            for action in self.group.actions():
+                self.group.removeAction(action)
             for action in self.actions():
                 self.removeAction(action)
             for menuitem in self._menu_actions:

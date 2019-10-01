@@ -17,7 +17,7 @@ class CharacterMenu(QMenu):
         return str(action).replace(' ', '_').replace('-', '_') + "_action"
 
     def addItem(self, character: 'Character') -> 'bool':
-        if not isinstance(character, Characters):
+        if not isinstance(character, Character):
             logging.critical("addItem(characters) must be of type \"Characters\"")
             return False
         # prevent duplicates

@@ -15,8 +15,8 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: 'Characters'):
         QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
-        if not isinstance(knownPlayers, Characters):
-            logging.critical("SystemChat.init(knownPlayers) is not type of \"Characters\"")
+        if not isinstance(knownPlayers, list):
+            logging.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
             exit(-1)
         self.setupUi(self)
         self.parent = parent

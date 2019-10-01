@@ -10,13 +10,15 @@ class CharTestMainForm(QMainWindow):
         self.menubar.setGeometry(QRect(0, 0, 936, 21))
         self.menubar.setObjectName("menubar")
         self.chars = self.menubar.addMenu("Characters")
+        self.delete = self.menubar.addMenu("Delete")
+        self.others = self.menubar.addMenu("Others")
         characters = ["me", "you", "them", "test", "del"]
         self.characters = Characters()
         for nam in characters:
             self.characters.addName(nam)
         self.charmenu = CharacterMenu("Select", self, characters=self.characters)
         self.menubar.addMenu(self.charmenu)
-        # self.chars.addMenu(self.charmenu)
+        self.chars.addMenu(self.charmenu)
         self.charmenu.triggered[QAction].connect(self.process_select)
         self.menuButton = QPushButton("Rebuild Menu")
         widget = QWidget()
@@ -31,6 +33,9 @@ class CharTestMainForm(QMainWindow):
         self.characters.addName("precious")
         self.charmenu.removeItems()
         self.charmenu.addItems(self.characters)
+        self.menubar.removeAction(self.charmenu.menuAction())
+        self.menubar.removeAction(self.delete.menuAction())
+        self.menubar.insertMenu(self.others.menuAction(), self.charmenu)
         # self.chars.addMenu(self.charmenu)
 
     def process_select(self, q: 'QAction'):

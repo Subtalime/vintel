@@ -23,13 +23,9 @@ class RegionTestMainForm(QMainWindow):
         elif qAction.objectName() == "jumpbridge_select":
             self.jumpBridgeChooser()
         else:
-            data = qAction.data()
-            text = qAction.text()
-            menu = qAction.menu()
-            name = qAction.objectName()
-            Cache().putIntoCache("region_name", text, 364 * 24 * 60 * 60)
-
+            Cache().putIntoCache("region_name", qAction.text(), Regions.CACHE_TIME)
             print("{} Action {}".format(qAction.text(), qAction.isChecked()))
+            self.setupMap()
 
     def jumpBridgeChooser(self):
         url = self.cache.getFromCache("jumpbridge_url")
@@ -45,6 +41,8 @@ class RegionTestMainForm(QMainWindow):
         chooser.new_region_range_chosen.connect(handleRegionsChosen)
         chooser.show()
 
+    def setupMap(self):
+        print("Call viui.setupMap() now")
 
 if __name__ == "__main__":
     import sys
