@@ -32,4 +32,4 @@ class JumpbridgeChooser(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             self.set_jump_bridge_url.emit(url)
             self.accept()
         except Exception as e:
-            logging.error("Finding Jumpbridgedata failed", e)
+            logging.error("Finding Jumpbridgedata failed for \"{}\"".format(url), e)

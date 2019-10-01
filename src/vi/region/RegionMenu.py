@@ -1,7 +1,5 @@
 from PyQt5.QtWidgets import QMenu, QListWidget, QAction, QAbstractItemView
-from vi.dotlan import Regions
 from vi.cache.cache import Cache
-from collections import OrderedDict
 
 class RegionMenu(QMenu):
     def __init__(self, menuname: 'str', parent: 'QObject' = None):
@@ -9,12 +7,9 @@ class RegionMenu(QMenu):
         self._listWidget = QListWidget()
         self._listWidget.setSelectionMode(QAbstractItemView.SingleSelection)
         self._menu_actions = dict()
-        self._availableRegions = Regions()
-        regionName = Cache().getFromCache("region_name")
-        if not regionName:
-            regionName = u"Delve"
-        self.regionNames = [regionName]
-        self.selectedRegion = regionName
+        self.selectedRegion = None
+        self.regionNames = ["Delve"]
+        self.addItems()
 
     def _actionName(self, region: 'str'):
         return str(region).replace(' ', '_').replace('-', '_') + "_action"
@@ -35,27 +30,34 @@ class RegionMenu(QMenu):
         self.addSeparator()
         action = QAction("Region select...", self)
         action.setData("region_select_action")
+        action.setObjectName("region_select")
         self._menu_actions["select"] = action
         self.addAction(action)
         self.addSeparator()
         action = QAction("Jumpbridge data...", self)
         action.setData("jumpbridge_select_action")
+        action.setObjectName("jumpbridge_select")
         self._menu_actions["jumpbridge"] = action
         self.addAction(action)
 
     def addItems(self):
         self.removeItems()
-        cache = Cache()
-        regionNames = cache.getFromCache("region_name_range")
+        regionNames = Cache().getFromCache("region_name_range")
         if regionNames:
             self.regionNames = regionNames.split(",")
-        od = OrderedDict(sorted(self.regionNames))
-        for region in od:
+        self.regionNames.sort()
+        self.selectedRegion = Cache().getFromCache("region_name", True)
+        if not self.selectedRegion in self.regionNames:
+            self.selectedRegion = self.regionNames[0]
+            Cache().putIntoCache("region_name", self.selectedRegion)
+        for region in self.regionNames:
             self.addItem(region)
         self._addRemainder()
 
     def removeItems(self):
         try:
+            for action in self.actions():
+                self.removeAction(action)
             for menuitem in self._menu_actions:
                 obj = self.findChild(QAction, menuitem)
                 if obj:
@@ -63,4 +65,3 @@ class RegionMenu(QMenu):
             self._menu_actions = dict()
         except Exception as e:
             raise
-

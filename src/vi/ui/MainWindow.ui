@@ -326,7 +326,7 @@
      <x>0</x>
      <y>0</y>
      <width>936</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -361,12 +361,6 @@
     <property name="title">
      <string>Region</string>
     </property>
-    <addaction name="delveRegionAction"/>
-    <addaction name="queriousRegionAction"/>
-    <addaction name="separator"/>
-    <addaction name="chooseRegionAction"/>
-    <addaction name="separator"/>
-    <addaction name="jumpbridgeDataAction"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">

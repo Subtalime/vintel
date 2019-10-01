@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'MainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -133,7 +134,7 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.splitter, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 936, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 936, 22))
         self.menubar.setObjectName("menubar")
         self.menu = QtWidgets.QMenu(self.menubar)
         self.menu.setObjectName("menu")
@@ -243,12 +244,6 @@ class Ui_MainWindow(object):
         self.menuSound.addAction(self.soundSetupAction)
         self.menuSound.addSeparator()
         self.menuSound.addAction(self.useSpokenNotificationsAction)
-        self.menuRegion.addAction(self.delveRegionAction)
-        self.menuRegion.addAction(self.queriousRegionAction)
-        self.menuRegion.addSeparator()
-        self.menuRegion.addAction(self.chooseRegionAction)
-        self.menuRegion.addSeparator()
-        self.menuRegion.addAction(self.jumpbridgeDataAction)
         self.menuWindow.addAction(self.alwaysOnTopAction)
         self.menuWindow.addAction(self.framelessWindowAction)
         self.menuWindow.addAction(self.menuTransparency.menuAction())
@@ -318,6 +313,4 @@ class Ui_MainWindow(object):
         self.queriousRegionAction.setText(_translate("MainWindow", "Querious"))
         self.queriousRegionAction.setProperty("regionName", _translate("MainWindow", "querious"))
         self.actionLogging.setText(_translate("MainWindow", "Logging"))
-
-
 from vi.PanningWebView import PanningWebView

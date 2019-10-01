@@ -705,9 +705,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def handleRegionMenuItemSelected(self, menuAction=None):
-        self.delveRegionAction.setChecked(False)
-        self.queriousRegionAction.setChecked(False)
-        self.chooseRegionAction.setChecked(False)
         if menuAction:
             menuAction.setChecked(True)
             regionName = six.text_type(menuAction.property("regionName"))
