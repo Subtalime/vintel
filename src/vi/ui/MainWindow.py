@@ -2,10 +2,9 @@
 
 # Form implementation generated from reading ui file 'MainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.1
+# Created by: PyQt5 UI code generator 5.12.1
 #
 # WARNING! All changes made in this file will be lost!
-
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -134,7 +133,7 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.splitter, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 936, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 936, 21))
         self.menubar.setObjectName("menubar")
         self.menu = QtWidgets.QMenu(self.menubar)
         self.menu.setObjectName("menu")
@@ -150,6 +149,10 @@ class Ui_MainWindow(object):
         self.menuTransparency.setObjectName("menuTransparency")
         self.menuCharacters = QtWidgets.QMenu(self.menubar)
         self.menuCharacters.setObjectName("menuCharacters")
+        self.menuFile = QtWidgets.QMenu(self.menubar)
+        self.menuFile.setObjectName("menuFile")
+        self.menuEdit = QtWidgets.QMenu(self.menubar)
+        self.menuEdit.setObjectName("menuEdit")
         MainWindow.setMenuBar(self.menubar)
         self.infoAction = QtWidgets.QAction(MainWindow)
         self.infoAction.setObjectName("infoAction")
@@ -231,12 +234,15 @@ class Ui_MainWindow(object):
         self.queriousRegionAction.setObjectName("queriousRegionAction")
         self.actionLogging = QtWidgets.QAction(MainWindow)
         self.actionLogging.setObjectName("actionLogging")
+        self.actionAbout = QtWidgets.QAction(MainWindow)
+        self.actionAbout.setObjectName("actionAbout")
+        self.actionQuit = QtWidgets.QAction(MainWindow)
+        self.actionQuit.setObjectName("actionQuit")
+        self.actionSettings = QtWidgets.QAction(MainWindow)
+        self.actionSettings.setObjectName("actionSettings")
         self.menu.addAction(self.autoScanIntelAction)
         self.menu.addAction(self.kosClipboardActiveAction)
         self.menu.addSeparator()
-        self.menu.addAction(self.infoAction)
-        self.menu.addSeparator()
-        self.menu.addAction(self.quitAction)
         self.menuChat.addAction(self.showChatAction)
         self.menuChat.addAction(self.chooseChatRoomsAction)
         self.menuChat.addAction(self.showChatAvatarsAction)
@@ -248,6 +254,12 @@ class Ui_MainWindow(object):
         self.menuWindow.addAction(self.framelessWindowAction)
         self.menuWindow.addAction(self.menuTransparency.menuAction())
         self.menuWindow.addAction(self.actionLogging)
+        self.menuWindow.addSeparator()
+        self.menuWindow.addAction(self.actionAbout)
+        self.menuFile.addAction(self.actionQuit)
+        self.menuEdit.addAction(self.actionSettings)
+        self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuEdit.menuAction())
         self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menuChat.menuAction())
         self.menubar.addAction(self.menuCharacters.menuAction())
@@ -276,6 +288,8 @@ class Ui_MainWindow(object):
         self.menuWindow.setTitle(_translate("MainWindow", "Window"))
         self.menuTransparency.setTitle(_translate("MainWindow", "Transparency"))
         self.menuCharacters.setTitle(_translate("MainWindow", "Characters"))
+        self.menuFile.setTitle(_translate("MainWindow", "File"))
+        self.menuEdit.setTitle(_translate("MainWindow", "Edit"))
         self.infoAction.setText(_translate("MainWindow", "Info"))
         self.alwaysOnTopAction.setText(_translate("MainWindow", "Always On Top"))
         self.opac100.setText(_translate("MainWindow", "Opacity 100%"))
@@ -313,4 +327,9 @@ class Ui_MainWindow(object):
         self.queriousRegionAction.setText(_translate("MainWindow", "Querious"))
         self.queriousRegionAction.setProperty("regionName", _translate("MainWindow", "querious"))
         self.actionLogging.setText(_translate("MainWindow", "Logging"))
+        self.actionAbout.setText(_translate("MainWindow", "About"))
+        self.actionQuit.setText(_translate("MainWindow", "Quit"))
+        self.actionSettings.setText(_translate("MainWindow", "Settings..."))
+
+
 from vi.PanningWebView import PanningWebView

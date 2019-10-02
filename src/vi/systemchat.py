@@ -12,7 +12,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
 
-    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: 'Characters'):
+    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: 'list'):
         QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
         if not isinstance(knownPlayers, list):
@@ -30,7 +30,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
             titleName = self.selector.name
             self.system = selector
         for player in knownPlayers:
-            self.playerNamesBox.addItem(player.getName())
+            self.playerNamesBox.addItem(player)
         self.setWindowTitle("Chat for {0}".format(titleName))
         # self.connect(self.closeButton, PYQT_SIGNAL("clicked()"), self.closeDialog)
         self.closeButton.clicked.connect(self.closeDialog)

@@ -26,13 +26,14 @@ import traceback
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
 
-from PyQt5 import QtGui, QtWidgets, QtCore
+from PyQt5 import QtGui, QtWidgets
 from vi import version
 from vi.ui import viui, systemtray
 from vi.cache import cache
 from vi.resources import resourcePath
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
+from vi.esi.esi import EsiServer
 
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
@@ -50,10 +51,7 @@ sys.excepthook = exceptHook
 
 backGroundColor = "#c6d9ec"
 
-
-
 class Application(QApplication):
-
     def __init__(self, args):
         super(Application, self).__init__(args)
 
@@ -92,7 +90,8 @@ class Application(QApplication):
         if not os.path.exists(vintelLogDirectory):
             os.mkdir(vintelLogDirectory)
 
-        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/Dominix.png")))
+        # splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
 
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
@@ -107,7 +106,7 @@ class Application(QApplication):
         self.processEvents()
 
         # Setup logging for console and rotated log files
-        formatter = logging.Formatter('%(asctime)s| %(message)s', datefmt='%m/%d %I:%M:%S')
+        formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%m/%d %I:%M:%S')
         rootLogger = logging.getLogger()
         rootLogger.setLevel(level=logLevel)
 
@@ -121,15 +120,15 @@ class Application(QApplication):
         rootLogger.addHandler(consoleHandler)
         # output logging to a Window
 
-        logging.critical("")
-        logging.critical("------------------- Vintel %s starting up -------------------", version.VERSION)
-        logging.critical("")
+        logging.debug("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
         logging.debug("Looking for chat logs at: %s", chatLogDirectory)
         logging.debug("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
         logging.debug("Writing logs to: %s", vintelLogDirectory)
 
         trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()
+        EsiServer()
+
         self.mainWindow = viui.MainWindow(chatLogDirectory, trayIcon, backGroundColor)
         self.mainWindow.show()
         self.mainWindow.raise_()

@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMenu, QListWidget, QAction, QAbstractItemView, QActionGroup
 from vi.cache.cache import Cache
+import logging
 
 class RegionMenu(QMenu):
     def __init__(self, menuname: 'str', parent: 'QObject' = None):
@@ -21,7 +22,7 @@ class RegionMenu(QMenu):
         action.setProperty("regionName", region)
         action.setObjectName(region)
         action.setChecked(region == self.selectedRegion)
-        action.triggered.connect(self.region_selected)
+        # action.triggered.connect(self.region_selected)
         self._menu_actions[region] = action
         a = self.group.addAction(action)
         self.addAction(a)
@@ -44,6 +45,7 @@ class RegionMenu(QMenu):
     def addItems(self):
         self.removeItems()
         regionNames = Cache().getFromCache("region_name_range")
+        logging.debug("Updating Region-Menu with {}".format(regionNames))
         if regionNames:
             self.regionNames = regionNames.split(",")
         self.regionNames.sort()

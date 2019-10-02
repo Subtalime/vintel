@@ -72,6 +72,14 @@ def parseStatus(rtext):
         elif (text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE" "STILL BLUE", "ALL BLUES")):
             return states.CLEAR
 
+def parseEnemy(rtext):
+    texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
+    for text in texts:
+        upperText = text.strip().upper()
+        originalText = upperText
+        for char in CHARS_TO_IGNORE:
+            upperText = upperText.replace(char, "")
+
 
 def parseShips(rtext):
     def formatShipName(text, word):

@@ -10,11 +10,11 @@ class PanningWebView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.pressed = False
-        self._parent = parent
-        self._page = MapViewPage()
+        # self._parent = parent
+        # self._page = MapViewPage()
+        self.mapView = MapViewPage()
         self.view = QWebEngineView()
         self.view.setPage(self.page())
-        self.mapView = self._page
         self.vl = QVBoxLayout()
         self.vl.addWidget(self.view)
         self.setLayout(self.vl)
@@ -29,25 +29,8 @@ class PanningWebView(QWidget):
 
     # imitate QWebEngineView
     def page(self):
-        return self._page
+        return self.mapView
 
     def setHtml(self, p_str, baseUrl=None, *args, **kwargs):
         self.page().setHtml(p_str, baseUrl, args, kwargs)
-
-    @QtCore.pyqtSlot(bool)
-    def _loadFinished(self, ok):
-        if not ok:
-            return
-        if self.initialMapPosition is None:
-            scrollPosition = QPointF(self.mapView.scrollPosition())
-        else:
-            scrollPosition = self.initialMapPosition
-        self.mapView.runJavaScript(str("window.scrollTo({}, {});".
-                                              format(scrollPosition.x(),scrollPosition.y())))
-        self.initialMapPosition = self.mapView.scrollPosition()
-        if scrollPosition.x() == 0 and scrollPosition.y() == 0:
-            self.initialMapPosition = None
-
-
-
 
