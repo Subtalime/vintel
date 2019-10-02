@@ -22,11 +22,9 @@ import requests
 import logging
 
 from PyQt5.QtCore import QThread, pyqtSignal
-# from PyQt5.QtDBus import PYQT_SIGNAL
 from vi import version
 from vi.cache.cache import Cache
-from distutils.version import LooseVersion, StrictVersion
-# from vi.version import VERSION
+from distutils.version import StrictVersion
 
 def getJumpbridgeData(region):
     try:
@@ -38,7 +36,7 @@ def getJumpbridgeData(region):
             data = json.loads(data)
         else:
             data = []
-            url = "https://s3.amazonaws.com/vintel-resources/{region}_jb.txt"
+            url = u"https://s3.amazonaws.com/vintel-resources/{region}_jb.txt"
             resp = requests.get(url.format(region=region))
             if resp.ok:
                 for line in resp.iter_lines(decode_unicode=True):
@@ -56,7 +54,7 @@ def getJumpbridgeData(region):
 
 def getNewestVersion():
     try:
-        url = "https://s3.amazonaws.com/vintel-resources/current-version.txt"
+        url = u"https://s3.amazonaws.com/vintel-resources/current-version.txt"
         newestVersion = requests.get(url).text
         return newestVersion
     except Exception as e:
@@ -77,9 +75,7 @@ class NotifyNewVersionThread(QThread):
                 # Is there a newer version available?
                 newestVersion = getNewestVersion()
                 if newestVersion and StrictVersion(newestVersion) > StrictVersion(version.VERSION):
-                # if newestVersion and StrictVersion(newestVersion) > StrictVersion(version.VERSION):
                     self.newer_version.emit(newestVersion)
-                    # self.emit(PYQT_SIGNAL("newer_version"), newestVersion)
                     self.alerted = True
             except Exception as e:
                 logging.error("Failed NotifyNewVersionThread: %s", e)

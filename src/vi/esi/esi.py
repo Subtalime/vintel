@@ -1,53 +1,26 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import ssl
-from vi.resources import resourcePath
-from io import BytesIO
-from esiconfig import EsiConfig
-import threading
 import logging
-from esipy import EsiClient
+from esipy.utils import generate_code_verifier
+from esipy import EsiClient, EsiApp, EsiSecurity
+from esiconfig import EsiConfig
+import vi.version
 
-
-class EsiServer:
+class EsiInterface:
     def __init__(self):
-        httpd = HTTPServer((EsiConfig().HOST, EsiConfig().PORT), self.EsiHTTPRequestHandler)
-        # httpd.socket = ssl.wrap_socket(httpd.socket, keyfile=resourcePath("vi/esi_rsa.pub"), certfile=resourcePath("vi/esi_rsa"), server_side=True)
-        thread = threading.Thread(target=httpd.serve_forever)
-        thread.setDaemon(True)
-        try:
-            thread.start()
-        except Exception as e:
-            logging.critical("HTTP-Server ", e)
+        logging.debug("Creating ESI access")
+        # this uses PKCE (pixie) authorisation with ESI
+        self.security = EsiSecurity(
+            # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
+            redirect_uri=EsiConfig().ESI_CALLBACK,
+            client_id=EsiConfig().ESI_CLIENT_ID,
+            code_verifier=generate_code_verifier(),
+            headers={'User-Agent': vi.version.PROGNAME}
+        )
 
-    class EsiHTTPRequestHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            logging.debug("Got a \"GET\" request")
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"Hello World")
+        # this authentication can be used with all ESI calls
+        self.esiClient = EsiClient(security=self.security)
 
-        def do_POST(self):
-            content_length = int(self.headers['Content-Length'])
-            body = self.rfile.read(content_length)
-            self.send_response(200)
-            self.end_headers()
-            response = BytesIO()
-            response.write(b'This is POST request. ')
-            response.write(b'Received: ')
-            response.write(body)
-            logging.debug("Got a \"POST\" request : {}".format(body))
-            self.wfile.write(response.getvalue())
 
-def generate_token():
-    import random
-    import hmac
-    import hashlib
-    """Generates a non-guessable OAuth token"""
-    chars = ('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-    rand = random.SystemRandom()
-    random_string = ''.join(rand.choice(chars) for _ in range(40))
-    return hmac.new(
-        EsiConfig().SECRET_KEY.encode('utf-8'),
-        random_string.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
+        self.esiApp = EsiApp().get_latest_swagger
+        logging.debug("Finished authorizing with ESI (using PKCE)")
+
+        # op = esiApp.op(character_id=33333)

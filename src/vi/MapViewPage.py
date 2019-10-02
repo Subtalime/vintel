@@ -9,7 +9,7 @@ class MapViewPage(QWebEnginePage):
 
     def __init__(self, parent: 'QObject'=None):
         super().__init__(parent)
-        self.channel = QWebChannel()
+        # self.channel = QWebChannel()
         self.scrollPositionChanged.connect(self.onScrollPos)
 
 

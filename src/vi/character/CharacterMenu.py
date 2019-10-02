@@ -1,3 +1,4 @@
+from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import  QListWidget, QMenu, QAction
 from vi.character.Characters import Characters, Character
 from collections import OrderedDict
@@ -5,7 +6,7 @@ import logging
 
 
 class CharacterMenu(QMenu):
-    def __init__(self, menuname: 'str', parent: 'QObject'=None, characters: 'Characters'=None):
+    def __init__(self, menuname: str, parent: QObject=None, characters: Characters=None):
         super(CharacterMenu, self).__init__(menuname, parent)
         self._listWidget = QListWidget()
         self._menu_actions = dict()
@@ -13,10 +14,10 @@ class CharacterMenu(QMenu):
         if characters is not None:
             self.addItems(characters)
 
-    def _actionName(self, action: 'str') -> 'str':
+    def _actionName(self, action: str) -> str:
         return str(action).replace(' ', '_').replace('-', '_') + "_action"
 
-    def addItem(self, character: 'Character') -> 'bool':
+    def addItem(self, character: Character) -> bool:
         if not isinstance(character, Character):
             logging.critical("addItem(characters) must be of type \"Characters\"")
             return False
@@ -31,7 +32,7 @@ class CharacterMenu(QMenu):
         self.addAction(action)
         return True
 
-    def addItems(self, characters: 'Characters') -> 'bool':
+    def addItems(self, characters: Characters) -> bool:
         if not isinstance(characters, Characters):
             logging.critical("addItems(characters) must be of type \"Characters\"")
             return False
@@ -40,7 +41,7 @@ class CharacterMenu(QMenu):
             self.addItem(od[key])
         return True
 
-    def removeItem(self, character: 'Character') -> 'bool':
+    def removeItem(self, character: Character) -> bool:
         if not isinstance(character, Character):
             logging.critical("removeItem(character) must be of type \"Character\"")
         elif character.getName() in self._menu_actions.keys():

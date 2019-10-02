@@ -283,7 +283,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         chooser.show()
 
     def setupThreads(self):
-        logging.critical("Creating threads")
+        logging.debug("Creating threads")
 
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
@@ -304,11 +304,14 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
         self.statisticsThread = MapStatisticsThread()
         self.statisticsThread.statistic_data_update.connect(self.updateStatisticsOnMap)
-        self.statisticsThread.start()
         # statisticsThread is blocked until first call of requestStatistics
+        self.statisticsThread.start()
+
+        logging.debug("Finished Creating threads")
 
     # TODO: store each system configured in Regions
     # TODO: therefore if we switch Region, we can update with previously found data
+    # TODO: when clicking on System in Chat, scroll to the position within the Map
     def setupMap(self, initialize=False):
         self.mapTimer.stop()
         self.filewatcherThread.paused = True
@@ -451,7 +454,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def notifyNewerVersion(self, newestVersion):
         self.trayIcon.showMessage("Newer Version",
-                                  ("An update is available for Vintel.\nhttps://github.com/Xanthos-Eve/vintel"), 1)
+                                  ("An update is available for {}.\n{}".format(vi.version.PROGNAME, vi.version.URL)))
 
 
     def changeChatVisibility(self, newValue=None):
@@ -627,6 +630,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def markSystemOnMap(self, systemname):
         self.systems[six.text_type(systemname)].mark()
+        # if this function is called from the Chat-Entry-Widget Click emitter
+        # perhaps here, a Scroll-To the coordinates stored in self.systems[system-name]
+        zoomfactor = float(self.mapView.page().zoomFactor())
+        self.scrollTo(self.systems[six.text_type(systemname)].mapCoordinates["center_x"]/zoomfactor,
+                      self.systems[six.text_type(systemname)].mapCoordinates["center_y"]/zoomfactor)
         self.updateMapView()
 
 
@@ -639,6 +647,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.setMapContent(self.dotlan.svg)
 
 
+    def scrollTo(self, x, y):
+        _scrollTo = str("window.scrollTo({}, {});".
+                       format(x, y))
+        self.mapView.page().runJavaScript(_scrollTo)
+
     def setMapContent(self, content):
         try:
             logging.debug("Setting Map-Content start")
@@ -648,20 +661,18 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 self.initialMapPosition = None
             else:
                 scrollPosition = QPointF(self.mapView.page().scrollPosition())
-            logging.debug("Current Scroll-Position {}".format(scrollPosition))
             zoomfactor = float(self.mapView.page().zoomFactor())
             self.mapView.page().setHtml(content)
             # page has been reloaded... go back to where we were
             # here we need to take into account the Zoom-Factor
             if scrollPosition:
-                # self.mapView.page().runJavaScript(str("window.scrollTo({}, {});".
-                #                                   format(scrollPosition.x(), scrollPosition.y())))
+                logging.debug("Current Scroll-Position {}".format(scrollPosition))
                 scrollTo = str("window.scrollTo({}, {});".
                                                       format(scrollPosition.x() / zoomfactor,
                                                              scrollPosition.y() / zoomfactor))
                 logging.debug(scrollTo)
                 self.mapView.page().runJavaScript(scrollTo)
-                logging.debug("New Scroll-Position {}".format(QPointF(self.mapView.page().scrollPosition())))
+                logging.debug("New Scroll-Position {} ({})".format(QPointF(self.mapView.page().scrollPosition()), zoomfactor))
             logging.debug("Setting Map-Content complete")
         except Exception as e:
             logging.error("Problem with setMapContent: %r", e)
@@ -762,7 +773,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def pruneMessages(self):
         try:
-            now = time.mktime(evegate.currentEveTime().timetuple())
+            now = time.mktime(evegate.EveGate().currentEveTime().timetuple())
             for row in range(self.chatListWidget.count()):
                 chatListWidgetItem = self.chatListWidget.item(0)
                 chatEntryWidget = self.chatListWidget.itemWidget(chatListWidgetItem)
@@ -793,7 +804,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                         text = "None KOS"
                     self.trayIcon.showMessage("Your KOS-Check", text, 1)
                 text = text.replace("\n\n", "<br>")
-                message = ChatParser.chatparser.Message("Vintel KOS-Check", text, evegate.currentEveTime(), "VINTEL",
+                message = ChatParser.chatparser.Message("Vintel KOS-Check", text, evegate.EveGate().currentEveTime(), "VINTEL",
                                                         [], states.NOT_CHANGE, text.upper(), text)
                 self.addMessageToIntelChat(message)
             elif state == "error":

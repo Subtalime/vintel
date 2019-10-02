@@ -26,7 +26,7 @@ import time
 import six
 import requests
 import logging
-from vi.evegate import secondsTillDowntime
+from vi.evegate import EveGate
 from vi.version import URL
 from bs4 import BeautifulSoup
 from vi import states
@@ -102,6 +102,7 @@ class Map(object):
         return content
 
     def __init__(self, region, svgFile=None):
+        logging.debug("Initializing Map for {}".format(region))
         self.region = region
         cache = Cache()
         self.outdatedCacheError = None
@@ -114,7 +115,7 @@ class Map(object):
         if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg, secondsTillDowntime() + 60 * 60)
+                cache.putIntoCache("map_" + self.region, svg, EveGate().secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
                 svg = cache.getFromCache("map_" + self.region, True)
@@ -137,6 +138,7 @@ class Map(object):
         self._jumpMapsVisible = False
         self._statisticsVisible = False
         self.marker = self.soup.select("#select_marker")[0]
+        logging.debug("Initializing Map for {}: Done".format(region))
 
     def _extractSystemsFromSoup(self, soup):
         systems = {}

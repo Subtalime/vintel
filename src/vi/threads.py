@@ -76,7 +76,7 @@ class AvatarFindThread(QThread):
                     diffLastCall = time.time() - lastCall
                     if diffLastCall < wait:
                         time.sleep((wait - diffLastCall) / 1000.0)
-                    avatar = evegate.getAvatarForPlayer(charname)
+                    avatar = evegate.EveGate().getAvatarForPlayer(charname)
                     lastCall = time.time()
                     if avatar:
                         cache.putAvatar(charname, avatar)
@@ -182,7 +182,7 @@ class MapStatisticsThread(QThread):
             self.refreshTimer.stop()
             logging.debug("MapStatisticsThread requesting statistics")
             try:
-                statistics = evegate.getSystemStatistics()
+                statistics = evegate.EveGate().getSystemStatistics()
                 #time.sleep(2)  # sleeping to prevent a "need 2 arguments"-error
                 requestData = {"result": "ok", "statistics": statistics}
             except Exception as e:
