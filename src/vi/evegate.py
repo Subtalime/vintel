@@ -36,16 +36,24 @@ class EveGate:
     NOT_EXISTS = 0
     EXISTS = 1
 
+    A_YEAR = 365 * 24 * 60 * 60
     ESI_BASIC_URL = "https://esi.evetech.net/latest"
 
     def __init__(self):
-        pass
-        # esiClient = EsiInterface()
+        self.esiClient = None
+        self.cache = Cache()
+        return
+        self.esiClient = EsiInterface()
 
 
-    def charnameToId(self, name):
+    def charnameToId(self, name: str):
         """ Uses the EVE API to convert a charname to his ID
         """
+        # we'll use the Cache-function first
+        cacheKey = "_".join(("id", "name", name))
+        charid = self.cache.getFromCache(cacheKey)
+        if charid:
+            return int(charid)
         # try:
         url = self.ESI_BASIC_URL + "/search"
         content = requests.get(url, params={'search': name, 'categories': 'character', 'language': 'en-us',
@@ -53,6 +61,7 @@ class EveGate:
         if len(content.content) > 0:
             char = json.loads(content.content)
             idlist = char["character"]
+            self.cache.putIntoCache(cacheKey, idlist[0], self.A_YEAR)
             return int(idlist[0])
 
         return None
@@ -76,36 +85,15 @@ class EveGate:
         if len(names) == 0:
             return {}
         data = {}
-        apiCheckNames = set()
-        cache = Cache()
-
-        # do we have allready something in the cache?
         for name in names:
-            cacheKey = "_".join(("id", "name", name))
-            id = cache.getFromCache(cacheKey)
-            if id:
-                data[name] = id
-            else:
-                apiCheckNames.add(name)
+            data[name] = self.charnameToId(name)
 
-        try:
-            # not in cache? asking the EVE API
-            if len(apiCheckNames) > 0:
-                # url = "https://api.eveonline.com/eve/CharacterID.xml.aspx"
-                # content = requests.get(url, params={'names': ','.join(apiCheckNames)}).text
-                # soup = BeautifulSoup(content, 'html.parser')
-                # rowSet = soup.select("rowset")[0]
-                # for row in rowSet.select("row"):
-                #     data[row["name"]] = row["characterid"]
-                # writing the cache
-                for name in apiCheckNames:
-                    id = self.charnameToId(name)
-                    if id:
-                        cacheKey = "_".join(("id", "name", name))
-                        cache.putIntoCache(cacheKey, data[name], 60 * 60 * 24 * 365)
-        except Exception as e:
-            logging.error("Exception during namesToIds: %s", e)
         return data
+
+    def idToName(self, charid):
+        cacheKey = u"_".join("name", "id", str(charid))
+        name = self.cache.getFromCache(cacheKey)
+        if not name:
 
 
     def idsToNames(self, ids):
@@ -203,30 +191,59 @@ class EveGate:
 
     def getCharinfoForCharId(self, charId):
         cacheKey = u"_".join(("playerinfo_id_", six.text_type(charId)))
-        cache = Cache()
-        soup = cache.getFromCache(cacheKey)
+        soup = self.cache.getFromCache(cacheKey)
         if soup is not None:
             soup = BeautifulSoup(soup, 'html.parser')
         else:
             try:
-                charId = int(charId)
-                url = "https://api.eveonline.com/eve/CharacterInfo.xml.aspx"
-                content = requests.get(url, params={'characterID': charId}).text
-                soup = BeautifulSoup(content, 'html.parser')
-                cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                diff = cacheUntil - self.currentEveTime()
-                cache.putIntoCache(cacheKey, str(soup), diff.seconds)
+                # this used ESI
+                if self.esiClient:
+                    data = self.esiClient.getCharacter(int(charId))
+                    if data:
+                        self.cache.putIntoCache(cacheKey, str(data), self.secondsTillDowntime())
+                else:
+                    charId = int(charId)
+                    url = "https://api.eveonline.com/eve/CharacterInfo.xml.aspx"
+                    content = requests.get(url, params={'characterID': charId}).text
+                    soup = BeautifulSoup(content, 'html.parser')
+                    cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
+                    diff = cacheUntil - self.currentEveTime()
+                    self.cache.putIntoCache(cacheKey, str(soup), diff.seconds)
             except requests.exceptions.RequestException as e:
                 # We get a 400 when we pass non-pilot names for KOS check so fail silently for that one only
                 if (e.response.status_code != 400):
                     logging.error("Exception during getCharinfoForCharId: %s", str(e))
         return soup
 
+    def getCorpHistoryNamesForCharId(self, charId: int) -> list:
+        """ Returns a list with the names of the corporation history of a charId
+        """
+        cacheKey = "_".join("corp", "name", "char", str(charId))
+        result = self.cache.getFromCache(cacheKey)
+        if result:
+            return set(result)
+        data = []
+        if self.esiClient:
+            idlist = self.esiClient.getCorporationHistory(charId)
+            for id in idlist:
+                corp = self.esiClient.getCorporation(id['corporation_id'])
+                data.append(corp)
+            self.cache.putIntoCache(str(data), self.secondsTillDowntime())
+        return data
 
-    def getCorpidsForCharId(self, charId):
+    def getCorpHistoryIdForCharId(self, charId: int) -> list:
         """ Returns a list with the ids if the corporation history of a charId
         """
+        cacheKey = "_".join("corp", "id", "char", str(charId))
+        result = self.cache.getFromCache(cacheKey)
+        if result:
+            return set(result)
         data = []
+        if self.esiClient:
+            data = self.esiClient.getCorporationHistory(charId)
+            if data:
+                self.cache.putIntoCache(str(data), self.secondsTillDowntime())
+                return data
         soup = self.getCharinfoForCharId(charId)
         for rowSet in soup.select("rowset"):
             if rowSet["name"] == "employmentHistory":

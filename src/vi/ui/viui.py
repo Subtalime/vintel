@@ -96,7 +96,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.lastStatisticsUpdate = 0
         self.chatEntries = []
         self.frameButton.setVisible(False)
-        self.scanIntelForKosRequestsEnabled = True
+        self.scanIntelForKosRequestsEnabled = False
         self.mapPositionsDict = {}
         self.content = None
         # TODO: add Popup to select Logging-Level which applies to the
@@ -192,6 +192,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def wireUpUIConnections(self):
         # Wire up general UI connections
+        # KOS disabled, since it's only working for CVA
+        self.kosClipboardActiveAction.setEnabled(False)
         # TODO: Sort Clipboard out
         # self.clipboard.changed(QClipboard.Clipboard).connect(self.clipboardChanged(QClipboard.Clipboard))
         self.clipboard.changed.connect(self.clipboardChanged)
@@ -290,9 +292,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.avatarFindThread.avatar_update.connect(self.updateAvatarOnChatEntry)
         self.avatarFindThread.start()
 
-        self.kosRequestThread = KOSCheckerThread()
-        self.kosRequestThread.kos_result.connect(self.showKosResult)
-        self.kosRequestThread.start()
+        # self.kosRequestThread = KOSCheckerThread()
+        # self.kosRequestThread.kos_result.connect(self.showKosResult)
+        # self.kosRequestThread.start()
 
         self.filewatcherThread = filewatcher.FileWatcher(self.pathToLogs)
         self.filewatcherThread.file_change.connect(self.logFileChanged)
@@ -437,8 +439,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.avatarFindThread.wait()
             self.filewatcherThread.quit()
             self.filewatcherThread.wait()
-            self.kosRequestThread.quit()
-            self.kosRequestThread.wait()
+            # self.kosRequestThread.quit()
+            # self.kosRequestThread.wait()
             self.versionCheckThread.quit()
             self.versionCheckThread.wait()
             self.statisticsThread.quit()
