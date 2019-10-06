@@ -38,6 +38,7 @@ from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, KOSCheckerThread, MapStatisticsThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
+from vi.esi import EsiInterface
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
 from PyQt5.uic import loadUi
@@ -157,6 +158,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.jumpbridgesButton.setFont(font)
         elif sys.platform.startswith("linux"):
             pass
+
         self.wireUpUIConnections()
         self.recallCachedSettings()
         self.setupThreads()
@@ -259,6 +261,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.mapView.page().scrollPosition().connect(self.mapPositionChanged)
         # self.mapView.page().scrollPositionChanged().connect(self.mapPositionChanged)
         self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
+
+
 
     # Menu-Selection of Regions
     def processRegionSelect(self, qAction: 'QAction'):
@@ -754,7 +758,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def addMessageToIntelChat(self, message):
         scrollToBottom = False
-        if (self.chatListWidget.verticalScrollBar().value() == self.chatListWidget.verticalScrollBar().maximum()):
+        if self.chatListWidget.verticalScrollBar().value() == self.chatListWidget.verticalScrollBar().maximum():
             scrollToBottom = True
         chatEntryWidget = ChatEntryWidget(message)
         listWidgetItem = QtWidgets.QListWidgetItem(self.chatListWidget)

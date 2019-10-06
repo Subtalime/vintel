@@ -5,6 +5,8 @@ from .cache.cache import Cache
 import logging
 from vi.version import DISPLAY
 
+# TODO: default to Logging.DEBUG, but filter output here to what is wanted
+# TODO: go back in the Log (File?) and show based on Log-Setting
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
 

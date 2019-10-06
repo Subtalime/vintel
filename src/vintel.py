@@ -33,7 +33,7 @@ from vi.cache import cache
 from vi.resources import resourcePath
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
-
+from vi.esi.EsiInterface import EsiInterface
 
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
@@ -127,7 +127,7 @@ class Application(QApplication):
 
         trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()
-
+        EsiInterface()
         self.mainWindow = viui.MainWindow(chatLogDirectory, trayIcon, backGroundColor)
         self.mainWindow.show()
         self.mainWindow.raise_()

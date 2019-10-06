@@ -66,7 +66,6 @@ class Characters(dict):
             if store:
                 self.storeData()
         else:
-            logging.info("Character {} already exists".format(charname))
             return False
         return True
 
@@ -89,7 +88,6 @@ class Characters(dict):
             if store:
                 self.storeData()
         else:
-            logging.info("Character {} already exists".format(character.getName()))
             return False
         return True
 

@@ -26,9 +26,7 @@ import json
 
 from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
-from six.moves.urllib.error import HTTPError
-from six.moves.urllib.request import urlopen
-from vi.esi.esi import EsiInterface
+from vi.esi.EsiInterface import EsiInterface
 
 
 class EveGate:
@@ -42,7 +40,6 @@ class EveGate:
     def __init__(self):
         self.esiClient = None
         self.cache = Cache()
-        return
         self.esiClient = EsiInterface()
 
 
@@ -54,15 +51,13 @@ class EveGate:
         charid = self.cache.getFromCache(cacheKey)
         if charid:
             return int(charid)
-        # try:
-        url = self.ESI_BASIC_URL + "/search"
-        content = requests.get(url, params={'search': name, 'categories': 'character', 'language': 'en-us',
-                                            'strict': 'true', 'datasource': 'tranquility'})
-        if len(content.content) > 0:
-            char = json.loads(content.content)
-            idlist = char["character"]
+        try:
+            char = self.esiClient.getCharacterId(name)
+            idlist = char.data["character"]
             self.cache.putIntoCache(cacheKey, idlist[0], self.A_YEAR)
             return int(idlist[0])
+        except Exception as e:
+            logging.error("Exception turning charname to id via API: %s", e)
 
         return None
         # except Exception as e:
@@ -91,10 +86,17 @@ class EveGate:
         return data
 
     def idToName(self, charid):
-        cacheKey = u"_".join("name", "id", str(charid))
+        cacheKey = u"_".join(("name", "id", str(charid)))
         name = self.cache.getFromCache(cacheKey)
         if not name:
-
+            try:
+                character = self.esiClient.getCharacter(charid)
+                if character:
+                    name = character.data['character'][0]
+                    self.cache.putIntoCache(cacheKey, name, self.A_YEAR)
+            except Exception as e:
+                logging.error("Character {} not found".format(charid), e)
+        return name
 
     def idsToNames(self, ids):
         """ Returns the names for ids
@@ -109,49 +111,50 @@ class EveGate:
 
         # something allready in the cache?
         for id in ids:
-            cacheKey = u"_".join(("name", "id", six.text_type(id)))
-            name = cache.getFromCache(cacheKey)
-            if name:
-                data[id] = name
-            else:
-                apiCheckIds.add(six.text_type(id))
-
-        try:
-            # call the EVE-Api for those entries we didn't have in the cache
-            url = "https://api.eveonline.com/eve/CharacterName.xml.aspx"
-            if len(apiCheckIds) > 0:
-                content = requests.get(url, params={'ids': ','.join(apiCheckIds)}).text
-                soup = BeautifulSoup(content, 'html.parser')
-                rowSet = soup.select("rowset")[0]
-                for row in rowSet.select("row"):
-                    data[row["characterid"]] = row["name"]
-                # and writing into cache
-                for id in apiCheckIds:
-                    cacheKey = u"_".join(("name", "id", six.text_type(id)))
-                    cache.putIntoCache(cacheKey, data[id], 60 * 60 * 24 * 365)
-        except Exception as e:
-            logging.error("Exception during idsToNames: %s", e)
+            data[id] = self.idToName(id)
+        #     cacheKey = u"_".join(("name", "id", six.text_type(id)))
+        #     name = cache.getFromCache(cacheKey)
+        #     if name:
+        #         data[id] = name
+        #     else:
+        #         apiCheckIds.add(six.text_type(id))
+        #
+        # try:
+        #     # call the EVE-Api for those entries we didn't have in the cache
+        #     url = "https://api.eveonline.com/eve/CharacterName.xml.aspx"
+        #     if len(apiCheckIds) > 0:
+        #         content = requests.get(url, params={'ids': ','.join(apiCheckIds)}).text
+        #         soup = BeautifulSoup(content, 'html.parser')
+        #         rowSet = soup.select("rowset")[0]
+        #         for row in rowSet.select("row"):
+        #             data[row["characterid"]] = row["name"]
+        #         # and writing into cache
+        #         for id in apiCheckIds:
+        #             cacheKey = u"_".join(("name", "id", six.text_type(id)))
+        #             cache.putIntoCache(cacheKey, data[id], 60 * 60 * 24 * 365)
+        # except Exception as e:
+        #     logging.error("Exception during idsToNames: %s", e)
 
         return data
 
 
     def getAvatarForPlayer(self, charname):
-        """ Downlaoding th eavatar for a player/character
+        """ Downlaoding the eavatar for a player/character
             charname = name of the character
             returns None if something gone wrong
         """
         avatar = None
+        cacheKey="_".join(("char", "avatar", charname))
+        imageurl = self.cache.getFromCache(cacheKey)
         try:
-            charId = self.charnameToId(charname)
-            if charId:
-                url = self.ESI_BASIC_URL + "/characters/{}/portrait".format(charId)
-                content = requests.get(url)
-                if len(content.content) > 0:
-                    char = json.loads(content.content)
-                    imageurl = char["px64x64"]
-                    avatar = requests.get(imageurl).content
+            if not imageurl:
+                charid = self.charnameToId(charname)
+                avatars = self.esiClient.getCharacterAvatar(charid)
+                imageurl = avatars.data["px64x64"]
+                self.cache.putIntoCache(cacheKey, imageurl)
+            avatar = requests.get(imageurl).content
         except Exception as e:
-            logging.error("Exception during getAvatarForPlayer \"%s\" (%d) %r: %s", charname, charId, char, e)
+            logging.error("Exception during getAvatarForPlayer \"%s\" : %s", charname, e)
             avatar = None
         return avatar
 
@@ -160,21 +163,24 @@ class EveGate:
         """ Checking on evegate for an exiting playername
             returns 1 if exists, 0 if not and -1 if an error occured
         """
-        baseUrl = "https://gate.eveonline.com/Profile/"
+        names = self.esiClient.getCharacterId(charname)
+        return len(names.data)
 
-        queryCharname = requests.utils.quote(charname)
-        url = baseUrl + queryCharname
-        result = -1
-
-        try:
-            urlopen(url)
-            result = 1
-        except HTTPError as e:
-            if ("404") in str(e):
-                result = 0
-        except Exception as e:
-            logging.error("Exception on checkPlayername: %s", e)
-        return result
+        # baseUrl = "https://gate.eveonline.com/Profile/"
+        #
+        # queryCharname = requests.utils.quote(charname)
+        # url = baseUrl + queryCharname
+        # result = -1
+        #
+        # try:
+        #     urlopen(url)
+        #     result = 1
+        # except HTTPError as e:
+        #     if ("404") in str(e):
+        #         result = 0
+        # except Exception as e:
+        #     logging.error("Exception on checkPlayername: %s", e)
+        # return result
 
 
     def currentEveTime(self):
@@ -190,7 +196,7 @@ class EveGate:
 
 
     def getCharinfoForCharId(self, charId):
-        cacheKey = u"_".join(("playerinfo_id_", six.text_type(charId)))
+        cacheKey = u"_".join(("playerinfo_esi_id_", six.text_type(charId)))
         soup = self.cache.getFromCache(cacheKey)
         if soup is not None:
             soup = BeautifulSoup(soup, 'html.parser')
@@ -200,7 +206,11 @@ class EveGate:
                 if self.esiClient:
                     data = self.esiClient.getCharacter(int(charId))
                     if data:
-                        self.cache.putIntoCache(cacheKey, str(data), self.secondsTillDowntime())
+                        expire_date = data.header.get('Expires')[0]
+                        cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
+                        diff = cacheUntil - self.esiClient.currentEveTime()
+                        self.cache.putIntoCache(cacheKey, data.data, diff.seconds)
+                        soup = data.data
                 else:
                     charId = int(charId)
                     url = "https://api.eveonline.com/eve/CharacterInfo.xml.aspx"
@@ -218,7 +228,7 @@ class EveGate:
     def getCorpHistoryNamesForCharId(self, charId: int) -> list:
         """ Returns a list with the names of the corporation history of a charId
         """
-        cacheKey = "_".join("corp", "name", "char", str(charId))
+        cacheKey = "_".join(("corp", "name", "char", str(charId)))
         result = self.cache.getFromCache(cacheKey)
         if result:
             return set(result)
@@ -228,27 +238,23 @@ class EveGate:
             for id in idlist:
                 corp = self.esiClient.getCorporation(id['corporation_id'])
                 data.append(corp)
-            self.cache.putIntoCache(str(data), self.secondsTillDowntime())
+            self.cache.putIntoCache(cacheKey, data, self.esiClient.secondsTillDowntime())
         return data
 
     def getCorpHistoryIdForCharId(self, charId: int) -> list:
         """ Returns a list with the ids if the corporation history of a charId
         """
-        cacheKey = "_".join("corp", "id", "char", str(charId))
+        cacheKey = "_".join(("corphistory", "id", str(charId)))
         result = self.cache.getFromCache(cacheKey)
         if result:
-            return set(result)
+            return result
         data = []
         if self.esiClient:
-            data = self.esiClient.getCorporationHistory(charId)
-            if data:
-                self.cache.putIntoCache(str(data), self.secondsTillDowntime())
-                return data
-        soup = self.getCharinfoForCharId(charId)
-        for rowSet in soup.select("rowset"):
-            if rowSet["name"] == "employmentHistory":
-                for row in rowSet.select("row"):
-                    data.append(row["corporationid"])
+            result = self.esiClient.getCorporationHistory(charId)
+            if result:
+                for row in result.items():
+                    data.append(row['corporation_id'])
+                self.cache.putIntoCache(data, self.esiClient.secondsTillDowntime())
         return data
 
 
@@ -261,51 +267,58 @@ class EveGate:
         systemData = {}
         cache = Cache()
         # first the data for the jumps
-        cacheKey = "jumpstatistic_"+cache.getFromCache("region_name")
+        cacheKey = "_".join(("jumpstatistic",cache.getFromCache("region_name")))
 
         jumpData = cache.getFromCache(cacheKey)
 
         try:
             if jumpData is None:
                 jumpData = {}
-                url = "https://api.eveonline.com/map/Jumps.xml.aspx"
-                url = self.ESI_BASIC_URL + "/universe/system_jumps"
-                # content = requests.get(url).text
-                content = requests.get(url, params={"datasource": "tranquility"})
-                jump_result = json.loads(content.content)
+                jump_result = self.esiClient.getJumps()
 
-                for data in jump_result:
+                # url = "https://api.eveonline.com/map/Jumps.xml.aspx"
+                # url = self.ESI_BASIC_URL + "/universe/system_jumps"
+                # # content = requests.get(url).text
+                # content = requests.get(url, params={"datasource": "tranquility"})
+                # jump_result = json.loads(content.content)
+
+                for data in jump_result.data:
                     jumpData[int(data['system_id'])] = int(data['ship_jumps'])
+                expire_date = data.header.get('Expires')[0]
+                cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
+                diff = cacheUntil - self.esiClient.currentEveTime()
 
                 # soup = BeautifulSoup(content, 'html.parser')
                 #
                 # for result in soup.select("result"):
                 #     for row in result.select("row"):
                 #         jumpData[int(row["solarsystemid"])] = int(row["shipjumps"])
-                cacheUntil = datetime.datetime.strptime(content.headers['expires'], "%a, %d %b %Y %X %Z")
+                # cacheUntil = datetime.datetime.strptime(jump_result.headers['expires'], "%a, %d %b %Y %X %Z")
                 # cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                diff = cacheUntil - self.currentEveTime()
+                # diff = cacheUntil - self.currentEveTime()
                 cache.putIntoCache(cacheKey, json.dumps(jumpData), diff.seconds)
             else:
                 jumpData = json.loads(jumpData)
 
             # now the further data
-            cacheKey = "systemstatistic_"+cache.getFromCache("region_name")
+            cacheKey = "_".join(("systemstatistic",cache.getFromCache("region_name")))
 
             systemData = cache.getFromCache(cacheKey)
 
             if systemData is None:
                 systemData = {}
+                kill_result = self.esiClient.getKills()
                 # url = "https://api.eveonline.com/map/Kills.xml.aspx"
-                url = self.ESI_BASIC_URL + "/universe/system_kills"
-                # content = requests.get(url).text
-                content = requests.get(url, params={"datasource": "tranquility"})
-                kill_result = json.loads(content.content)
+                # url = self.ESI_BASIC_URL + "/universe/system_kills"
+                # # content = requests.get(url).text
+                # content = requests.get(url, params={"datasource": "tranquility"})
+                # kill_result = json.loads(content.content)
 
-                for data in kill_result:
+                for data in kill_result.data:
                     systemData[int(data['system_id'])] = {'ship': int(data['ship_kills']),
                                                           'faction': int(data['npc_kills']),
                                                           'pod': int(data['pod_kills'])}
+                expire_date =kill_result.header.get('Expires')[0]
                 # soup = BeautifulSoup(content, 'html.parser')
 
                 # for result in soup.select("result"):
@@ -315,9 +328,10 @@ class EveGate:
                 #                                                  "pod": int(row["podkills"])}
 
                 # cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                exp = content.headers['expires']
-                cacheUntil = datetime.datetime.strptime(content.headers['expires'], "%a, %d %b %Y %X %Z")
-                diff = cacheUntil - self.currentEveTime()
+                # exp = kill_result.headers['expires']
+                # cacheUntil = datetime.datetime.strptime(kill_result.headers['expires'], "%a, %d %b %Y %X %Z")
+                cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
+                diff = cacheUntil - self.esiClient.currentEveTime()
                 cache.putIntoCache(cacheKey, json.dumps(systemData), diff.seconds)
             else:
                 systemData = json.loads(systemData)
@@ -361,12 +375,12 @@ SHIPNAMES = (u'ABADDON', u'ABSOLUTION', u'AEON', u'AMARR SHUTTLE', u'ANATHEMA', 
              u'CONCORD SWAT BATTLESHIP', u'CONCORD SWAT CRUISER', u'CONCORD SWAT FRIGATE',
              u'CONCORD SPECIAL OPS BATTLESHIP', u'CONCORD SPECIAL OPS CRUISER', u'CONCORD SPECIAL OPS FRIGATE',
              u'CALDARI NAVY HOOKBILL', u'CALDARI SHUTTLE', u'CARACAL', u'CARACAL NAVY ISSUE', u'CATALYST', u'CELESTIS',
-             u'CERBERUS', u'CHARON', u'CHEETAH', u'CHIMERA', u'CLAW', u'CLAYMORE', u'COERCER', u'CONDOR', u'CORMORANT',
+             u'CERBERUS', u'CHARON', u'CHEETAH', u'CHIMERA', u'CLAW', u'CLAYMORE', u'COERCER', u'CONDOR', u'CONFESSOR', u'CORMORANT',
              u'COVETOR', u'CRANE', u'CROW', u'CRUCIFIER', u'CRUOR', u'CRUSADER', u'CURSE', u'CYCLONE', u'CYNABAL',
              u'DAMNATION', u'DAREDEVIL', u'DEIMOS', u'DEVOTER', u'DOMINIX', u'DRAKE', u'DRAMIEL', u'EAGLE', u'EIDOLON',
              u'ENIGMA', u'ENYO', u'EOS', u'EREBUS', u'ERIS', u'EXECUTIONER', u'EXEQUROR', u'EXEQUROR NAVY ISSUE',
              u'FALCON', u'FEDERATION NAVY COMET', u'FENRIR', u'FEROX', u'FLYCATCHER', u'GALLENTE SHUTTLE', u'GILA',
-             u'GOLD MAGNATE', u'GOLEM', u'GRIFFIN', u'GUARDIAN', u'HARBINGER', u'HARPY', u'HAWK', u'HEL', u'HELIOS',
+             u'GOLD MAGNATE', u'GOLEM', u'GRIFFIN', u'GUARDIAN', u'HARBINGER', u'HARPY', u'HAWK', u'HECATE', u'HEL', u'HELIOS',
              u'HERETIC', u'HERON', u'HOARDER', u'HOUND', u'HUGINN', u'HULK', u'HURRICANE', u'HYENA', u'HYPERION',
              u'IBIS', u'IMICUS', u'IMPAIROR', u'IMPEL', u'IMPERIAL NAVY SLICER', u'INCURSUS', u'ISHKUR', u'ISHTAR',
              u'ITERON', u'ITERON MARK II', u'ITERON MARK III', u'ITERON MARK IV', u'ITERON MARK V', u'JAGUAR', u'KERES',
@@ -387,7 +401,7 @@ SHIPNAMES = (u'ABADDON', u'ABSOLUTION', u'AEON', u'AMARR SHUTTLE', u'ANATHEMA', 
              u'TEMPEST TRIBAL ISSUE', u'THANATOS', u'THORAX', u'THRASHER', u'TORMENTOR', u'TRISTAN', u'TYPHOON',
              u'VAGABOND', u'VARGUR', u'VELATOR', u'VENGEANCE', u'VEXOR', u'VEXOR NAVY ISSUE', u'VIATOR', u'VIGIL',
              u'VIGILANT', u'VINDICATOR', u'VISITANT', u'VULTURE', u'WIDOW', u'WOLF', u'WORM', u'WRAITH', u'WREATHE',
-             u'WYVERN', u'ZEALOT', u'CAPSULE',)
+             u'WYVERN', u'ZEALOT', u'CAPSULE')
 SHIPNAMES = sorted(SHIPNAMES, key=lambda x: len(x), reverse=True)
 
 NPC_CORPS = (u'Republic Justice Department', u'House of Records', u'24th Imperial Crusade', u'Template:NPC corporation',

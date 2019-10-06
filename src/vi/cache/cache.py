@@ -34,7 +34,6 @@ else:
 
 import logging
 from vi.cache.dbstructure import updateDatabase
-from PyQt5.QtCore import QByteArray
 
 class Cache(object):
     # Cache checks PATH_TO_CACHE when init, so you can set this on a
@@ -78,11 +77,25 @@ class Cache(object):
         """ Putting something in the cache maxAge is maximum age in seconds
         """
         with Cache.SQLITE_WRITE_LOCK:
-            query = "DELETE FROM cache WHERE key = ?"
-            self.con.execute(query, (key,))
-            query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
-            self.con.execute(query, (key, value, time.time(), maxAge))
-            self.con.commit()
+            try:
+                query = "DELETE FROM cache WHERE key = ?"
+                self.con.execute(query, (key,))
+                query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
+                self.con.execute(query, (key, value, time.time(), maxAge))
+                self.con.commit()
+            except Exception as e:
+                logging.error("Cache-Error {}", e)
+                raise
+
+    def delFromCache(self, key):
+        with Cache.SQLITE_WRITE_LOCK:
+            try:
+                query = "DELETE FROM cache WHERE key = ?"
+                self.con.execute(query, (key,))
+                self.con.commit()
+            except Exception as e:
+                logging.error("Cache-Error {}", e)
+                raise
 
     def getFromCache(self, key, outdated=False):
         """ Getting a value from cache

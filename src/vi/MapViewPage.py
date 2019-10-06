@@ -27,11 +27,11 @@ class MapViewPage(QWebEnginePage):
 
     def setHtml(self, p_str: str, baseUrl: QUrl=None, *args, **kwargs):
         if self.currentHtml != p_str:
-            if self.currentHtml and logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-                org = set(self.currentHtml.split(' '))
-                new = set(p_str.split(' '))
-                diff = org.difference(new)
-                logging.debug("HTML-Diff: {}".format(diff))
+            # if self.currentHtml and logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+            #     org = set(self.currentHtml.split(' '))
+            #     new = set(p_str.split(' '))
+            #     diff = org.difference(new)
+            #     logging.debug("HTML-Diff: {}".format(diff))
             self.currentHtml = p_str
             super().setHtml(p_str, QUrl(baseUrl), *args, **kwargs)
 
