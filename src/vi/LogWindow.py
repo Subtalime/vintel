@@ -51,11 +51,15 @@ class LogWindow(QtWidgets.QWidget):
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         super(LogWindow, self).changeEvent(event)
+        state = self.windowState()
+        eve = event.type()
         if event.type() == QEvent.WindowStateChange:
             if self.windowState() & Qt.WindowMinimized:
                 self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
                 self.cache.putIntoCache("log_window_visible", str(False))
                 self.hide()
+            else:
+                self.show()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))

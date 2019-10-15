@@ -10,21 +10,44 @@ import json
 import ast
 from urllib.parse import urlparse, parse_qs
 import vi.version
-import webbrowser
+import webbrowser, threading, functools
 import threading
 from vi.cache.cache import Cache
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 secretKey = None
 esiLoading = False
+
+lock = threading.Lock()
+
 def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
     logging.info("TOKEN We got new token: %s" % access_token)
     logging.info("TOKEN refresh token used: %s" % refresh_token)
     logging.info("TOKEN Expires in %d" % expires_in)
 
+def synchronized(lock):
+    """ Synchronisation decorator """
+    def wrapper(f):
+        @functools.wraps(f)
+        def inner_wrapper(*args, **kwargs):
+            with lock:
+                return f(*args, **kwargs)
+        return inner_wrapper
+    return wrapper
 
-class EsiInterface:
-    instance = None
+class EsiInterfaceType(type):
+    _instances = {}
+
+    @synchronized(lock)
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(EsiInterfaceType, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class EsiInterface(metaclass=EsiInterfaceType):
+
+    _instance = None
+
     # make it a Singleton
     class __OnceOnly:
         def __init__(self, enablecache: bool = True):
@@ -153,13 +176,13 @@ class EsiInterface:
             return repr(self)
 
     def __init__(self, useCaching: bool = True):
-        if not EsiInterface.instance:
+        if not EsiInterface._instance:
             self.caching = useCaching
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
-            EsiInterface.instance = EsiInterface.__OnceOnly(useCaching)
+            EsiInterface._instance = EsiInterface.__OnceOnly(useCaching)
 
     def __getattr__(self, name):
-        return getattr(self.instance, name)
+        return getattr(self._instance, name)
 
     # def _cacheVar(self, function: str, **kwargs):
     #     return "_".join(("esicache", function, for var in kwargs))
@@ -240,46 +263,42 @@ class EsiInterface:
         return None
 
     def getCharacterId(self, charname: str, strict: bool=True) -> Response:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getcharacterid", charname))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
-        response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
+            response = None
+            cacheKey = "_".join(("esicache", "getcharacterid", charname))
+            if self.caching:
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 op = self.esiApp.op['get_search'] (categories='character', search=charname, strict=strict)
                 response = self.esiClient.request(op)
+                # format is {"character": [xxx,...]}
                 if self.caching:
                     Cache().putIntoCache(cacheKey, str(response))
-                # format is {"character": [xxx,...]}
-                return response
         except Exception as e:
             logging.error("Error retrieving Character-ID by Name {} from ESI".format(charname), e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
         return response
 
     def getCharacterAvatar(self, characterId: int) -> Response:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getcharavatar", str(characterId)))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
+            if self.caching:
+                cacheKey = "_".join(("esicache", "getcharavatar", str(characterId)))
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 op = self.esiApp.op['get_characters_character_id_portrait'] (character_id=characterId)
                 response = self.esiClient.request(op)
                 if self.caching:
                     Cache().putIntoCache(cacheKey, str(response))
-                return response
         except Exception as e:
             logging.error("Error retrieving Character Avatar for ID {} from ESI".format(characterId), e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
         return response
 
     def getCharacterAvatarByName(self, characterName: str) -> Response:
@@ -289,63 +308,53 @@ class EsiInterface:
         return resp
 
     def getSystemIds(self, namelist: list) -> Response:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getsystemids", str(namelist)))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
-                self.esiClient.request()
+            if self.caching:
+                cacheKey = "_".join(("esicache", "getsystemids", str(namelist)))
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 op = self.esiApp.op['post_universe_ids'] (names=namelist)
                 response = self.esiClient.request(op)
                 if self.caching:
                     Cache.putIntoCache(cacheKey, str(response))
                 # format is [{"name": xx, "id": xx} ...]
-                return response
         except Exception as e:
             logging.error("Error retrieving System-IDs for {} from ESI".format(namelist), e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
         return response
 
     def getSystemNames(self, idlist: list) -> Response:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getsystemnames", str(idlist)))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
+            if self.caching:
+                cacheKey = "_".join(("esicache", "getsystemnames", str(idlist)))
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 op = self.esiApp.op['post_universe_names'] (ids=idlist)
                 response = self.esiClient.request(op)
+                # format is [{"category": xx, "name": xx, "id": xx} ...]
                 if self.caching:
                     Cache().putIntoCache(cacheKey, str(response))
-                # format is [{"category": xx, "name": xx, "id": xx} ...]
-                return response
         except Exception as e:
             logging.error("Error retrieving System-Names for {} from ESI".format(idlist), e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
+
         return response
 
     # not caching this
     def getKills(self) -> Response:
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
-                self.esiClient.request()
-                op = self.esiApp.op['get_universe_system_kills']()
-                response = self.esiClient.request(op)
-                # format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
-                return response
+            op = self.esiApp.op['get_universe_system_kills']()
+            response = self.esiClient.request(op)
+            # format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
         except Exception as e:
             logging.error("Error retrieving Kills from ESI", e)
         return response
@@ -354,86 +363,78 @@ class EsiInterface:
     def getJumps(self) -> Response:
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
-                op = self.esiApp.op['get_universe_system_jumps']()
-                response = self.esiClient.request(op)
-                # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                return response
+            op = self.esiApp.op['get_universe_system_jumps']()
+            response = self.esiClient.request(op)
+            # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
-            logging.error("Error retrieving Jums from ESI", e)
+            logging.error("Error retrieving Jumps from ESI", e)
         return response
 
 
     def getShipGroups(self) -> Response.data:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getshipgroups"))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
+            if self.caching:
+                cacheKey = "_".join(("esicache", "getshipgroups"))
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_categories_category_id'](category_id=6)
                 response = self.esiClient.request(op)
                 if self.caching:
                     Cache().putIntoCache(cacheKey, str(response.data))
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                return response.data
+                response = response.data
         except Exception as e:
             logging.error("Error retrieving Ship-Groups from ESI", e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
         return response
 
     def getShipGroupTypes(self, groupid: int) -> Response.data:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getshipgrouptype", str(groupid)))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
+            if self.caching:
+                cacheKey = "_".join(("esicache", "getshipgrouptype", str(groupid)))
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_groups_group_id'](group_id=groupid)
                 response = self.esiClient.request(op)
                 if self.caching:
                     Cache().putIntoCache(cacheKey, str(response.data))
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                return response.data
+                response = response.data
         except Exception as e:
             logging.error("Error retrieving Ship-Group-Types from ESI", e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
         return response
 
     def getShip(self, shipid: int) -> Response.data:
-        if self.caching:
-            cacheKey = "_".join(("esicache", "getship", str(shipid)))
-            result = Cache().getFromCache(cacheKey)
-            if result:
-                return ast.literal_eval(result)
         response = None
         try:
-            self.security.verify()
-            if not self.authenticated:
-                logging.error("ESI not authenticated")
-            else:
+            if self.caching:
+                cacheKey = "_".join(("esicache", "getship", str(shipid)))
+                result = Cache().getFromCache(cacheKey)
+                if result:
+                    response = ast.literal_eval(result)
+            if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_types_type_id'](type_id=shipid)
                 response = self.esiClient.request(op)
                 if self.caching:
                     Cache().putIntoCache(cacheKey, str(response.data))
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                return response.data
+                response = response.data
         except Exception as e:
             logging.error("Error retrieving Ship from ESI", e)
+            if self.caching:
+                Cache().delFromCache(cacheKey)
         return response
 
     @property

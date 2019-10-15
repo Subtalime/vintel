@@ -5,6 +5,8 @@ from vi.esi.EsiInterface import EsiInterface
 from vi.cache.cache import Cache
 
 class EsiHelper:
+    _ShipNames = []
+
     def __init__(self):
         self.esi = EsiInterface()
 
@@ -27,7 +29,10 @@ class EsiHelper:
     def checkPlayerName(self, characterName: str) -> bool:
         resp = self.esi.getCharacterId(characterName, True)
         if resp and len(resp.data) > 0:
-            return True
+            for charid in resp.data["character"]:
+                character = self.esi.getCharacter(charid)
+                if character and character.data["name"] == characterName:
+                    return True
         return False
 
     def getSystemStatistics(self) -> dict:
@@ -81,3 +86,12 @@ class EsiHelper:
             data[i]["factionkills"] = v["faction"] if "faction" in v else 0
             data[i]["podkills"] = v["pod"] if "pod" in v else 0
         return data
+
+    @property
+    def ShipNames(self) -> list:
+        if len(self._ShipNames) == 0:
+            ships = self.esi.getShipList
+            for ship in ships:
+                self._ShipNames.append(str(ship['name']).upper())
+        return self._ShipNames
+

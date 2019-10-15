@@ -36,11 +36,10 @@
 """
 
 import six
-
-import vi.evegate as evegate
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
 from vi import states
+from vi.esi.EsiHelper import EsiHelper
 
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".")
 
@@ -72,37 +71,36 @@ def parseStatus(rtext):
         elif (text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE" "STILL BLUE", "ALL BLUES")):
             return states.CLEAR
 
-def parseEnemy(rtext):
-    texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
-    for text in texts:
-        upperText = text.strip().upper()
-        originalText = upperText
-        for char in CHARS_TO_IGNORE:
-            upperText = upperText.replace(char, "")
-
 
 def parseShips(rtext):
-    def formatShipName(text, word):
-        newText = u"""<span style="color:#d95911;font-weight:bold"> {0}</span>"""
-        text = text.replace(word, newText.format(word))
+    def formatShipName(text, shipname, word):
+        newText = u"""<a style="color:green;font-weight:bold" href="ship_name/{0}">{1}</a>"""
+        text = text.replace(word, newText.format(shipName, word))
         return text
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
     for text in texts:
         upperText = text.upper()
-        for shipName in evegate.SHIPNAMES:
-            if shipName in upperText:
-                hit = True
-                start = upperText.find(shipName)
-                end = start + len(shipName)
-                if ((start > 0 and upperText[start - 1] not in (" ", "X")) or (
-                        end < len(upperText) - 1 and upperText[end] not in ("S", " "))):
-                    hit = False
-                if hit:
-                    shipInText = text[start:end]
-                    formatted = formatShipName(text, shipInText)
-                    textReplace(text, formatted)
-                    return True
+        for char in CHARS_TO_IGNORE:
+            upperText = upperText.replace(char, "")
+        # for shipName in evegate.SHIPNAMES:
+        if upperText in EsiHelper().ShipNames:
+            formatted = formatShipName(text, upperText, text)
+            textReplace(text, formatted)
+        else:
+            for shipName in EsiHelper().ShipNames:
+                if shipName in upperText:
+                    hit = True
+                    start = upperText.find(shipName)
+                    end = start + len(shipName)
+                    if ((start > 0 and upperText[start - 1] not in (" ", "X")) or (
+                            end < len(upperText) - 1 and upperText[end] not in ("S", " "))):
+                        hit = False
+                    if hit:
+                        shipInText = text[start:end]
+                        formatted = formatShipName(text, shipInText)
+                        textReplace(text, formatted)
+                        return True
 
 
 def parseSystems(systems, rtext, foundSystems):
@@ -208,3 +206,17 @@ def parseUrls(rtext):
         for url in urls:
             textReplace(text, formatUrl(text, url))
             return True
+
+# TODO: characters can be more than just 1 word
+def parseCharnames(rtext):
+    def formatCharname(text, charname):
+        newText = u"""<a style="color:purple;font-weight:bold" href="show_character/{0}">{0}</a>"""
+        text = text.replace(charname, newText.format(charname))
+        return text
+    texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
+    for text in texts:
+        originalText = text
+        for char in CHARS_TO_IGNORE:
+            cleanText = text.replace(char, "")
+        if EsiHelper().checkPlayerName(cleanText):
+            textReplace(text, formatCharname(originalText, cleanText))

@@ -77,7 +77,7 @@ class AvatarFindThread(QThread):
                     diffLastCall = time.time() - lastCall
                     if diffLastCall < wait:
                         time.sleep((wait - diffLastCall) / 1000.0)
-                    avatar = EsiHelper.getCharacterAvatarByName(charname)
+                    avatar = EsiHelper().getAvatarByName(charname)
                     # avatar = evegate.EveGate().getAvatarForPlayer(charname)
                     lastCall = time.time()
                     if avatar:
@@ -183,7 +183,6 @@ class MapStatisticsThread(QThread):
             self.refreshTimer.stop()
             logging.debug("MapStatisticsThread requesting statistics")
             try:
-                from vi.esi.EsiHelper import EsiHelper
                 statistics = EsiHelper().getSystemStatistics()
                 # statistics = evegate.EveGate().getSystemStatistics()
                 #time.sleep(2)  # sleeping to prevent a "need 2 arguments"-error
