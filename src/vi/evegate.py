@@ -92,7 +92,7 @@ class EveGate:
             try:
                 character = self.esiClient.getCharacter(charid)
                 if character:
-                    name = character.data['character'][0]
+                    name = character['character'][0]
                     self.cache.putIntoCache(cacheKey, name, self.A_YEAR)
             except Exception as e:
                 logging.error("Character {} not found".format(charid), e)
@@ -196,29 +196,24 @@ class EveGate:
 
 
     def getCharinfoForCharId(self, charId):
-        cacheKey = u"_".join(("playerinfo_esi_id_", six.text_type(charId)))
-        soup = self.cache.getFromCache(cacheKey)
-        if soup is not None:
-            soup = BeautifulSoup(soup, 'html.parser')
+            # this used ESI
+        if self.esiClient:
+            data = self.esiClient.getCharacter(int(charId))
+            soup = data.data
         else:
             try:
-                # this used ESI
-                if self.esiClient:
-                    data = self.esiClient.getCharacter(int(charId))
-                    if data:
-                        expire_date = data.header.get('Expires')[0]
-                        cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-                        diff = cacheUntil - self.esiClient.currentEveTime()
-                        self.cache.putIntoCache(cacheKey, data.data, diff.seconds)
-                        soup = data.data
+                cacheKey = u"_".join(("playerinfo_esi_id_", six.text_type(charId)))
+                soup = self.cache.getFromCache(cacheKey)
+                if soup is not None:
+                    soup = BeautifulSoup(soup, 'html.parser')
                 else:
                     charId = int(charId)
-                    url = "https://api.eveonline.com/eve/CharacterInfo.xml.aspx"
-                    content = requests.get(url, params={'characterID': charId}).text
-                    soup = BeautifulSoup(content, 'html.parser')
-                    cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                    diff = cacheUntil - self.currentEveTime()
-                    self.cache.putIntoCache(cacheKey, str(soup), diff.seconds)
+                url = "https://api.eveonline.com/eve/CharacterInfo.xml.aspx"
+                content = requests.get(url, params={'characterID': charId}).text
+                soup = BeautifulSoup(content, 'html.parser')
+                cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
+                diff = cacheUntil - self.currentEveTime()
+                self.cache.putIntoCache(cacheKey, str(soup), diff.seconds)
             except requests.exceptions.RequestException as e:
                 # We get a 400 when we pass non-pilot names for KOS check so fail silently for that one only
                 if (e.response.status_code != 400):

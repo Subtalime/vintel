@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QMenu
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QEvent, Qt
 from .cache.cache import Cache
 import logging
 from vi.version import DISPLAY
@@ -35,11 +35,8 @@ class LogWindow(QtWidgets.QWidget):
         if rect:
             self.restoreGeometry(rect)
         vis = self.cache.getFromCache("log_window_visible")
-        if vis:
+        if bool(vis):
             self.show()
-        mini = self.cache.getFromCache("log_window_minimized")
-        if mini:
-            self.setWindowState(QtCore.Qt.WindowMinimized)
 
     def setTitle(self):
         self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging._levelToName[logging.getLogger().getEffectiveLevel()]))
@@ -48,10 +45,21 @@ class LogWindow(QtWidgets.QWidget):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
         self.textEdit.append(text)
 
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super(LogWindow, self).resizeEvent(event)
+        self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        super(LogWindow, self).changeEvent(event)
+        if event.type() == QEvent.WindowStateChange:
+            if self.windowState() & Qt.WindowMinimized:
+                self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
+                self.cache.putIntoCache("log_window_visible", str(False))
+                self.hide()
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
         self.cache.putIntoCache("log_window_visible", not self.isHidden())
-        self.cache.putIntoCache("log_window_minimized", self.isMinimized())
 
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:

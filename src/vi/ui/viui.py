@@ -706,9 +706,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def showLoggingWindow(self):
         if self.logWindow.isHidden():
+            self.logWindow.setVisible(True)
             self.logWindow.show()
-        if self.logWindow.isMinimized():
-            self.logWindow.setWindowState(QtCore.Qt.WindowNoState)
 
     def showChatroomChooser(self):
         chooser = ChatroomChooser(self)
