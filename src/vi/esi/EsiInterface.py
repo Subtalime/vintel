@@ -282,6 +282,12 @@ class EsiInterface:
             logging.error("Error retrieving Character Avatar for ID {} from ESI".format(characterId), e)
         return response
 
+    def getCharacterAvatarByName(self, characterName: str) -> Response:
+        resp = self.getCharacterId(characterName, True)
+        if resp:
+            return self.getCharacterAvatar(resp.data["character"][0])
+        return resp
+
     def getSystemIds(self, namelist: list) -> Response:
         if self.caching:
             cacheKey = "_".join(("esicache", "getsystemids", str(namelist)))

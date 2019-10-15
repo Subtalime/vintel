@@ -29,6 +29,7 @@ from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.chatentrywidget import ChatEntryWidget
+from vi.esi.EsiHelper import EsiHelper
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 
 class AvatarFindThread(QThread):
@@ -76,14 +77,14 @@ class AvatarFindThread(QThread):
                     diffLastCall = time.time() - lastCall
                     if diffLastCall < wait:
                         time.sleep((wait - diffLastCall) / 1000.0)
-                    avatar = evegate.EveGate().getAvatarForPlayer(charname)
+                    avatar = EsiHelper.getCharacterAvatarByName(charname)
+                    # avatar = evegate.EveGate().getAvatarForPlayer(charname)
                     lastCall = time.time()
                     if avatar:
                         cache.putAvatar(charname, avatar)
                 if avatar:
                     logging.debug("AvatarFindThread emit avatar_update for %s" % charname)
                     self.avatar_update.emit(chatEntry, avatar)
-                    # self.emit(PYQT_SIGNAL("avatar_update"), chatEntry, avatar)
             except Exception as e:
                 logging.error("Error in AvatarFindThread : %s", e)
 
@@ -182,7 +183,9 @@ class MapStatisticsThread(QThread):
             self.refreshTimer.stop()
             logging.debug("MapStatisticsThread requesting statistics")
             try:
-                statistics = evegate.EveGate().getSystemStatistics()
+                from vi.esi.EsiHelper import EsiHelper
+                statistics = EsiHelper().getSystemStatistics()
+                # statistics = evegate.EveGate().getSystemStatistics()
                 #time.sleep(2)  # sleeping to prevent a "need 2 arguments"-error
                 requestData = {"result": "ok", "statistics": statistics}
             except Exception as e:
