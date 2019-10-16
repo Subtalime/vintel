@@ -127,7 +127,6 @@ class Application(QApplication):
 
         trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()
-        EsiInterface()
         self.mainWindow = viui.MainWindow(chatLogDirectory, trayIcon, backGroundColor)
         self.mainWindow.show()
         self.mainWindow.raise_()

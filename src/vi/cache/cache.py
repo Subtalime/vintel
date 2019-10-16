@@ -33,7 +33,7 @@ else:
         return x
 
 import logging
-from vi.cache.dbstructure import updateDatabase
+from .dbstructure import updateDatabase
 
 class Cache(object):
     # Cache checks PATH_TO_CACHE when init, so you can set this on a
@@ -48,13 +48,15 @@ class Cache(object):
     # Cache-Instances in various threads: must handle concurrent writings
     SQLITE_WRITE_LOCK = threading.Lock()
 
-    def __init__(self, pathToSQLiteFile="cache.sqlite3"):
-        """ pathToSQLiteFile=path to sqlite-file to save the cache. will be ignored if you set Cache.PATH_TO_CACHE before init
+    def __init__(self, pathToSQLiteFile="cache.sqlite3", forceVersionCheck=False):
+        """
+        pathToSQLiteFile=path to sqlite-file to save the cache. will be ignored if you set Cache.PATH_TO_CACHE before init
+        forceVersionCheck=bool to enforce a check. You will need True if you are using several Cache-Files
         """
         if Cache.PATH_TO_CACHE:
             pathToSQLiteFile = Cache.PATH_TO_CACHE
         self.con = sqlite3.connect(pathToSQLiteFile)
-        if not Cache.VERSION_CHECKED:
+        if not Cache.VERSION_CHECKED or forceVersionCheck:
             with Cache.SQLITE_WRITE_LOCK:
                 self.checkVersion()
         Cache.VERSION_CHECKED = True

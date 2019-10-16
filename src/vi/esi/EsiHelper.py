@@ -9,6 +9,7 @@ class EsiHelper:
 
     def __init__(self):
         self.esi = EsiInterface()
+        self.cache = Cache()
 
     def getAvatarByName(self, characterName: str) -> str:
         resp = self.esi.getCharacterAvatarByName(characterName)
@@ -38,22 +39,22 @@ class EsiHelper:
     def getSystemStatistics(self) -> dict:
         try:
             cacheKey = "_".join(("esihelper", "jumpstatistics"))
-            jumpData = Cache().getFromCache(cacheKey)
+            jumpData = self.cache.getFromCache(cacheKey)
             if not jumpData:
                 jumpData = {}
                 jump_result = self.esi.getJumps()
                 for data in jump_result.data:
                     jumpData[int(data['system_id'])] = int(data['ship_jumps'])
                 if len(jumpData):
-                    expire_date = data.header.get('Expires')[0]
+                    expire_date = jump_result.header.get('Expires')[0]
                     cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
                     diff = cacheUntil - self.esiClient.currentEveTime()
-                    Cache().putIntoCache(cacheKey, json.dumps(jumpData), diff.seconds)
+                    self.cache.putIntoCache(cacheKey, json.dumps(jumpData), diff.seconds)
             else:
                 jumpData = json.loads(jumpData)
 
             cacheKey = "_".join(("esihelper", "systemstatistic"))
-            systemData = Cache().getFromCache(cacheKey)
+            systemData = self.cache.getFromCache(cacheKey)
             if not systemData:
                 systemData = {}
                 kill_result = self.esi.getKills()
@@ -65,7 +66,7 @@ class EsiHelper:
                     expire_date = kill_result.header.get('Expires')[0]
                     cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
                     diff = cacheUntil - self.esi.currentEveTime()
-                    Cache().putIntoCache(cacheKey, json.dumps(systemData), diff.seconds)
+                    self.cache.putIntoCache(cacheKey, json.dumps(systemData), diff.seconds)
             else:
                 systemData = json.loads(systemData)
         except Exception as e:

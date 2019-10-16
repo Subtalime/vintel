@@ -313,6 +313,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # statisticsThread is blocked until first call of requestStatistics
         self.statisticsThread.start()
 
+        # let's hope, this will speed up start-up
+        self.esiThread = vi.esi.EsiInterface.EsiThread()
+        self.esiThread.start()
+        self.esiThread.requestInstance()
         logging.debug("Finished Creating threads")
 
     # TODO: store each system configured in Regions
@@ -449,6 +453,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.versionCheckThread.wait()
             self.statisticsThread.quit()
             self.statisticsThread.wait()
+            self.esiThread.quit()
+            self.esiThread.wait()
         except Exception:
             pass
         self.trayIcon.hide()
