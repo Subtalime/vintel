@@ -21,6 +21,8 @@ import sqlite3
 import threading
 import time
 import six
+import ast
+
 if six.PY2:
     def to_blob(x):
         return buffer(str(x))
@@ -31,6 +33,12 @@ else:
         return x
     def from_blob(x):
         return x
+
+try:
+    import pickle
+except ImportError:  # pragma: no cover
+    import cPickle as pickle
+
 
 import logging
 from .dbstructure import updateDatabase
@@ -126,6 +134,7 @@ class Cache(object):
     def getPlayerName(self, name):
         """ Getting back infos about playername from Cache. Returns None if the name was not found, else it returns the status
         """
+        name = ast.dump(str(name))
         selectquery = "SELECT charname, status FROM playernames WHERE charname = ?"
         founds = self.con.execute(selectquery, (name,)).fetchall()
         if len(founds) == 0:
