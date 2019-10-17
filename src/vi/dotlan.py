@@ -31,7 +31,7 @@ from vi.version import URL
 from bs4 import BeautifulSoup
 from vi import states
 from vi.cache.cache import Cache
-
+from vi.esi.EsiInterface import EsiInterface
 # from . import evegate
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
@@ -115,7 +115,7 @@ class Map(object):
         if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg, EveGate().secondsTillDowntime() + 60 * 60)
+                cache.putIntoCache("map_" + self.region, svg, EsiInterface().secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
                 svg = cache.getFromCache("map_" + self.region, True)

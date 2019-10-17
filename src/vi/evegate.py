@@ -27,8 +27,9 @@ import json
 from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
 from vi.esi.EsiInterface import EsiInterface
+from vi.esi.EsiHelper import EsiHelper
 
-
+# TODO: only used by KOS-Checker now... so obsolete?
 class EveGate:
     ERROR = -1
     NOT_EXISTS = 0
@@ -38,23 +39,15 @@ class EveGate:
     ESI_BASIC_URL = "https://esi.evetech.net/latest"
 
     def __init__(self):
-        self.esiClient = None
         self.cache = Cache()
-        self.esiClient = EsiInterface()
 
 
     def charnameToId(self, name: str):
         """ Uses the EVE API to convert a charname to his ID
         """
-        # we'll use the Cache-function first
-        cacheKey = "_".join(("id", "name", name))
-        charid = self.cache.getFromCache(cacheKey)
-        if charid:
-            return int(charid)
         try:
-            char = self.esiClient.getCharacterId(name)
-            idlist = char.data["character"]
-            self.cache.putIntoCache(cacheKey, idlist[0], self.A_YEAR)
+            char = EsiHelper().getCharacterId(name)
+            idlist = char["character"]
             return int(idlist[0])
         except Exception as e:
             logging.error("Exception turning charname to id via API: %s", e)
@@ -86,16 +79,13 @@ class EveGate:
         return data
 
     def idToName(self, charid):
-        cacheKey = u"_".join(("name", "id", str(charid)))
-        name = self.cache.getFromCache(cacheKey)
-        if not name:
-            try:
-                character = self.esiClient.getCharacter(charid)
-                if character:
-                    name = character['character'][0]
-                    self.cache.putIntoCache(cacheKey, name, self.A_YEAR)
-            except Exception as e:
-                logging.error("Character {} not found".format(charid), e)
+        name = None
+        try:
+            character = EsiHelper().getCharacter(charid)
+            if character:
+                name = character['character'][0]
+        except Exception as e:
+            logging.error("Character {} not found".format(charid), e)
         return name
 
     def idsToNames(self, ids):
@@ -137,267 +127,6 @@ class EveGate:
 
         return data
 
-
-    def getAvatarForPlayer(self, charname):
-        """ Downlaoding the eavatar for a player/character
-            charname = name of the character
-            returns None if something gone wrong
-        """
-        avatar = None
-        cacheKey="_".join(("char", "avatar", charname))
-        imageurl = self.cache.getFromCache(cacheKey)
-        try:
-            if not imageurl:
-                charid = self.charnameToId(charname)
-                avatars = self.esiClient.getCharacterAvatar(charid)
-                imageurl = avatars.data["px64x64"]
-                self.cache.putIntoCache(cacheKey, imageurl)
-            avatar = requests.get(imageurl).content
-        except Exception as e:
-            logging.error("Exception during getAvatarForPlayer \"%s\" : %s", charname, e)
-            avatar = None
-        return avatar
-
-
-    def checkPlayername(self, charname):
-        """ Checking on evegate for an exiting playername
-            returns 1 if exists, 0 if not and -1 if an error occured
-        """
-        names = self.esiClient.getCharacterId(charname)
-        return len(names.data)
-
-        # baseUrl = "https://gate.eveonline.com/Profile/"
-        #
-        # queryCharname = requests.utils.quote(charname)
-        # url = baseUrl + queryCharname
-        # result = -1
-        #
-        # try:
-        #     urlopen(url)
-        #     result = 1
-        # except HTTPError as e:
-        #     if ("404") in str(e):
-        #         result = 0
-        # except Exception as e:
-        #     logging.error("Exception on checkPlayername: %s", e)
-        # return result
-
-
-    def currentEveTime(self):
-        """ Returns the current eve-time as a datetime.datetime
-        """
-        return datetime.datetime.utcnow()
-
-
-    def eveEpoch(self):
-        """ Returns the seconds since epoch in eve timezone
-        """
-        return time.mktime(datetime.datetime.utcnow().timetuple())
-
-
-    def getCharinfoForCharId(self, charId):
-            # this used ESI
-        if self.esiClient:
-            data = self.esiClient.getCharacter(int(charId))
-            soup = data.data
-        else:
-            try:
-                cacheKey = u"_".join(("playerinfo_esi_id_", six.text_type(charId)))
-                soup = self.cache.getFromCache(cacheKey)
-                if soup is not None:
-                    soup = BeautifulSoup(soup, 'html.parser')
-                else:
-                    charId = int(charId)
-                url = "https://api.eveonline.com/eve/CharacterInfo.xml.aspx"
-                content = requests.get(url, params={'characterID': charId}).text
-                soup = BeautifulSoup(content, 'html.parser')
-                cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                diff = cacheUntil - self.currentEveTime()
-                self.cache.putIntoCache(cacheKey, str(soup), diff.seconds)
-            except requests.exceptions.RequestException as e:
-                # We get a 400 when we pass non-pilot names for KOS check so fail silently for that one only
-                if (e.response.status_code != 400):
-                    logging.error("Exception during getCharinfoForCharId: %s", str(e))
-        return soup
-
-    def getCorpHistoryNamesForCharId(self, charId: int) -> list:
-        """ Returns a list with the names of the corporation history of a charId
-        """
-        cacheKey = "_".join(("corp", "name", "char", str(charId)))
-        result = self.cache.getFromCache(cacheKey)
-        if result:
-            return set(result)
-        data = []
-        if self.esiClient:
-            idlist = self.esiClient.getCorporationHistory(charId)
-            for id in idlist:
-                corp = self.esiClient.getCorporation(id['corporation_id'])
-                data.append(corp)
-            self.cache.putIntoCache(cacheKey, data, self.esiClient.secondsTillDowntime())
-        return data
-
-    def getCorpHistoryIdForCharId(self, charId: int) -> list:
-        """ Returns a list with the ids if the corporation history of a charId
-        """
-        cacheKey = "_".join(("corphistory", "id", str(charId)))
-        result = self.cache.getFromCache(cacheKey)
-        if result:
-            return result
-        data = []
-        if self.esiClient:
-            result = self.esiClient.getCorporationHistory(charId)
-            if result:
-                for row in result.items():
-                    data.append(row['corporation_id'])
-                self.cache.putIntoCache(data, self.esiClient.secondsTillDowntime())
-        return data
-
-
-    def getSystemStatistics(self):
-        """ Reads the informations for all solarsystems from the EVE API
-            Reads a dict like:
-                systemid: "jumps", "shipkills", "factionkills", "podkills"
-        """
-        data = {}
-        systemData = {}
-        cache = Cache()
-        # first the data for the jumps
-        cacheKey = "_".join(("jumpstatistic",cache.getFromCache("region_name")))
-
-        jumpData = cache.getFromCache(cacheKey)
-
-        try:
-            if jumpData is None:
-                jumpData = {}
-                jump_result = self.esiClient.getJumps()
-
-                # url = "https://api.eveonline.com/map/Jumps.xml.aspx"
-                # url = self.ESI_BASIC_URL + "/universe/system_jumps"
-                # # content = requests.get(url).text
-                # content = requests.get(url, params={"datasource": "tranquility"})
-                # jump_result = json.loads(content.content)
-
-                for data in jump_result.data:
-                    jumpData[int(data['system_id'])] = int(data['ship_jumps'])
-                expire_date = data.header.get('Expires')[0]
-                cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-                diff = cacheUntil - self.esiClient.currentEveTime()
-
-                # soup = BeautifulSoup(content, 'html.parser')
-                #
-                # for result in soup.select("result"):
-                #     for row in result.select("row"):
-                #         jumpData[int(row["solarsystemid"])] = int(row["shipjumps"])
-                # cacheUntil = datetime.datetime.strptime(jump_result.headers['expires'], "%a, %d %b %Y %X %Z")
-                # cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                # diff = cacheUntil - self.currentEveTime()
-                cache.putIntoCache(cacheKey, json.dumps(jumpData), diff.seconds)
-            else:
-                jumpData = json.loads(jumpData)
-
-            # now the further data
-            cacheKey = "_".join(("systemstatistic",cache.getFromCache("region_name")))
-
-            systemData = cache.getFromCache(cacheKey)
-
-            if systemData is None:
-                systemData = {}
-                kill_result = self.esiClient.getKills()
-                # url = "https://api.eveonline.com/map/Kills.xml.aspx"
-                # url = self.ESI_BASIC_URL + "/universe/system_kills"
-                # # content = requests.get(url).text
-                # content = requests.get(url, params={"datasource": "tranquility"})
-                # kill_result = json.loads(content.content)
-
-                for data in kill_result.data:
-                    systemData[int(data['system_id'])] = {'ship': int(data['ship_kills']),
-                                                          'faction': int(data['npc_kills']),
-                                                          'pod': int(data['pod_kills'])}
-                expire_date =kill_result.header.get('Expires')[0]
-                # soup = BeautifulSoup(content, 'html.parser')
-
-                # for result in soup.select("result"):
-                #     for row in result.select("row"):
-                #         systemData[int(row["solarsystemid"])] = {"ship": int(row["shipkills"]),
-                #                                                  "faction": int(row["factionkills"]),
-                #                                                  "pod": int(row["podkills"])}
-
-                # cacheUntil = datetime.datetime.strptime(soup.select("cacheduntil")[0].text, "%Y-%m-%d %H:%M:%S")
-                # exp = kill_result.headers['expires']
-                # cacheUntil = datetime.datetime.strptime(kill_result.headers['expires'], "%a, %d %b %Y %X %Z")
-                cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-                diff = cacheUntil - self.esiClient.currentEveTime()
-                cache.putIntoCache(cacheKey, json.dumps(systemData), diff.seconds)
-            else:
-                systemData = json.loads(systemData)
-        except Exception as e:
-            logging.error("Exception during getSystemStatistics: : %s", e)
-
-        # We collected all data (or loaded them from cache) - now zip it together
-        for i, v in jumpData.items():
-            i = int(i)
-            if i not in data:
-                data[i] = {"shipkills": 0, "factionkills": 0, "podkills": 0}
-            data[i]["jumps"] = v
-        for i, v in systemData.items():
-            i = int(i)
-            if i not in data:
-                data[i] = {"jumps": 0}
-            data[i]["shipkills"] = v["ship"] if "ship" in v else 0
-            data[i]["factionkills"] = v["faction"] if "faction" in v else 0
-            data[i]["podkills"] = v["pod"] if "pod" in v else 0
-        return data
-
-
-    def secondsTillDowntime(self):
-        """ Return the seconds till the next downtime"""
-        now = self.currentEveTime()
-        target = now
-        if now.hour > 11:
-            target = target + datetime.timedelta(1)
-        target = datetime.datetime(target.year, target.month, target.day, 11, 0, 0, 0)
-        delta = target - now
-        return delta.seconds
-
-
-SHIPNAMES = (u'ABADDON', u'ABSOLUTION', u'AEON', u'AMARR SHUTTLE', u'ANATHEMA', u'ANSHAR', u'APOCALYPSE',
-             u'APOCALYPSE IMPERIAL ISSUE', u'APOCALYPSE NAVY ISSUE', u'APOTHEOSIS', u'ARAZU', u'ARBITRATOR', u'ARCHON',
-             u'ARES', u'ARK', u'ARMAGEDDON', u'ARMAGEDDON IMPERIAL ISSUE', u'ASHIMMU', u'ASTARTE', u'ATRON', u'AUGOROR',
-             u'AUGOROR NAVY ISSUE', u'AVATAR', u'BADGER', u'BADGER MARK II', u'BANTAM', u'BASILISK', u'BELLICOSE',
-             u'BESTOWER', u'BHAALGORN', u'BLACKBIRD', u'BREACHER', u'BROADSWORD', u'BRUTIX', u'BURST', u'BUSTARD',
-             u'BUZZARD', u'CONCORD ARMY BATTLESHIP', u'CONCORD ARMY CRUISER', u'CONCORD ARMY FRIGATE',
-             u'CONCORD POLICE BATTLESHIP', u'CONCORD POLICE CRUISER', u'CONCORD POLICE FRIGATE',
-             u'CONCORD SWAT BATTLESHIP', u'CONCORD SWAT CRUISER', u'CONCORD SWAT FRIGATE',
-             u'CONCORD SPECIAL OPS BATTLESHIP', u'CONCORD SPECIAL OPS CRUISER', u'CONCORD SPECIAL OPS FRIGATE',
-             u'CALDARI NAVY HOOKBILL', u'CALDARI SHUTTLE', u'CARACAL', u'CARACAL NAVY ISSUE', u'CATALYST', u'CELESTIS',
-             u'CERBERUS', u'CHARON', u'CHEETAH', u'CHIMERA', u'CLAW', u'CLAYMORE', u'COERCER', u'CONDOR', u'CONFESSOR', u'CORMORANT',
-             u'COVETOR', u'CRANE', u'CROW', u'CRUCIFIER', u'CRUOR', u'CRUSADER', u'CURSE', u'CYCLONE', u'CYNABAL',
-             u'DAMNATION', u'DAREDEVIL', u'DEIMOS', u'DEVOTER', u'DOMINIX', u'DRAKE', u'DRAMIEL', u'EAGLE', u'EIDOLON',
-             u'ENIGMA', u'ENYO', u'EOS', u'EREBUS', u'ERIS', u'EXECUTIONER', u'EXEQUROR', u'EXEQUROR NAVY ISSUE',
-             u'FALCON', u'FEDERATION NAVY COMET', u'FENRIR', u'FEROX', u'FLYCATCHER', u'GALLENTE SHUTTLE', u'GILA',
-             u'GOLD MAGNATE', u'GOLEM', u'GRIFFIN', u'GUARDIAN', u'HARBINGER', u'HARPY', u'HAWK', u'HECATE', u'HEL', u'HELIOS',
-             u'HERETIC', u'HERON', u'HOARDER', u'HOUND', u'HUGINN', u'HULK', u'HURRICANE', u'HYENA', u'HYPERION',
-             u'IBIS', u'IMICUS', u'IMPAIROR', u'IMPEL', u'IMPERIAL NAVY SLICER', u'INCURSUS', u'ISHKUR', u'ISHTAR',
-             u'ITERON', u'ITERON MARK II', u'ITERON MARK III', u'ITERON MARK IV', u'ITERON MARK V', u'JAGUAR', u'KERES',
-             u'KESTREL', u'KITSUNE', u'KRONOS', u'LACHESIS', u'LEVIATHAN', u'MACHARIEL', u'MACKINAW', u'MAELSTROM',
-             u'MAGNATE', u'MALEDICTION', u'MALLER', u'MAMMOTH', u'MANTICORE', u'MASTODON', u'MAULUS', u'MEGATHRON',
-             u'MEGATHRON FEDERATE ISSUE', u'MEGATHRON NAVY ISSUE', u'MERLIN', u'MINMATAR SHUTTLE', u'MOA', u'MOROS',
-             u'MUNINN', u'MYRMIDON', u'NAGLFAR', u'NAVITAS', u'NEMESIS', u'NIDHOGGUR', u'NIGHTHAWK', u'NIGHTMARE',
-             u'NOMAD', u'NYX', u'OBELISK', u'OCCATOR', u'OMEN', u'OMEN NAVY ISSUE', u'ONEIROS', u'ONYX',
-             u'OPUX DRAGOON YACHT', u'OPUX LUXURY YACHT', u'ORACLE', u'ORCA', u'OSPREY', u'OSPREY NAVY ISSUE',
-             u'PALADIN', u'PANTHER', u'PHANTASM', u'PHANTOM', u'PHOBOS', u'PHOENIX', u'PILGRIM', u'POLARIS CENTURION',
-             u'POLARIS INSPECTOR', u'POLARIS LEGATUS', u'PROBE', u'PROCURER', u'PROPHECY', u'PRORATOR', u'PROVIDENCE',
-             u'PROWLER', u'PUNISHER', u'PURIFIER', u'RAGNAROK', u'RAPIER', u'RAPTOR', u'RATTLESNAKE', u'RAVEN',
-             u'RAVEN NAVY ISSUE', u'RAVEN STATE ISSUE', u'REAPER', u'REDEEMER', u'REPUBLIC FLEET FIRETAIL',
-             u'RETRIBUTION', u'RETRIEVER', u'REVELATION', u'RHEA', u'RIFTER', u'ROKH', u'ROOK', u'RORQUAL', u'RUPTURE',
-             u'SABRE', u'SACRILEGE', u'SCIMITAR', u'SCORPION', u'SCYTHE', u'SCYTHE FLEET ISSUE', u'SENTINEL', u'SIGIL',
-             u'SILVER MAGNATE', u'SIN', u'SKIFF', u'SLASHER', u'SLEIPNIR', u'SPECTER', u'STABBER',
-             u'STABBER FLEET ISSUE', u'STILETTO', u'SUCCUBUS', u'TARANIS', u'TEMPEST', u'TEMPEST FLEET ISSUE',
-             u'TEMPEST TRIBAL ISSUE', u'THANATOS', u'THORAX', u'THRASHER', u'TORMENTOR', u'TRISTAN', u'TYPHOON',
-             u'VAGABOND', u'VARGUR', u'VELATOR', u'VENGEANCE', u'VEXOR', u'VEXOR NAVY ISSUE', u'VIATOR', u'VIGIL',
-             u'VIGILANT', u'VINDICATOR', u'VISITANT', u'VULTURE', u'WIDOW', u'WOLF', u'WORM', u'WRAITH', u'WREATHE',
-             u'WYVERN', u'ZEALOT', u'CAPSULE')
-SHIPNAMES = sorted(SHIPNAMES, key=lambda x: len(x), reverse=True)
 
 NPC_CORPS = (u'Republic Justice Department', u'House of Records', u'24th Imperial Crusade', u'Template:NPC corporation',
              u'Khanid Works', u'Caldari Steel', u'School of Applied Knowledge', u'NOH Recruitment Center',

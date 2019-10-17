@@ -785,7 +785,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def pruneMessages(self):
         try:
-            now = time.mktime(evegate.EveGate().currentEveTime().timetuple())
+            now = time.mktime(EsiInterface().currentEveTime().timetuple())
             for row in range(self.chatListWidget.count()):
                 chatListWidgetItem = self.chatListWidget.item(0)
                 chatEntryWidget = self.chatListWidget.itemWidget(chatListWidgetItem)
@@ -816,7 +816,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                         text = "None KOS"
                     self.trayIcon.showMessage("Your KOS-Check", text, 1)
                 text = text.replace("\n\n", "<br>")
-                message = ChatParser.chatparser.Message("Vintel KOS-Check", text, evegate.EveGate().currentEveTime(), "VINTEL",
+                message = ChatParser.chatparser.Message("Vintel KOS-Check", text, EsiInterface().currentEveTime(), "VINTEL",
                                                         [], states.NOT_CHANGE, text.upper(), text)
                 self.addMessageToIntelChat(message)
             elif state == "error":
