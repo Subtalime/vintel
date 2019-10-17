@@ -102,7 +102,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 if self.caching:
                     cacheToken = Cache().getFromCache("esi_token")
                     if cacheToken:
-                        tokenKey = pickle.loads(cacheToken)
+                        tokenKey = literal_eval(cacheToken)
                 while not self.apiInfo:
                     try:
                         if secretKey:
@@ -112,7 +112,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             self.apiInfo = self.security.verify()
                             # store the Token
                             if self.caching:
-                                Cache().putIntoCache("esi_token", pickle.dumps(self.tokens))
+                                Cache().putIntoCache("esi_token", str(self.tokens))
                         elif tokenKey:
                             self.security.update_token(tokenKey)
                             self.apiInfo = self.security.refresh()
@@ -126,6 +126,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         self.waitForSecretKey()
                     except Exception as e:
                         self.logger.error("Some unexpected error in Esi", e)
+                        exit(-1)
 
                 self.logger.debug("ESI loading Swagger...")
                 # outputs a load of data in Debug
@@ -566,7 +567,8 @@ class EsiThread(QThread):
                 EsiInterface().getShipList
 
             except Exception as e:
-                logging.error("Error in EsThread: %s", e)
+                logging.error("Error in EsiThread: %s", e)
+                exit(-1)
             self.lastStatisticsUpdate = time.time()
             self.refreshTimer.start(self.pollRate)
 

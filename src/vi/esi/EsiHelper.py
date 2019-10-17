@@ -4,13 +4,13 @@ import requests, datetime, json, logging
 from vi.esi.EsiInterface import EsiInterface
 from vi.cache.cache import Cache
 
-class EsiHelper(EsiInterface):
+class EsiHelper:
     _ShipNames = []
 
-    # def __init__(self):
-    #     self.esi = EsiInterface()
-    #     self.cache = Cache()
-    #
+    def __init__(self):
+        self.esi = EsiInterface()
+        self.cache = Cache()
+
     def getAvatarByName(self, characterName: str) -> str:
         resp = self.esi.getCharacterAvatarByName(characterName)
         if resp:
@@ -39,19 +39,19 @@ class EsiHelper(EsiInterface):
     def getSystemStatistics(self) -> dict:
         try:
             cacheKey = "_".join(("esihelper", "jumpstatistics"))
-            jumpData = Cache().getFromCache(cacheKey)
+            jumpData = self.cache.getFromCache(cacheKey)
             if not jumpData:
                 jumpData = {}
                 jump_result, expiry = self.esi.getJumps()
                 for data in jump_result:
                     jumpData[int(data['system_id'])] = int(data['ship_jumps'])
                 if len(jumpData):
-                    Cache().putIntoCache(cacheKey, json.dumps(jumpData), expiry.seconds)
+                    self.cache.putIntoCache(cacheKey, json.dumps(jumpData), expiry.seconds)
             else:
                 jumpData = json.loads(jumpData)
 
             cacheKey = "_".join(("esihelper", "systemstatistic"))
-            systemData = Cache().getFromCache(cacheKey)
+            systemData = self.cache.getFromCache(cacheKey)
             if not systemData:
                 systemData = {}
                 kill_result, expiry = self.esi.getKills()
@@ -60,7 +60,7 @@ class EsiHelper(EsiInterface):
                                                           'faction': int(data['npc_kills']),
                                                           'pod': int(data['pod_kills'])}
                 if len(systemData):
-                    Cache().putIntoCache(cacheKey, json.dumps(systemData), expiry.seconds)
+                    self.cache.putIntoCache(cacheKey, json.dumps(systemData), expiry.seconds)
             else:
                 systemData = json.loads(systemData)
         except Exception as e:
@@ -85,8 +85,7 @@ class EsiHelper(EsiInterface):
     @property
     def ShipNames(self) -> list:
         if len(self._ShipNames) == 0:
-            ships = self.esi.getShipList
-            for ship in ships:
+            for ship in self.esi.getShipList:
                 self._ShipNames.append(str(ship['name']).upper())
         return self._ShipNames
 

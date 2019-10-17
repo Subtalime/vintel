@@ -73,9 +73,9 @@ def parseStatus(rtext):
 
 
 def parseShips(rtext):
-    def formatShipName(text, shipname, word):
+    def formatShipName(text, realShipName, word):
         newText = u"""<a style="color:green;font-weight:bold" href="ship_name/{0}">{1}</a>"""
-        text = text.replace(word, newText.format(shipName, word))
+        text = text.replace(word, newText.format(realShipName, word))
         return text
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
@@ -98,7 +98,7 @@ def parseShips(rtext):
                         hit = False
                     if hit:
                         shipInText = text[start:end]
-                        formatted = formatShipName(text, shipInText)
+                        formatted = formatShipName(text, shipName, shipInText)
                         textReplace(text, formatted)
                         return True
 
@@ -208,6 +208,7 @@ def parseUrls(rtext):
             return True
 
 # TODO: characters can be more than just 1 word
+from itertools import permutations
 def parseCharnames(rtext):
     def formatCharname(text, charname):
         newText = u"""<a style="color:purple;font-weight:bold" href="show_character/{0}">{0}</a>"""
@@ -215,8 +216,25 @@ def parseCharnames(rtext):
         return text
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
     for text in texts:
-        originalText = text
-        for char in CHARS_TO_IGNORE:
-            cleanText = text.replace(char, "")
-        if EsiHelper().checkPlayerName(cleanText):
-            textReplace(text, formatCharname(originalText, cleanText))
+        if len(text) == 0:
+            continue
+        parts = text.strip(" ").split(" ")
+        perms = permutations(parts)
+        # TODO: go through all permutations... but remember 1 or 2 words may be enough!
+        found = False
+        for perm in perms:
+            if found:
+                break
+            checkwords = ""
+            for idx in perm:
+                if found:
+                    break
+                checkwords+=" "+idx
+                checkwords = checkwords.lstrip(" ")
+                originalText = checkwords
+                for char in CHARS_TO_IGNORE:
+                    cleanText = checkwords.replace(char, "")
+                if len(cleanText) > 3 and EsiHelper().checkPlayerName(cleanText): # minimum 3 characters for name
+                    textReplace(text, formatCharname(originalText, cleanText))
+                    found = True
+
