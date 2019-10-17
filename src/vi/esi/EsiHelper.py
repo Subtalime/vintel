@@ -14,7 +14,7 @@ class EsiHelper:
     def getAvatarByName(self, characterName: str) -> str:
         resp = self.esi.getCharacterAvatarByName(characterName)
         if resp:
-            imageurl = resp.data["px64x64"]
+            imageurl = resp["px64x64"]
             avatar = requests.get(imageurl).content
             return avatar
         return None
@@ -22,17 +22,17 @@ class EsiHelper:
     def getAvatarById(self, characterId: int) -> str:
         resp = self.esi.getCharacterAvatar(characterId)
         if resp:
-            imageurl = resp.data["px64x64"]
+            imageurl = resp["px64x64"]
             avatar = requests.get(imageurl).content
             return avatar
         return None
 
     def checkPlayerName(self, characterName: str) -> bool:
         resp = self.esi.getCharacterId(characterName, True)
-        if resp and len(resp.data) > 0:
-            for charid in resp.data["character"]:
+        if resp:
+            for charid in resp["character"]:
                 character = self.esi.getCharacter(charid)
-                if character and character.data["name"] == characterName:
+                if character and character.get("name") == characterName:
                     return True
         return False
 
@@ -42,14 +42,11 @@ class EsiHelper:
             jumpData = self.cache.getFromCache(cacheKey)
             if not jumpData:
                 jumpData = {}
-                jump_result = self.esi.getJumps()
-                for data in jump_result.data:
+                jump_result, expiry = self.esi.getJumps()
+                for data in jump_result:
                     jumpData[int(data['system_id'])] = int(data['ship_jumps'])
                 if len(jumpData):
-                    expire_date = jump_result.header.get('Expires')[0]
-                    cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-                    diff = cacheUntil - self.esiClient.currentEveTime()
-                    self.cache.putIntoCache(cacheKey, json.dumps(jumpData), diff.seconds)
+                    self.cache.putIntoCache(cacheKey, json.dumps(jumpData), expiry.seconds)
             else:
                 jumpData = json.loads(jumpData)
 
@@ -57,16 +54,13 @@ class EsiHelper:
             systemData = self.cache.getFromCache(cacheKey)
             if not systemData:
                 systemData = {}
-                kill_result = self.esi.getKills()
-                for data in kill_result.data:
+                kill_result, expiry = self.esi.getKills()
+                for data in kill_result:
                     systemData[int(data['system_id'])] = {'ship': int(data['ship_kills']),
                                                           'faction': int(data['npc_kills']),
                                                           'pod': int(data['pod_kills'])}
                 if len(systemData):
-                    expire_date = kill_result.header.get('Expires')[0]
-                    cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-                    diff = cacheUntil - self.esi.currentEveTime()
-                    self.cache.putIntoCache(cacheKey, json.dumps(systemData), diff.seconds)
+                    self.cache.putIntoCache(cacheKey, json.dumps(systemData), expiry.seconds)
             else:
                 systemData = json.loads(systemData)
         except Exception as e:

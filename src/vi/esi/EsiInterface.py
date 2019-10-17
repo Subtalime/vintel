@@ -2,19 +2,17 @@ import logging
 from esipy.utils import generate_code_verifier
 from esipy import EsiClient, EsiApp, EsiSecurity
 from esipy.security import APIException
-from esipy.cache import BaseCache
 from esipy.events import AFTER_TOKEN_REFRESH
 from esiconfig import EsiConfig
-from pyswagger.io import Response, CaseInsensitiveDict
+from pyswagger.io import Response
 import datetime
-import json
-import ast
+from ast import literal_eval
 from urllib.parse import urlparse, parse_qs
 import vi.version
-import webbrowser, threading, functools
-import threading, hashlib
+import webbrowser, functools, threading
 from vi.cache.cache import Cache
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from vi.esi.EsiCache import  EsiCache
 
 try:
     import pickle
@@ -60,30 +58,6 @@ class EsiInterfaceType(type):
 def logrepr(className: type) -> str:
     return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
                                                                                              "")
-
-
-def _hash(data):
-    """ generate a hash from data object to be used as cache key """
-    hash_algo = hashlib.new('md5')
-    hash_algo.update(pickle.dumps(data))
-    # prefix allows possibility of multiple applications
-    # sharing same keyspace
-    return 'esi_' + hash_algo.hexdigest()
-
-
-class EsiCache(BaseCache):
-    def __init__(self):
-        self.cache = Cache("esi_cache.sqlite3", forceVersionCheck=True)
-
-    def get(self, key, default=None):
-        value = self.cache.getFromCache(_hash(key))
-        return pickle.loads(value) if value is not None else default
-
-    def set(self, key, value):
-        self.cache.putIntoCache(_hash(key), pickle.dumps(value))
-
-    def invalidate(self, key):
-        self.cache.delFromCache(_hash(key))
 
 
 class EsiInterface(metaclass=EsiInterfaceType):
@@ -235,10 +209,19 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def __getattr__(self, name):
         return getattr(self._instance, name)
 
+
+    def calcExpiry(self, expireDate: str) -> datetime.datetime:
+        cache_until = datetime.datetime.strptime(expireDate, "%a, %d %b %Y %H:%M:%S %Z")
+        diff = cache_until - self.currentEveTime()
+        return diff
+
+    def calcExpiryResponse(self, resp: Response) -> datetime.datetime:
+        return self.calcExpiry(resp.header.get('Expires')[0])
+
     # def _cacheVar(self, function: str, **kwargs):
     #     return "_".join(("esicache", function, for var in kwargs))
     #
-    def getCharacter(self, characterId: int) -> Response:
+    def getCharacter(self, characterId: int) -> Response.data:
         # Character-Caching is based on EveTime... we want to reload after Eve is back up
         response = None
         try:
@@ -246,36 +229,38 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 cacheKey = "_".join(("esicache", "getcharacter", str(characterId)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['get_characters_character_id'](character_id=characterId)
                 response = self.esiClient.request(op)
                 # format is {"alliance_id": xx, "ancestry_id": xx, "birthday": xx, "bloodline_id": xx, "corporation_id": xx,
                 #            "description": xx, "gender": xx, "name": xx, "race_id": xx, "security_status": xx, "title": xx}
-                if response and self.caching:
-                    expire_date = response.header.get('Expires')[0]
-                    cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-                    diff = cacheUntil - self.currentEveTime()
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response), diff.seconds)
+                if response:
+                    expiry = self.calcExpiry(response.header.get('Expires')[0])
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response), expiry.seconds)
         except Exception as e:
             if self.caching:
                 Cache().delFromCache(cacheKey)
             self.logger.error("Error retrieving Character \"{}\" from ESI".format(characterId), e)
         return response
 
-    def getCorporation(self, corpid: int) -> Response:
+    def getCorporation(self, corpid: int) -> Response.data:
         response = None
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getcorporation", str(corpid)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['get_corporations_corporation_id'](corporation_id=corpid)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response))
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
                 # format is {"alliance_id": xx, "ceo_id": xx, "creator_id": xx, "data_founded": xx, "description": xx,
                 #            "war_elligible": xx, "url": xx, "ticker": xx, "shares": xx, "name": xx, "member_count": xx,
                 #            "home_station_id": xx }
@@ -285,21 +270,23 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 Cache().delFromCache(cacheKey)
         return response
 
-    def getCorporationHistory(self, characterId: int) -> Response:
+    def getCorporationHistory(self, characterId: int) -> Response.data:
         response = None
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getcorporationhist", str(characterId)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['get_characters_character_id_corporationhistory'](
                     character_id=characterId)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response))
-                # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
+                    # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
         except Exception as e:
             self.logger.error(
                 "Error retrieving Corporation-History for Character \"{}\" from ESI".format(
@@ -308,21 +295,23 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 Cache().delFromCache(cacheKey)
         return response
 
-    def getCharacterId(self, charname: str, strict: bool = True) -> Response:
+    def getCharacterId(self, charname: str, strict: bool = True) -> Response.data:
         response = None
         try:
             cacheKey = "_".join(("esicache", "getcharacterid", charname))
             if self.caching:
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['get_search'](categories='character', search=charname,
                                                   strict=strict)
                 response = self.esiClient.request(op)
                 # format is {"character": [xxx,...]}
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response))
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
         except Exception as e:
             self.logger.error("Error retrieving Character-ID by Name \"{}\" from ESI".format(charname),
                               e)
@@ -330,20 +319,22 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 Cache().delFromCache(cacheKey)
         return response
 
-    def getCharacterAvatar(self, characterId: int) -> Response:
+    def getCharacterAvatar(self, characterId: int) -> Response.data:
         response = None
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getcharavatar", str(characterId)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['get_characters_character_id_portrait'](
                     character_id=characterId)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response))
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
         except Exception as e:
             self.logger.error(
                 "Error retrieving Character Avatar for ID \"{}\" from ESI".format(characterId), e)
@@ -351,46 +342,50 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 Cache().delFromCache(cacheKey)
         return response
 
-    def getCharacterAvatarByName(self, characterName: str) -> Response:
+    def getCharacterAvatarByName(self, characterName: str) -> Response.data:
         resp = self.getCharacterId(characterName, True)
         if resp:
-            return self.getCharacterAvatar(resp.data["character"][0])
+            return self.getCharacterAvatar(resp["character"][0])
         return resp
 
-    def getSystemIds(self, namelist: list) -> Response:
+    def getSystemIds(self, namelist: list) -> Response.data:
         response = None
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getsystemids", str(namelist)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['post_universe_ids'](names=namelist)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response))
-                # format is [{"name": xx, "id": xx} ...]
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
+                    # format is [{"name": xx, "id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving System-IDs for \"{}\" from ESI".format(namelist), e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
         return response
 
-    def getSystemNames(self, idlist: list) -> Response:
+    def getSystemNames(self, idlist: list) -> Response.data:
         response = None
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getsystemnames", str(idlist)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 op = self.esiApp.op['post_universe_names'](ids=idlist)
                 response = self.esiClient.request(op)
                 # format is [{"category": xx, "name": xx, "id": xx} ...]
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response))
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
         except Exception as e:
             self.logger.error("Error retrieving System-Names for \"{}\" from ESI".format(idlist), e)
             if self.caching:
@@ -399,26 +394,34 @@ class EsiInterface(metaclass=EsiInterfaceType):
         return response
 
     # not caching this
-    def getKills(self) -> Response:
+    def getKills(self) -> (Response.data, datetime.datetime):
         response = None
+        expiry = None
         try:
             op = self.esiApp.op['get_universe_system_kills']()
             response = self.esiClient.request(op)
-            # format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
+            if response:
+                expiry = self.calcExpiryResponse(response)
+                response = response.data
+                # format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving Kills from ESI", e)
-        return response
+        return response, expiry
 
     # not caching this
-    def getJumps(self) -> Response:
+    def getJumps(self) -> (Response.data, datetime.datetime):
         response = None
+        expiry = None
         try:
             op = self.esiApp.op['get_universe_system_jumps']()
             response = self.esiClient.request(op)
-            # format is [{"ship_jumps": xx, "system_id": xx} ...]
+            if response:
+                expiry = self.calcExpiryResponse(response)
+                response = response.data
+                # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving Jumps from ESI", e)
-        return response
+        return response, expiry
 
     def getShipGroups(self) -> Response.data:
         response = None
@@ -427,17 +430,16 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 cacheKey = "_".join(("esicache", "getshipgroups"))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_categories_category_id'](category_id=6)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    data = response.to_dict()
-                    data = pickle.dumps(response)
-                    Cache().putIntoCache(cacheKey, data)
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                response = response.data
         except Exception as e:
             self.logger.error("Error retrieving Ship-Groups from ESI", e)
             if self.caching:
@@ -451,15 +453,16 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 cacheKey = "_".join(("esicache", "getshipgrouptype", str(groupid)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_groups_group_id'](group_id=groupid)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response.data))
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                response = response.data
         except Exception as e:
             self.logger.error("Error retrieving Ship-Group-Types from ESI", e)
             if self.caching:
@@ -473,15 +476,16 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 cacheKey = "_".join(("esicache", "getship", str(shipid)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = pickle.loads(result)
+                    response = literal_eval(result)
             if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_types_type_id'](type_id=shipid)
                 response = self.esiClient.request(op)
-                if response and self.caching:
-                    Cache().putIntoCache(cacheKey, pickle.dumps(response.data))
-                # format is [{"ship_jumps": xx, "system_id": xx} ...]
-                response = response.data
+                if response:
+                    response = response.data
+                    if self.caching:
+                        Cache().putIntoCache(cacheKey, str(response))
+                    # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving Ship from ESI", e)
             if self.caching:
@@ -489,14 +493,14 @@ class EsiInterface(metaclass=EsiInterfaceType):
         return response
 
     @property
-    def getShipList(self):
+    def getShipList(self) -> list:
         ships = []
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getshiplist"))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    ships = pickle.loads(result)
+                    ships = literal_eval(result)
             if len(ships) == 0:
                 shipgroup = self.getShipGroups()
                 for group in shipgroup['groups']:
@@ -504,7 +508,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     for ship in shiptypes['types']:
                         shipitem = self.getShip(ship)
                         ships.append(shipitem)
-                Cache().putIntoCache(cacheKey, pickle.dumps(ships), 30 * 24 * 60 * 60)
+                Cache().putIntoCache(cacheKey, str(ships), 30 * 24 * 60 * 60)
         except Exception as e:
             self.logger.error("Error retrieving Ship-List from ESI", e)
             if self.caching:
@@ -620,40 +624,38 @@ if __name__ == "__main__":
 
     chari = esi.getCharacterId("Tablot Manzari")
     if chari:
-        print("getCharacterId: {}".format(chari.data))
-        charid = chari.data['character'][0]
+        print("getCharacterId: {}".format(chari))
+        charid = chari['character'][0]
         chara = esi.getCharacter(charid)
 
-        character = chara.data  # Tablot Manzari
-        expire_date = chara.header.get('Expires')[0]
-        cacheUntil = datetime.datetime.strptime(expire_date, "%a, %d %b %Y %H:%M:%S %Z")
-        print("getCharacter: {} expires {}".format(character, cacheUntil))
+        character = chara  # Tablot Manzari
+        print("getCharacter: {}".format(character))
 
         avatars = esi.getCharacterAvatar(charid)  # Tablot Manzari
-        print("getCharacterAvatar: {}".format(avatars.data))
-        imageurl = avatars.data["px64x64"]
+        print("getCharacterAvatar: {}".format(avatars))
+        imageurl = avatars["px64x64"]
         avatar = requests.get(imageurl).content
         corphist = esi.getCorporationHistory(charid)  # Bovril
-        print("getCorporationHistory: {}".format(corphist.data))
+        print("getCorporationHistory: {}".format(corphist))
         corp = esi.getCorporation(character['corporation_id'])  # Bovril
-        print("getCorporation: {}".format(corp.data))
+        print("getCorporation: {}".format(corp))
     li = ["B-7DFU", "Jita"]
     ids = esi.getSystemIds(li)
     if ids:
-        print("getSystemIds: {}".format(ids.data))
+        print("getSystemIds: {}".format(ids))
         li = []
-        sys = ids.data['systems']
+        sys = ids['systems']
         for a in sys:
             li.append(a['id'])
         names = esi.getSystemNames(li)
         if names:
-            print("getSystemNames: {}".format(names.data))
-    jump_result = EsiInterface().getJumps()
+            print("getSystemNames: {}".format(names))
+    jump_result, expiry = EsiInterface().getJumps()
     if jump_result:
-        print("getJumps :{}".format(jump_result.data))
+        print("getJumps :{} {}".format(jump_result, expiry))
         jumpData = {}
-        for data in jump_result.data:
+        for data in jump_result:
             jumpData[int(data['system_id'])] = int(data['ship_jumps'])
-    kill_result = EsiInterface().getKills()
+    kill_result, expiry = EsiInterface().getKills()
     if kill_result:
-        print("getKils :{}".format(kill_result.data))
+        print("getKils :{} {}".format(kill_result, expiry))
