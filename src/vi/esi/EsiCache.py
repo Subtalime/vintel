@@ -31,4 +31,10 @@ class EsiCache(BaseCache):
     def invalidate(self, key):
         self.cache.delFromCache(_hash(key))
 
+    def invalidateAll(self):
+        with Cache.SQLITE_WRITE_LOCK:
+            query = "DELETE FROM cache"
+            self.cache.con.execute(query)
+            self.cache.con.commit()
+
 

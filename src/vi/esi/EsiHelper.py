@@ -6,6 +6,7 @@ from vi.cache.cache import Cache
 
 class EsiHelper:
     _ShipNames = []
+    _ShipNamesUpper = []
 
     def __init__(self):
         self.esi = EsiInterface()
@@ -86,8 +87,14 @@ class EsiHelper:
     def ShipNames(self) -> list:
         if len(self._ShipNames) == 0:
             for ship in self.esi.getShipList:
-                self._ShipNames.append(str(ship['name']).upper())
+                self._ShipNames.append(str(ship['name']))
         return self._ShipNames
+    @property
+    def ShipNamesUpper(self) -> list:
+        if len(self._ShipNamesUpper) == 0:
+            for ship in self.esi.getShipList:
+                self._ShipNamesUpper.append(str(ship['name']).upper())
+        return self._ShipNamesUpper
 
 
 if __name__ == "__main__":

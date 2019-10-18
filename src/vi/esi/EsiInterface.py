@@ -12,6 +12,7 @@ import vi.version
 import webbrowser, functools, threading
 from vi.cache.cache import Cache
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.client import HTTPException
 from vi.esi.EsiCache import  EsiCache
 
 try:
@@ -98,6 +99,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                                            headers=self.headers
                                            )
                 self.apiInfo = None
+                self.esiApp = None
                 tokenKey = None
                 if self.caching:
                     cacheToken = Cache().getFromCache("esi_token")
@@ -132,7 +134,16 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 # outputs a load of data in Debug
                 oldSetting = logging.getLogger().getEffectiveLevel()
                 logging.getLogger().setLevel(logging.WARN)
-                self.esiApp = EsiApp(cache=EsiCache(), cache_time=3 * 86400).get_latest_swagger
+                while not self.esiApp:
+                    try:
+                        self.esiApp = EsiApp(cache=EsiCache(), cache_time=3 * 86400).get_latest_swagger
+                    except (Exception, HTTPException) as e:
+                        self.logger.error("Error while retrieving latest Swagger", e)
+                        if e.code == 500:
+                            EsiCache().invalidateAll()
+                            self.logger.exception("ESI-Interface not explicitly instantiated!")
+                            exit(-1)
+
                 # Reset logging to old level
                 logging.getLogger().setLevel(oldSetting)
                 self.logger.debug("ESI loading Swagger...complete")

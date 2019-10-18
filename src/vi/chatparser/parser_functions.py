@@ -36,7 +36,7 @@
 """
 
 import six
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from bs4.element import NavigableString
 from vi import states
 from vi.esi.EsiHelper import EsiHelper
@@ -72,35 +72,40 @@ def parseStatus(rtext):
             return states.CLEAR
 
 
-def parseShips(rtext):
-    def formatShipName(text, realShipName, word):
+def parseShips(rtext: list):
+    def formatShipName(text: str, realShipName: str, word: str) -> str:
         newText = u"""<a style="color:green;font-weight:bold" href="ship_name/{0}">{1}</a>"""
         text = text.replace(word, newText.format(realShipName, word))
         return text
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
     for text in texts:
-        upperText = text.upper()
-        for char in CHARS_TO_IGNORE:
-            upperText = upperText.replace(char, "")
-        # for shipName in evegate.SHIPNAMES:
-        if upperText in EsiHelper().ShipNames:
-            formatted = formatShipName(text, upperText, text)
-            textReplace(text, formatted)
-        else:
-            for shipName in EsiHelper().ShipNames:
-                if shipName in upperText:
-                    hit = True
-                    start = upperText.find(shipName)
-                    end = start + len(shipName)
-                    if ((start > 0 and upperText[start - 1] not in (" ", "X")) or (
-                            end < len(upperText) - 1 and upperText[end] not in ("S", " "))):
-                        hit = False
-                    if hit:
-                        shipInText = text[start:end]
-                        formatted = formatShipName(text, shipName, shipInText)
-                        textReplace(text, formatted)
-                        return True
+        if len(text.strip(" ")) == 0:
+            continue
+        parts = text.strip(" ").split(" ")
+        for part in parts:
+            upperText = part.upper()
+            for char in CHARS_TO_IGNORE:
+                upperText = upperText.replace(char, "")
+
+            # for shipName in evegate.SHIPNAMES:
+            if upperText in EsiHelper().ShipNamesUpper:
+                formatted = formatShipName(text, upperText.capitalize(), part)
+                textReplace(text, formatted)
+        # else:
+        #     # for shipName in EsiHelper().ShipNames:
+        #         if shipName in EsiHelper().ShipNames:
+        #             hit = True
+        #             start = upperText.find(shipName)
+        #             end = start + len(shipName)
+        #             if ((start > 0 and upperText[start - 1] not in (" ", "X")) or (
+        #                     end < len(upperText) - 1 and upperText[end] not in ("S", " "))):
+        #                 hit = False
+        #             if hit:
+        #                 shipInText = text[start:end]
+        #                 formatted = formatShipName(text, shipName, shipInText)
+        #                 textReplace(text, formatted)
+        #                 return True
 
 
 def parseSystems(systems, rtext, foundSystems):
@@ -207,34 +212,59 @@ def parseUrls(rtext):
             textReplace(text, formatUrl(text, url))
             return True
 
-# TODO: characters can be more than just 1 word
-from itertools import permutations
-def parseCharnames(rtext):
-    def formatCharname(text, charname):
-        newText = u"""<a style="color:purple;font-weight:bold" href="show_character/{0}">{0}</a>"""
+def parseCharnames(rtext: Tag):
+    def formatCharname(text: str, charname: str):
+        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{0}</a>"""
         text = text.replace(charname, newText.format(charname))
         return text
+
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
-    for text in texts:
-        if len(text) == 0:
+
+    for text in texts: # iterate through each line
+        if len(text.strip(" ")) == 0:
             continue
         parts = text.strip(" ").split(" ")
-        perms = permutations(parts)
-        # TODO: go through all permutations... but remember 1 or 2 words may be enough!
-        found = False
-        for perm in perms:
-            if found:
-                break
-            checkwords = ""
-            for idx in perm:
-                if found:
-                    break
-                checkwords+=" "+idx
+        checkwords = ""
+        while len(parts) > 0:
+            for part in parts:
+                checkwords += " " + part
                 checkwords = checkwords.lstrip(" ")
                 originalText = checkwords
                 for char in CHARS_TO_IGNORE:
                     cleanText = checkwords.replace(char, "")
-                if len(cleanText) > 3 and EsiHelper().checkPlayerName(cleanText): # minimum 3 characters for name
-                    textReplace(text, formatCharname(originalText, cleanText))
-                    found = True
+                if len(cleanText) > 3:
+                    if EsiHelper().checkPlayerName(cleanText):
+                        textReplace(text, formatCharname(originalText, cleanText))
+                        index = parts.index(part)
+                        i = 0
+                        while i < index:
+                            parts.pop(0)
+                            i += 1
+                        break
+            checkwords = ""
+            parts.pop(0)
+
+
+if __name__ == "__main__":
+    chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix"
+    charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
+    parts = chat_text.strip(" ").split(" ")
+    checkwords = ""
+    while len(parts) > 0:
+        for part in parts:
+            checkwords += " " + part
+            checkwords = checkwords.lstrip(" ")
+            originalText = checkwords
+            if len(checkwords) > 3:
+                if checkwords in charnames:
+                    print ("Hit with {}".format(checkwords))
+                    # last hit
+                    index = parts.index(part)
+                    i = 0
+                    while i < index:
+                        parts.pop(0)
+                        i+=1
+                    break
+        checkwords = ""
+        parts.pop(0)
 
