@@ -134,7 +134,6 @@ class ChatParser(object):
             return None
 
 
-        # TODO: Message probably needs extending to contain Enemy-Names/Info
         message = Message(roomname, "", timestamp, username, systems, text, originalText)
         # May happen if someone plays > 1 account
         if message in self.knownMessages:
@@ -162,7 +161,6 @@ class ChatParser(object):
                     break
                 if count > maxSearch:
                     break
-        # TODO: at this point, we could scan for Enemy being mentioned
         message.message = six.text_type(rtext)
         message.status = status
         self.knownMessages.append(message)

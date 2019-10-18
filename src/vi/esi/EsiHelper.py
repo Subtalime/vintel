@@ -96,6 +96,12 @@ class EsiHelper:
                 self._ShipNamesUpper.append(str(ship['name']).upper())
         return self._ShipNamesUpper
 
+    def getShipId(self, shipName: str) -> int:
+        for ship in self.esi.getShipList:
+            if ship["name"] == shipName:
+                return ship["id"]
+        return None
+
 
 if __name__ == "__main__":
     esi = EsiHelper()

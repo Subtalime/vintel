@@ -55,6 +55,9 @@ def textReplace(element, newText):
 
 
 def parseStatus(rtext):
+    """
+    parse the Chat-Line to see if there are any System-Statuses triggered
+    """
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
     for text in texts:
         upperText = text.strip().upper()
@@ -72,7 +75,12 @@ def parseStatus(rtext):
             return states.CLEAR
 
 
-def parseShips(rtext: list):
+def parseShips(rtext: Tag) -> bool:
+    """
+    check the Chat-Entry to see if any ships are mentioned. If so, tag them with "ship_name"
+    :param rtext: Tag
+    :return: bool if content has changed
+    """
     def formatShipName(text: str, realShipName: str, word: str) -> str:
         newText = u"""<a style="color:green;font-weight:bold" href="ship_name/{0}">{1}</a>"""
         text = text.replace(word, newText.format(realShipName, word))
@@ -108,7 +116,14 @@ def parseShips(rtext: list):
         #                 return True
 
 
-def parseSystems(systems, rtext, foundSystems):
+def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
+    """
+    check for any System-Names or Gates mentioned in the Chat-Entry
+    :param systems:
+    :param rtext:
+    :param foundSystems:
+    :return: bool
+    """
     
     systemNames = systems.keys()
     
@@ -183,7 +198,12 @@ def parseSystems(systems, rtext, foundSystems):
     return False
 
 
-def parseUrls(rtext):
+def parseUrls(rtext: Tag) -> bool:
+    """
+    check the Chat-Message for any URLs and tag appropiately
+    :param rtext:
+    :return:
+    """
     def findUrls(s):
         # yes, this is faster than regex and less complex to read
         urls = []
@@ -212,17 +232,16 @@ def parseUrls(rtext):
             textReplace(text, formatUrl(text, url))
             return True
 
-def parseCharnames(rtext: Tag):
-    def formatCharname(text: str, charname: str):
-        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{0}</a>"""
-        text = text.replace(charname, newText.format(charname))
-        return text
-
-    texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
-
-    for text in texts: # iterate through each line
+def parseCharnames(rtext: Tag) -> bool:
+    """
+    check the Chat-Entry for any Character-Names and mark them with "show_enemy"
+    :param rtext:
+    :return:
+    """
+    def findNames(text: str) -> list:
+        names = []
         if len(text.strip(" ")) == 0:
-            continue
+            return names
         parts = text.strip(" ").split(" ")
         checkwords = ""
         while len(parts) > 0:
@@ -234,7 +253,7 @@ def parseCharnames(rtext: Tag):
                     cleanText = checkwords.replace(char, "")
                 if len(cleanText) > 3:
                     if EsiHelper().checkPlayerName(cleanText):
-                        textReplace(text, formatCharname(originalText, cleanText))
+                        names.append(originalText)
                         index = parts.index(part)
                         i = 0
                         while i < index:
@@ -245,9 +264,27 @@ def parseCharnames(rtext: Tag):
             parts.pop(0)
 
 
+    def formatCharname(text: str, charname: str):
+        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{0}</a>"""
+        text = text.replace(charname, newText.format(charname))
+        return text
+
+    texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
+
+    for text in texts: # iterate through each
+        names = findNames(text) # line
+        for name in names:
+            formatCharname(text, name)
+            return True
+    return False
+
 if __name__ == "__main__":
     chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix"
     charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
+
+    rtext = Tag(name="ChatMessage")
+    rtext.contents.append(chat_text)
+
     parts = chat_text.strip(" ").split(" ")
     checkwords = ""
     while len(parts) > 0:

@@ -39,6 +39,14 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             self.mark_system.emit(parameter)
         elif function == "link":
             webbrowser.open(parameter)
+        elif function == "show_enemy":
+            # TODO: open ZKillboard?
+            pass
+        elif function == "ship_name":
+            # TODO: open Ship-Detail Window?
+            pass
+
+
 
 
     def updateText(self):
