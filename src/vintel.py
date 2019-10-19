@@ -106,7 +106,7 @@ class Application(QApplication):
         self.processEvents()
 
         # Setup logging for console and rotated log files
-        formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%m/%d %I:%M:%S')
+        formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
         rootLogger = logging.getLogger()
         rootLogger.setLevel(level=logLevel)
 

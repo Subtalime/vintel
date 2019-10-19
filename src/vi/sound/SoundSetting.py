@@ -13,7 +13,6 @@ class SoundSetting:
         if not self.platformSupportsSpeech():
             self.useSpokenNotifications = False
 
-
     def configureSound(self, parent):
         if not self.soundAvailable:
             return
@@ -53,4 +52,6 @@ class SoundSetting:
     def quit(self):
         if self.soundAvailable:
             self._soundThread.quit()
+        self.soundDialog.accept()
+
 

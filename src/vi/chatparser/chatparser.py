@@ -146,8 +146,8 @@ class ChatParser(object):
             continue
         while parseSystems(self.systems, rtext, systems):
             continue
-        while parseCharnames(rtext):
-            continue
+        # while parseCharnames(rtext):
+        #     continue
 
         parsedStatus = parseStatus(rtext)
         status = parsedStatus if parsedStatus is not None else states.ALARM

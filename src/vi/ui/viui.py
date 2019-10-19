@@ -51,6 +51,9 @@ from vi.regionchooser import RegionChooser
 from vi.character.CharacterMenu import CharacterMenu, Characters
 from vi.region.RegionMenu import RegionMenu
 from vi.dotlan import Regions
+from vi.esi.EsiInterface import EsiInterface
+from vi.sound.SoundSettingDialog import SoundSettingDialog
+
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -69,8 +72,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def __init__(self, pathToLogs, trayIcon, backGroundColor):
 
-        # MainWindow.Ui_MainWindow.setupUi(self)
-        # UI_MainWindow.__init__(self)
         super(self.__class__, self).__init__()
         # QMainWindow.__init__(self)
         self.cache = Cache()
@@ -326,8 +327,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.mapTimer.stop()
         self.filewatcherThread.paused = True
 
-        logging.critical("Load Map")
-        logging.info("Finding map file")
+        logging.debug("Finding map file")
         regionName = self.cache.getFromCache("region_name")
         if not regionName:
             regionName = "Delve"
@@ -348,7 +348,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 self.cache.putIntoCache("region_name", "Delve")
                 return self.setupMap(initialize)
             sys.exit(1)
-        logging.info("Region set to {}".format(regionName))
+        logging.debug("Map File found, Region set to {}".format(regionName))
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
             diagText = "Something went wrong getting map data. Proceeding with older cached data. " \
@@ -423,7 +423,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     (None, "restoreState", bytes(self.saveState())),
                     ("splitter", "restoreGeometry", bytes(self.splitter.saveGeometry())),
                     ("splitter", "restoreState", bytes(self.splitter.saveState())),
-                    ("mapView", "setZoomFactor", self.mapView.zoomFactor()),
+                    ("mapView", "setZoomFactor", self.mapView.zoomFactor),
                     (None, "changeChatFontSize", ChatEntryWidget.TEXT_SIZE),
                     (None, "changeOpacity", self.opacityGroup.checkedAction().opacity),
                     (None, "changeAlwaysOnTop", self.alwaysOnTopAction.isChecked()),
@@ -644,7 +644,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.systems[six.text_type(systemname)].mark()
         # if this function is called from the Chat-Entry-Widget Click emitter
         # perhaps here, a Scroll-To the coordinates stored in self.systems[system-name]
-        zoomfactor = float(self.mapView.page().zoomFactor())
+        zoomfactor = float(self.mapView.zoomFactor)
         self.scrollTo(self.systems[six.text_type(systemname)].mapCoordinates["center_x"]/zoomfactor,
                       self.systems[six.text_type(systemname)].mapCoordinates["center_y"]/zoomfactor)
         self.updateMapView()
@@ -661,8 +661,16 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
-                       format(x, y))
-        self.mapView.page().runJavaScript(_scrollTo)
+                       format(x / self.mapView.zoomFactor, y / self.mapView.zoomFactor))
+        # self.mapView.page().runJavaScript(_scrollTo)
+        self.initialMapPosition = QPointF(x, y)
+
+    def injectScrollPosition(self, content: str, scroll: str) -> str:
+        newContent = content
+        if scroll:
+            scrollText = """\n<script type="text/javascript"><![CDATA["""+scroll+"""]]></script>\n"""
+            newContent = newContent.replace("</svg>", scrollText+"</svg>")
+        return newContent
 
     def setMapContent(self, content):
         try:
@@ -673,18 +681,25 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 self.initialMapPosition = None
             else:
                 scrollPosition = QPointF(self.mapView.page().scrollPosition())
-            zoomfactor = float(self.mapView.page().zoomFactor())
-            self.mapView.page().setHtml(content)
-            # page has been reloaded... go back to where we were
-            # here we need to take into account the Zoom-Factor
+            zoomfactor = float(self.mapView.zoomFactor)
+            scrollTo = ""
             if scrollPosition:
                 logging.debug("Current Scroll-Position {}".format(scrollPosition))
-                scrollTo = str("window.scrollTo({}, {});".
+                scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
                                                       format(scrollPosition.x() / zoomfactor,
                                                              scrollPosition.y() / zoomfactor))
-                logging.debug(scrollTo)
-                self.mapView.page().runJavaScript(scrollTo)
-                logging.debug("New Scroll-Position {} ({})".format(QPointF(self.mapView.page().scrollPosition()), zoomfactor))
+            newContent = self.injectScrollPosition(content, scrollTo)
+            self.mapView.setHtml(newContent)
+            # self.mapView.page().setHtml(content)
+            # page has been reloaded... go back to where we were
+            # here we need to take into account the Zoom-Factor
+            # if scrollPosition:
+            #     logging.debug("Current Scroll-Position {}".format(scrollPosition))
+            #     scrollTo = str("window.scrollTo({}, {});".
+            #                                           format(scrollPosition.x() / zoomfactor,
+            #                                                  scrollPosition.y() / zoomfactor))
+            #     self.mapView.page().runJavaScript(scrollTo)
+            #     logging.debug("New Scroll-Position {} (Zoom {})".format(QPointF(self.mapView.page().scrollPosition()), zoomfactor))
             logging.debug("Setting Map-Content complete")
         except Exception as e:
             logging.error("Problem with setMapContent: %r", e)
@@ -835,7 +850,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def showInfo(self):
-        logging.DEBUG("Opening About-Dialog")
+        logging.debug("Opening About-Dialog")
         infoDialog = QDialog(self)
         loadUi(resourcePath("vi/ui/Info.ui"), infoDialog)
         infoDialog.setModal(True)
@@ -843,10 +858,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         infoDialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
         infoDialog.closeButton.clicked.connect(infoDialog.accept)
         infoDialog.exec()
-        logging.DEBUG("Closed About-Dialog")
+        logging.debug("Closed About-Dialog")
 
     def showSoundSetup(self):
-        SoundManager().configureSound(self)
+        sd = SoundSettingDialog(self)
+        sd.show()
 
     def systemTrayActivated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
@@ -883,11 +899,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
 
     def zoomMapIn(self):
-        self.mapView.setZoomFactor(self.mapView.zoomFactor() + 0.1)
+        self.mapView.setZoomFactor(self.mapView.zoomFactor + 0.1)
 
 
     def zoomMapOut(self):
-        self.mapView.setZoomFactor(self.mapView.zoomFactor() - 0.1)
+        self.mapView.setZoomFactor(self.mapView.zoomFactor - 0.1)
 
 
     def logFileChanged(self, path):

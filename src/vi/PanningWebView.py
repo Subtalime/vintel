@@ -10,27 +10,29 @@ class PanningWebView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.pressed = False
-        # self._parent = parent
-        # self._page = MapViewPage()
         self.mapView = MapViewPage()
         self.view = QWebEngineView()
         self.view.setPage(self.page())
         self.vl = QVBoxLayout()
         self.vl.addWidget(self.view)
         self.setLayout(self.vl)
+        self.oldContent = None
 
 
-    def setZoomFactor(self, value: 'float'):
+    def setZoomFactor(self, value: float):
         self.zoom_factor.emit(value)
         return self.page().setZoomFactor(value)
 
-    def zoomFactor(self):
+    @property
+    def zoomFactor(self) -> float:
         return self.page().zoomFactor()
 
     # imitate QWebEngineView
-    def page(self):
+    def page(self) -> QWebEnginePage:
         return self.mapView
 
-    def setHtml(self, p_str, baseUrl=None, *args, **kwargs):
-        self.page().setHtml(p_str, baseUrl, args, kwargs)
+    def setHtml(self, p_str: str, baseUrl: QUrl=None, *args, **kwargs):
+        if self.oldContent != p_str:
+            self.page().setHtml(p_str, baseUrl, *args, **kwargs)
+            self.oldContent = p_str
 

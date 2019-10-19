@@ -39,9 +39,9 @@ import six
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
 from vi import states
-from vi.esi.EsiHelper import EsiHelper
+from vi.esi.EsiHelper import EsiHelper, EsiInterface
 
-CHARS_TO_IGNORE = ("*", "?", ",", "!", ".")
+CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")")
 
 
 def textReplace(element, newText):
@@ -207,34 +207,69 @@ def parseUrls(rtext):
             textReplace(text, formatUrl(text, url))
             return True
 
-# TODO: characters can be more than just 1 word
-from itertools import permutations
 def parseCharnames(rtext):
-    def formatCharname(text, charname):
-        newText = u"""<a style="color:purple;font-weight:bold" href="show_character/{0}">{0}</a>"""
-        text = text.replace(charname, newText.format(charname))
+    def formatCharname(text, charid, charname):
+        newText = u"""<a style="color:purple;font-weight:bold" href="show_character/{0}">{1}</a> """
+        text = text.replace(charname, newText.format(charid, charname))
         return text
+
+    def checkChunk(words: list):
+        hits = []
+        for player in list(words):
+            if EsiHelper.checkPlayerName(player.strip()):
+                hits.append(words.index(player))
+        if len(hits) == 0:
+            return False
+        if len(hits) == 1:
+            return True
+        for idx, value in enumerate(hits):
+            if idx < len(hits) - 1:
+                if value == (hits[idx+1] - 1):
+                    check = words[value]+" "+words[hits[idx+1]]
+                    if EsiHelper.checkPlayerName(check):
+                        pass
+                    # 2 adjacent words match
+
+
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
+    replaced = False
     for text in texts:
         if len(text) == 0:
             continue
         parts = text.strip(" ").split(" ")
-        perms = permutations(parts)
-        # TODO: go through all permutations... but remember 1 or 2 words may be enough!
-        found = False
-        for perm in perms:
-            if found:
-                break
-            checkwords = ""
-            for idx in perm:
-                if found:
-                    break
-                checkwords+=" "+idx
-                checkwords = checkwords.lstrip(" ")
-                originalText = checkwords
-                for char in CHARS_TO_IGNORE:
-                    cleanText = checkwords.replace(char, "")
-                if len(cleanText) > 3 and EsiHelper().checkPlayerName(cleanText): # minimum 3 characters for name
-                    textReplace(text, formatCharname(originalText, cleanText))
-                    found = True
+        checkwords = ""
+        # TODO: we must start at the longest section in text and work our way down
+        # i.e. there is character called "Holy" but the Text says "Holy Hecc", which is another character
+        # "player 'Holy Hecc' and 'Zedan' 'Chant-Shi' are attacking B-7DFU"
+        for part in list(parts):
+            checkwords += " " + part
+            # checkwords = checkwords.lstrip(" ")
+            originalText = checkwords
+            for char in CHARS_TO_IGNORE:
+                cleanText = checkwords.replace(char, "")
+            if len(cleanText) > 3:
+                if EsiHelper().checkPlayerName(cleanText.strip()):  # minimum 3 characters for name
+                    playerId = EsiInterface().getCharacterId(cleanText.strip()).get("character")[0]
+                    newText = formatCharname(originalText, playerId, cleanText.strip())
+                    textReplace(text, newText)
+                    checkwords = ""
+                    parts.pop(0)
+                    replaced = True
+    return replaced
+
+
+if __name__ == "__main__":
+    original = ["a", "b", "c", "d", "e", "f", "g"]
+    # assume "a", "c", "d", "e", "g" are matches
+    hits = [[0], [2], [3], [4], [6]]
+
+    for i, v in enumerate(hits):
+        if i+1 < len(hits): # there is a hit following
+            if hits[i+1] == v+1: # it's a pair
+                check = original[v] + original[hits[i+1]]
+                # let's assume this pair exists, update hit list
+
+    for idx in list(original):
+        if idx == "c":
+            original.pop(0)
 

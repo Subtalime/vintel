@@ -1,8 +1,6 @@
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
-from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import pyqtSignal, QPointF, QUrl
 from queue import Queue
-import difflib
 import logging
 
 class MapViewPage(QWebEnginePage):
@@ -11,7 +9,6 @@ class MapViewPage(QWebEnginePage):
 
     def __init__(self, parent: 'QObject'=None):
         super().__init__(parent)
-        # self.channel = QWebChannel()
         self.load_complete = False
         self.javaQueue = Queue()
         self.scrollPositionChanged.connect(self.onScrollPos)
@@ -19,19 +16,16 @@ class MapViewPage(QWebEnginePage):
         self.loadStarted.connect(self.onLoadStarted)
         self.currentHtml = None
         self.currentScrollPos = QPointF()
+        self.repositioning = False
 
     def onLoadFinished(self):
         self.load_complete = True
+
     def onLoadStarted(self):
         self.load_complete = False
 
     def setHtml(self, p_str: str, baseUrl: QUrl=None, *args, **kwargs):
         if self.currentHtml != p_str:
-            # if self.currentHtml and logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            #     org = set(self.currentHtml.split(' '))
-            #     new = set(p_str.split(' '))
-            #     diff = org.difference(new)
-            #     logging.debug("HTML-Diff: {}".format(diff))
             self.currentHtml = p_str
             super().setHtml(p_str, QUrl(baseUrl), *args, **kwargs)
 
@@ -46,9 +40,9 @@ class MapViewPage(QWebEnginePage):
             qPointF = self.currentScrollPos
         else:
             self.currentScrollPos = qPointF
-        if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-            logging.debug("Scroll detected {} Complete: {}".format(qPointF, self.load_complete))
-        self.scroll_detected.emit(qPointF)
+        if self.load_complete:
+            logging.debug("onScrollPos detected {}, Load Complete: {}".format(qPointF, self.load_complete))
+            self.scroll_detected.emit(qPointF)
         return True
 
     def runJavaScript(self, p_str, *__args):
