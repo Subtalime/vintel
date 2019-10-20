@@ -33,7 +33,7 @@ from vi.cache import cache
 from vi.resources import resourcePath
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from vi.esi.EsiInterface import EsiInterface
+
 
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
@@ -54,6 +54,12 @@ backGroundColor = "#c6d9ec"
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
+
+        if not sys.platform.startswith("darwin"):
+            # this may set the Window-Icon in the Taskbar too
+            import ctypes
+            myApplicationID = str("{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT))
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myApplicationID)
 
         global backGroundColor
         # Set up paths

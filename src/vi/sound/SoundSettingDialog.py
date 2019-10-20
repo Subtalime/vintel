@@ -7,10 +7,6 @@ from vi.sound.soundmanager import SoundManager
 class SoundSettingDialog(QDialog, Ui_Dialog):
 
     def __init__(self, parent=None):
-        # if not self.platformSupportsSpeech():
-        #     self.useSpokenNotifications = False
-        # if not self.soundAvailable:
-        #     return
         QDialog.__init__(self,parent=parent)
         self.setupUi(self)
         self.volumeSlider.setValue(SoundManager().soundVolume)
@@ -23,8 +19,7 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
     def closeSound(self):
         if not self.isHidden():
             self.stopAlarmSound()
-            self.soundDialog.accept()
-
+            self.quit()
 
     def setSoundVolume(self, newValue):
         """ Accepts and stores a number between 0 and 100.
@@ -34,16 +29,21 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
 
     def playAlarmSound(self):
         if SoundManager().soundAvailable:
+            import time
             self.testSoundButton.setEnabled(False)
             self.stopSoundButton.setEnabled(True)
             SoundManager().playSound()
+            while SoundManager.player.playing:
+                time.sleep(0.1)
+            self.testSoundButton.setEnabled(True)
+            self.stopSoundButton.setEnabled(False)
+
 
     def stopAlarmSound(self):
         if SoundManager().soundAvailable:
             self.testSoundButton.setEnabled(True)
             self.stopSoundButton.setEnabled(False)
-            SoundManager().soundThread.queue.put(("", "", ""))
-            SoundManager().playSound()
+            SoundManager().playSound("stop")
 
     def quit(self):
         self.accept()

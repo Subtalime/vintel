@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMainWindow, QPushButton, QActionGroup
+from PyQt5.QtWidgets import QAction, QMainWindow, QActionGroup
 from PyQt5.QtCore import QRect
 from vi.dotlan import Regions
 from vi.region.RegionMenu import RegionMenu
 from vi.region.RegionChooserList import RegionChooserList
-from vi.jumpbridgechooser import JumpbridgeChooser
+from vi.JumpBridge.JumpbridgeDialog import JumpbridgeDialog
 from vi.cache.cache import Cache
 
 class RegionTestMainForm(QMainWindow):
@@ -37,7 +37,7 @@ class RegionTestMainForm(QMainWindow):
 
     def jumpBridgeChooser(self):
         url = self.cache.getFromCache("jumpbridge_url")
-        chooser = JumpbridgeChooser(self, url)
+        chooser = JumpbridgeDialog(self, url)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.show()
 

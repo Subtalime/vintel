@@ -93,6 +93,9 @@ class LogWindow(QtWidgets.QWidget):
         if currLevel == logging.CRITICAL:
             crit.setChecked(True)
         menu.addAction(crit)
+        menu.addSeparator()
+        clear = QtWidgets.QAction("Clear Log-Window")
+        menu.addAction(clear)
         setting = menu.exec_(self.mapToGlobal(event))
         if setting == debug:
             logLevel = logging.DEBUG
@@ -104,6 +107,8 @@ class LogWindow(QtWidgets.QWidget):
             logLevel = logging.ERROR
         elif setting == crit:
             logLevel = logging.CRITICAL
+        elif setting == clear:
+            self.textEdit.clear()
         logging.getLogger().setLevel(logLevel)
         Cache().putIntoCache("logging_level", logLevel)
         self.setTitle()

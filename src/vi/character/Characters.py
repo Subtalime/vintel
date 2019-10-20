@@ -23,6 +23,7 @@ class Character:
     def setLocation(self, location: str):
         self.location = location
 
+    @property
     def getLocations(self) -> str:
         return self.location
 
@@ -32,12 +33,15 @@ class Character:
     def enable(self):
         self.setMonitoring(True)
 
+    @property
     def getName(self) -> str:
         return self.charname
 
+    @property
     def getStatus(self) -> bool:
         return self.monitor
 
+    @property
     def getMonitoring(self) -> bool:
         return self.getStatus()
 
@@ -53,7 +57,7 @@ class Characters(dict):
 
     def remove(self, *args):
         if len(args) > 0 and isinstance(args[0], Character):
-            self.pop(args[0].getName())
+            self.pop(args[0].getName)
         elif len(args) > 0:
             self.pop(args[0])
 
@@ -83,8 +87,8 @@ class Characters(dict):
         if not isinstance(character, Character):
             logging.critical("addCharacter(character) needs to be type of \"Character\"")
             return False
-        if character.getName() not in self.keys():
-            self[character.getName()] = character
+        if character.getName not in self.keys():
+            self[character.getName] = character
             if store:
                 self.storeData()
         else:
@@ -112,6 +116,13 @@ class Characters(dict):
         chars = []
         for player in self.keys():
             chars.append(player)
+        return chars
+
+    def getActiveNames(self) -> list:
+        chars = []
+        for player in self.keys():
+            if self[player].getStatus:
+                chars.append(player)
         return chars
 
     def loadData(self):

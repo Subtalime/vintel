@@ -28,14 +28,14 @@ import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 
-from vi.LogWindow import LogWindow, LogWindowHandler
-from vi import amazon_s3, evegate
+from vi.LogWindow import LogWindow
+from vi import amazon_s3
 from vi import dotlan, filewatcher
 from vi import states
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
-from vi.threads import AvatarFindThread, KOSCheckerThread, MapStatisticsThread
+from vi.threads import AvatarFindThread, MapStatisticsThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
 from vi.esi import EsiInterface
@@ -44,10 +44,9 @@ from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
 from PyQt5.uic import loadUi
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
-from vi.jumpbridgechooser import JumpbridgeChooser
+from vi.JumpBridge.JumpbridgeDialog import JumpbridgeDialog
 from vi.region.RegionChooserList import RegionChooserList
 from vi.systemchat import SystemChat
-from vi.regionchooser import RegionChooser
 from vi.character.CharacterMenu import CharacterMenu, Characters
 from vi.region.RegionMenu import RegionMenu
 from vi.dotlan import Regions
@@ -105,21 +104,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.logWindow = LogWindow()
 
         # Load user's toon names
-        self.knownPlayerNames = self.cache.getFromCache("known_player_names")
-        if self.knownPlayerNames:
-            self.knownPlayerNames = set(self.knownPlayerNames.split(","))
-        else:
-            self.knownPlayerNames = set()
-            # diagText = "Vintel scans EVE system logs and remembers your characters as they change systems.\n\nSome " \
-            #            "features (clipboard KOS checking, alarms, etc.) may not work until your character(s) have " \
-            #            "been registered. Change systems, with each character you want to monitor, while Vintel is " \
-            #            "running to remedy this."
-            # QMessageBox.warning(None, "Known Characters not Found", diagText, QMessageBox.Ok)
         self.knownPlayers = Characters()
+        self.knownPlayerNames = self.knownPlayers.getActiveNames()
         self.menubar.removeAction(self.menuCharacters.menuAction())
         self.menubar.removeAction(self.menuRegion.menuAction())
         self.menuCharacters = CharacterMenu("Characters", self, self.knownPlayers)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuCharacters)
+        self.updateCharacterMenu()
         self.menuRegion = RegionMenu("Regions", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
         # Set up user's intel rooms
@@ -175,6 +166,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def char_menu_clicked(self, action: 'QAction'):
         logging.debug("Setting Character {} to Monitor {}".format(action.text(), action.isChecked()))
         self.knownPlayers[action.text()].setMonitoring(action.isChecked())
+        # do the same with knownPlayerNames
+        if action.isChecked():
+            if action.text() not in self.knownPlayerNames:
+                self.knownPlayerNames.append(action.text())
+        else:
+            if action.text() in self.knownPlayerNames:
+                self.knownPlayerNames.remove(action.text())
 
     # TODO: unknown where is used (Window-Paint?)
     def paintEvent(self, event):
@@ -414,9 +412,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             Persisting things to the cache before closing the window
         """
         # Known playernames
-        if self.knownPlayerNames:
-            value = ",".join(set().union(self.knownPlayerNames, self.chatparser.getListeners()))
-            self.cache.putIntoCache("known_player_names", value, 60 * 60 * 24 * 30)
         self.knownPlayers.storeData()
         # Program state to cache (to read it on next startup)
         settings = ((None, "restoreGeometry", bytes(self.saveGeometry())),
@@ -524,9 +519,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                                 "soundsystem is disabled.\nIf you want sound, please install the 'pyglet' "
                                 "library. This warning will not be shown again.", QMessageBox.Ok)
         else:
+            self.soundSetupAction.setEnabled(True)
             if newValue is None:
                 newValue = self.activateSoundAction.isChecked()
             self.activateSoundAction.setChecked(newValue)
+            self.soundSetupAction.setEnabled(newValue)
             SoundManager().soundActive = newValue
 
 
@@ -739,14 +736,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def showJumpBridgeChooser(self):
         url = self.cache.getFromCache("jumpbridge_url")
-        chooser = JumpbridgeChooser(self, url)
+        chooser = JumpbridgeDialog(self, url)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.show()
-
-
-    def setSoundVolume(self, value):
-        SoundManager().setSoundVolume(value)
-
 
     def setJumpbridges(self, url):
         if url is None:
@@ -754,11 +746,15 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         try:
             data = []
             if url != "":
-                resp = requests.get(url)
-                for line in resp.iter_lines(decode_unicode=True):
-                    parts = line.strip().split()
-                    if len(parts) == 3:
-                        data.append(parts)
+                if url.startswith("http"):
+                    resp = requests.get(url)
+                    for line in resp.iter_lines(decode_unicode=True):
+                        parts = line.strip().split()
+                        if len(parts) == 3:
+                            data.append(parts)
+                else:
+                    from vi.JumpBridge.Import import Import
+                    data = Import().readGarpaFile(url)
             else:
                 data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
             self.dotlan.setJumpbridges(data)
@@ -915,7 +911,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         for message in messages:
             # If players location has changed
             if message.status == states.LOCATION:
-                self.knownPlayerNames.add(message.user)
+                self.knownPlayerNames.append(message.user)
                 self.knownPlayers[message.user].setLocation(message.systems[0])
                 self.setLocation(message.user, message.systems[0])
             elif message.status == states.KOS_STATUS_REQUEST:
