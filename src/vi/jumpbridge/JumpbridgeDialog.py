@@ -39,7 +39,7 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
 
     def saveClipboard(self):
             try:
-                data = clipboard.paste
+                data = clipboard.paste()
                 if data:
                     jb = Import.Import().readGarpaFile(clipboard=data)
                     if len(jb) > 0:

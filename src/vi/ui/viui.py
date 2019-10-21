@@ -27,6 +27,7 @@ import vi.version
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
+from PyQt5.QtGui import QColor
 
 from vi.LogWindow import LogWindow
 from vi import amazon_s3
@@ -83,7 +84,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if backGroundColor:
             # self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
             p = self.palette()
-            p.setColor(self.backgroundRole(), backGroundColor)
+            backGroundColor = backGroundColor.lstrip("#")
+            lv = len(backGroundColor)
+            bg = tuple(int(backGroundColor[i:i + lv //3], 16) for i in range(0, lv, lv //3 ))
+            p.setColor(self.backgroundRole(), QColor(bg[0], bg[1], bg[2]))
             self.setPalette(p)
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
@@ -765,7 +769,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.cache.putIntoCache("jumpbridge_url", url, 60 * 60 * 24 * 365 * 8)
             self.cache.putIntoCache("jumpbridge_data", clipdata, 60 * 60 * 24 * 365 * 8)
         except Exception as e:
-            QMessageBox.warning(None, "Loading jumpbridges failed!", "Error: {0}".format(six.text_type(e)),
+            QMessageBox.warning(self, "Loading jumpbridges failed!", "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)
 
 

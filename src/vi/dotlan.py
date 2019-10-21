@@ -362,7 +362,7 @@ class System(object):
         return self.cachedOffsetPoint
 
     def setJumpbridgeColor(self, color):
-        idName = self.name + u"_jb_marker"
+        idName = u"JB_" + self.name + u"_jb_marker"
         for element in self.mapSoup.select(u"#" + idName):
             element.decompose()
         coords = self.mapCoordinates

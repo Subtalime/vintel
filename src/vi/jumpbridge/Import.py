@@ -16,9 +16,9 @@ class Bridges(list):
 
 class Bridge(object):
     def __init__(self, region: str, start: str, end: str, status: str="Online", distance: float=0., direction: str="<>"):
-        self.region = region
-        self.start = start
-        self.end = end
+        self.region = u"{}".format(region)
+        self.start = u"{}".format(start)
+        self.end = u"{}".format(end)
         self.status = status
         self.distance = float(distance)
         self.direction = direction
