@@ -13,7 +13,7 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
         Dialog.setWindowModality(QtCore.Qt.ApplicationModal)
-        Dialog.resize(247, 300)
+        Dialog.resize(262, 300)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(Dialog)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -23,10 +23,12 @@ class Ui_Dialog(object):
         self.testSoundButton = QtWidgets.QPushButton(self.widget)
         self.testSoundButton.setGeometry(QtCore.QRect(10, 30, 103, 26))
         self.testSoundButton.setObjectName("testSoundButton")
-        self.testSoundButton.setEnabled(True)
         self.closeButton = QtWidgets.QPushButton(self.widget)
         self.closeButton.setGeometry(QtCore.QRect(10, 240, 103, 26))
         self.closeButton.setObjectName("closeButton")
+        self.stopSoundButton = QtWidgets.QPushButton(self.widget)
+        self.stopSoundButton.setGeometry(QtCore.QRect(10, 80, 101, 23))
+        self.stopSoundButton.setObjectName("stopSoundButton")
         self.horizontalLayout.addWidget(self.widget)
         self.gridLayout = QtWidgets.QGridLayout()
         self.gridLayout.setObjectName("gridLayout")
@@ -43,7 +45,6 @@ class Ui_Dialog(object):
         self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
         self.horizontalLayout.addLayout(self.gridLayout)
         self.horizontalLayout_2.addLayout(self.horizontalLayout)
-        self.stopSoundButton.setEnabled(False)
 
         self.retranslateUi(Dialog)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
@@ -53,6 +54,7 @@ class Ui_Dialog(object):
         Dialog.setWindowTitle(_translate("Dialog", "Sound Setup"))
         self.testSoundButton.setText(_translate("Dialog", "Testsound"))
         self.closeButton.setText(_translate("Dialog", "Close"))
+        self.stopSoundButton.setText(_translate("Dialog", "Stop Test"))
         self.label.setText(_translate("Dialog", "Volume"))
 
 

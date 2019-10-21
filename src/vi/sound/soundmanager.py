@@ -29,7 +29,6 @@ from collections import namedtuple
 from PyQt5.QtCore import QThread
 from vi.resources import resourcePath
 from six.moves import queue
-
 import logging
 from vi.singleton import Singleton
 
@@ -47,7 +46,8 @@ except ImportError:
 class SoundManager(six.with_metaclass(Singleton)):
     SOUNDS = {"alarm": "178032__zimbot__redalert-klaxon-sttos-recreated.wav",
               "kos": "178031__zimbot__transporterstartbeep0-sttos-recreated.wav",
-              "request": "178028__zimbot__bosun-whistle-sttos-recreated.wav"}
+              "request": "178028__zimbot__bosun-whistle-sttos-recreated.wav",
+              "stop": "Empty.wav"}
 
     soundVolume = 25  # Must be an integer between 0 and 100
     soundActive = False
@@ -57,19 +57,21 @@ class SoundManager(six.with_metaclass(Singleton)):
     _soundThread = None
 
     def __init__(self):
-        self._soundThread = self.SoundThread()
+        # self.soundThread = self.SoundThread()
         self.soundAvailable = self.platformSupportsAudio()
         if not self.platformSupportsSpeech():
             self.useSpokenNotifications = False
         if self.soundAvailable:
-            self._soundThread.start()
+            # self.soundThread.start()
+            self.player = pyglet.media.Player()
+            self.player.loop = True
 
     def platformSupportsAudio(self):
         return self.platformSupportsSpeech() or gPygletAvailable
 
     def platformSupportsSpeech(self):
-        if self._soundThread.isDarwin:
-            return True
+        # if self.soundThread.isDarwin:
+        #     return True
         return False
 
     def setUseSpokenNotifications(self, newValue):
@@ -80,9 +82,11 @@ class SoundManager(six.with_metaclass(Singleton)):
         """ Accepts and stores a number between 0 and 100.
         """
         self.soundVolume = max(0, min(100, newValue))
-        self._soundThread.setVolume(self.soundVolume)
+        if self.player:
+            self.player.volume = self.soundVolume
+        # self.soundThread.setVolume(self.soundVolume)
 
-    def playSound(self, name="alarm", message="", abbreviatedMessage=""):
+    def playSound(self, name="alarm", message="", abbreviatedMessage="", loop=False):
         """ Schedules the work, which is picked up by SoundThread.run()
         """
         if self.soundAvailable and self.soundActive:
@@ -90,11 +94,30 @@ class SoundManager(six.with_metaclass(Singleton)):
                 audioFile = None
             else:
                 audioFile = resourcePath("vi/ui/res/{0}".format(self.SOUNDS[name]))
-            self._soundThread.queue.put((audioFile, message, abbreviatedMessage))
+            if self.player:
+                try:
+                    src = media.load(audioFile, streaming=False)
+
+                except Exception as e:
+                    logging.error("Problem loading Audio-File \"{}\"".format(audioFile), e)
+
+                self.player.queue(src)
+                if self.player.playing:
+                    self.player.next_source()
+                else:
+                    self.player.play()
+                if not loop:
+                    time.sleep(1)
+                    self.player.next_source()
+                # if name != "stop":
+                #     self.playSound("stop")
+            # self.soundThread.queue.put((audioFile, message, abbreviatedMessage))
 
     def quit(self):
         if self.soundAvailable:
-            self._soundThread.quit()
+            self.player.pause()
+            self.player.delete()
+            # self.soundThread.quit()
 
     #
     #  Inner class handle audio playback without blocking the UI
@@ -115,6 +138,7 @@ class SoundManager(six.with_metaclass(Singleton)):
             self.queue = queue.Queue()
             if gPygletAvailable:
                 self.player = media.Player()
+                self.player.loop = False
             else:
                 self.player = None
             self.active = True
@@ -135,7 +159,8 @@ class SoundManager(six.with_metaclass(Singleton)):
                     if not self.speak(message):
                         self.playAudioFile(audioFile, False)
                         logging.error("SoundThread: sorry, speech not yet implemented on this platform")
-                elif audioFile is not None:
+                # elif audioFile is not None:
+                else:
                     self.playAudioFile(audioFile, False)
 
         def quit(self):
@@ -146,6 +171,9 @@ class SoundManager(six.with_metaclass(Singleton)):
                 self.player.delete()
             QThread.quit(self)
 
+        def stop(self):
+            if self.player:
+                self.player.pause()
 
         def speak(self, message):
             if self.useGoogleTTS:
@@ -286,3 +314,4 @@ class SoundManager(six.with_metaclass(Singleton)):
                 return combinedText
 
             return splitTextRecursive(inputText.replace('\n', ''), ['([\,|\.|;]+)', '( )'])
+

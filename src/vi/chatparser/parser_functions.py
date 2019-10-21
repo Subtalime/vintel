@@ -39,9 +39,9 @@ import six
 from bs4 import BeautifulSoup, Tag
 from bs4.element import NavigableString
 from vi import states
-from vi.esi.EsiHelper import EsiHelper
+from vi.esi.EsiHelper import EsiHelper, EsiInterface
 
-CHARS_TO_IGNORE = ("*", "?", ",", "!", ".")
+CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")")
 
 
 def textReplace(element, newText):

@@ -8,13 +8,12 @@ from vi.resources import resourcePath
 
 import vi.ui.JumpbridgeChooser
 
-class JumpbridgeChooser(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
+class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
     set_jump_bridge_url = pyqtSignal(str)
 
     def __init__(self, parent, url):
         QDialog.__init__(self, parent)
 
-        # loadUi(resourcePath("vi/ui/JumpbridgeChooser.ui"), self)
         self.setupUi(self)
         self.saveButton.clicked.connect(self.savePath)
         self.cancelButton.clicked.connect(self.accept)
@@ -27,9 +26,11 @@ class JumpbridgeChooser(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
     def savePath(self):
         try:
             url = six.text_type(self.urlField.text())
-            if url != "":
+            if url != "" and url.startswith("http"):
                 requests.get(url).text
-            self.set_jump_bridge_url.emit(url)
+            elif url != "":
+                open(url, "r")
             self.accept()
+            self.set_jump_bridge_url.emit(url)
         except Exception as e:
             logging.error("Finding Jumpbridgedata failed for \"{}\"".format(url), e)

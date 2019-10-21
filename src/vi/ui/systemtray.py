@@ -137,7 +137,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             title = "ALARM!"
             icon = 2
             speechText = (u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
-            text = speechText + (u"\nText: %s" % text)
+            text = speechText + (u"\nText: %s" % message.plainText)
             SoundManager().playSound("alarm", text, speechText)
             self.lastNotifications[states.ALARM] = time.time()
         elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:

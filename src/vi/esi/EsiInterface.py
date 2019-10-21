@@ -230,32 +230,43 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def calcExpiryResponse(self, resp: Response) -> datetime.datetime:
         return self.calcExpiry(resp.header.get('Expires')[0])
 
+    def _copyModel(self, data) -> dict:
+        retval = {}
+        for key, val in data.items():
+            retval[key] = val
+        return retval
     # def _cacheVar(self, function: str, **kwargs):
     #     return "_".join(("esicache", function, for var in kwargs))
     #
     def getCharacter(self, characterId: int) -> Response.data:
         # Character-Caching is based on EveTime... we want to reload after Eve is back up
         response = None
-        try:
-            if self.caching:
-                cacheKey = "_".join(("esicache", "getcharacter", str(characterId)))
-                result = Cache().getFromCache(cacheKey)
-                if result:
-                    response = literal_eval(result)
-            if not response:
+        if self.caching:
+            cacheKey = "_".join(("esicache", "getcharacter", str(characterId)))
+            result = Cache().getFromCache(cacheKey)
+            if result:
+                try:
+                    response = pickle.loads(result)
+                    # response = literal_eval(result)
+                except Exception as e:
+                    Cache().delFromCache(cacheKey)
+                    # logging.error("Unable to parse Cache-Result")
+                    pass
+        if not response:
+            try:
                 op = self.esiApp.op['get_characters_character_id'](character_id=characterId)
                 response = self.esiClient.request(op)
                 # format is {"alliance_id": xx, "ancestry_id": xx, "birthday": xx, "bloodline_id": xx, "corporation_id": xx,
                 #            "description": xx, "gender": xx, "name": xx, "race_id": xx, "security_status": xx, "title": xx}
                 if response:
                     expiry = self.calcExpiry(response.header.get('Expires')[0])
-                    response = response.data
+                    response = self._copyModel(response.data)
                     if self.caching:
-                        Cache().putIntoCache(cacheKey, str(response), expiry.seconds)
-        except Exception as e:
-            if self.caching:
-                Cache().delFromCache(cacheKey)
-            self.logger.error("Error retrieving Character \"{}\" from ESI".format(characterId), e)
+                        Cache().putIntoCache(cacheKey, pickle.dumps(response), expiry.seconds)
+            except Exception as e:
+                if self.caching:
+                    Cache().delFromCache(cacheKey)
+                self.logger.error("Error retrieving Character \"{}\" from ESI".format(characterId), e)
         return response
 
     def getCorporation(self, corpid: int) -> Response.data:

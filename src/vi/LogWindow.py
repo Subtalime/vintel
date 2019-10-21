@@ -7,6 +7,7 @@ from vi.version import DISPLAY
 
 # TODO: default to Logging.DEBUG, but filter output here to what is wanted
 # TODO: go back in the Log (File?) and show based on Log-Setting
+# TODO: prun Text-Size... may grow beyond X MB
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
 
@@ -21,7 +22,7 @@ class LogWindow(QtWidgets.QWidget):
         self.setTitle()
         self.textEdit = QtWidgets.QTextEdit(self)
         self.textEdit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
-        self.textEdit.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        self.textEdit.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
         self.textEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.textEdit.customContextMenuRequested.connect(self.contextMenuEvent)
 
@@ -92,6 +93,9 @@ class LogWindow(QtWidgets.QWidget):
         if currLevel == logging.CRITICAL:
             crit.setChecked(True)
         menu.addAction(crit)
+        menu.addSeparator()
+        clear = QtWidgets.QAction("Clear Log-Window")
+        menu.addAction(clear)
         setting = menu.exec_(self.mapToGlobal(event))
         if setting == debug:
             logLevel = logging.DEBUG
@@ -103,6 +107,8 @@ class LogWindow(QtWidgets.QWidget):
             logLevel = logging.ERROR
         elif setting == crit:
             logLevel = logging.CRITICAL
+        elif setting == clear:
+            self.textEdit.clear()
         logging.getLogger().setLevel(logLevel)
         Cache().putIntoCache("logging_level", logLevel)
         self.setTitle()
@@ -112,7 +118,7 @@ class LogWindowHandler(logging.Handler):
     def __init__(self, parent):
         logging.Handler.__init__(self)
         self.parent = parent
-        formatter = logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%I:%M:%S')
+        formatter = logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%H:%M:%S')
         self.setFormatter(formatter)
 
     def emit(self, record):
