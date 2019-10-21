@@ -24,6 +24,7 @@ import re
 import requests
 import time
 import six
+import wave
 
 from collections import namedtuple
 from PyQt5.QtCore import QThread
@@ -97,7 +98,8 @@ class SoundManager(six.with_metaclass(Singleton)):
             if self.player:
                 try:
                     src = media.load(audioFile, streaming=False)
-
+                    with wave.open(audioFile, "r") as f:
+                        duration = f.getnframes() / float(f.getnchannels() * f.getframerate())
                 except Exception as e:
                     logging.error("Problem loading Audio-File \"{}\"".format(audioFile), e)
 
@@ -107,7 +109,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 else:
                     self.player.play()
                 if not loop:
-                    time.sleep(1)
+                    time.sleep(duration)
                     self.player.next_source()
                 # if name != "stop":
                 #     self.playSound("stop")

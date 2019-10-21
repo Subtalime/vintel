@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'JumpbridgeChooser.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -22,12 +23,14 @@ class Ui_Dialog(object):
         self.gridLayout_2 = QtWidgets.QGridLayout(self.widget)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.groupBox = QtWidgets.QGroupBox(self.widget)
+        self.groupBox.setEnabled(True)
         self.groupBox.setObjectName("groupBox")
         self.gridLayout_3 = QtWidgets.QGridLayout(self.groupBox)
+        self.gridLayout_3.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
         self.gridLayout_3.setObjectName("gridLayout_3")
         self.label2 = QtWidgets.QLabel(self.groupBox)
         self.label2.setObjectName("label2")
-        self.gridLayout_3.addWidget(self.label2, 1, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.label2, 2, 0, 1, 1)
         self.verticalLayout_2 = QtWidgets.QVBoxLayout()
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.label = QtWidgets.QLabel(self.groupBox)
@@ -38,6 +41,10 @@ class Ui_Dialog(object):
         self.verticalLayout_2.addWidget(self.urlField)
         self.gridLayout_3.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
         self.gridLayout_2.addWidget(self.groupBox, 0, 0, 1, 1)
+        self.clipboardButton = QtWidgets.QPushButton(self.widget)
+        self.clipboardButton.setEnabled(False)
+        self.clipboardButton.setObjectName("clipboardButton")
+        self.gridLayout_2.addWidget(self.clipboardButton, 1, 0, 1, 1)
         self.verticalLayout.addWidget(self.widget)
         self.widget2 = QtWidgets.QWidget(Dialog)
         self.widget2.setObjectName("widget2")
@@ -76,8 +83,7 @@ class Ui_Dialog(object):
         self.groupBox.setTitle(_translate("Dialog", "Path to the Data"))
         self.label2.setText(_translate("Dialog", "For example: http://example.org/jumpbridge_data.txt"))
         self.label.setText(_translate("Dialog", "Please enter the URL to the Jumpbridge data:"))
+        self.clipboardButton.setText(_translate("Dialog", "Paste Clipboard"))
         self.groupBox2.setTitle(_translate("Dialog", "Format of the jumpbridge data:"))
         self.cancelButton.setText(_translate("Dialog", "Cancel"))
         self.saveButton.setText(_translate("Dialog", "Save"))
-
-

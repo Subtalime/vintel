@@ -740,7 +740,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.show()
 
-    def setJumpbridges(self, url):
+    def setJumpbridges(self, url: str=None, clipdata: str=None):
         if url is None:
             url = ""
         try:
@@ -755,10 +755,14 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 else:
                     from vi.JumpBridge.Import import Import
                     data = Import().readGarpaFile(url)
+            elif clipdata:
+                from vi.JumpBridge.Import import Import
+                data = Import().readGarpaFile(clipboard=clipdata)
             else:
                 data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
             self.dotlan.setJumpbridges(data)
             self.cache.putIntoCache("jumpbridge_url", url, 60 * 60 * 24 * 365 * 8)
+            self.cache.putIntoCache("jumpbridge_data", clipdata, 60 * 60 * 24 * 365 * 8)
         except Exception as e:
             QMessageBox.warning(None, "Loading jumpbridges failed!", "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)

@@ -9,18 +9,19 @@ class Bridges(list):
         for bridge in self:
             routes = []
             routes.append(bridge.start)
-            routes.append("<>")
+            routes.append(bridge.direction)
             routes.append(bridge.end)
             bridgeList.append(routes)
         return bridgeList
 
 class Bridge(object):
-    def __init__(self, region: str, start: str, end: str, status: str="Online", distance: float=0.):
+    def __init__(self, region: str, start: str, end: str, status: str="Online", distance: float=0., direction: str="<>"):
         self.region = region
         self.start = start
         self.end = end
         self.status = status
         self.distance = float(distance)
+        self.direction = direction
 
 class Import:
     def __init__(self):
@@ -30,7 +31,6 @@ class Import:
         self.bridges.clear()
         for line in fileContent:
             line = re.sub("[ \t]+", " ", line)
-            # line = str(line).replace("\t", " ").strip(" ")
             if line.find("@") == -1:
                 continue
             columns = line.split(" ")
@@ -40,6 +40,15 @@ class Import:
                 continue
 
             self.bridges.append(Bridge(columns[0], columns[1], columns[4], columns[7], columns[10]))
+        if len(self.bridges) == 0:
+            # maybe it's already in Export-Format?
+            for line in fileContent:
+                line = re.sub("[ \t]+", " ", line)
+                columns = line.split(" ")
+                if len(columns) != 3:
+                    break
+                self.bridges.append(Bridge(None, columns[0], columns[2], direction=columns[1]))
+
         return self.bridges.export()
 
     def readGarpaFile(self, fileName: str=None, clipboard: str=None):
@@ -53,7 +62,7 @@ class Import:
                 return self.convertGarpaData(content)
         except Exception as e:
             logging.error("Error in importing Garpa Jumpbridges", e)
-        return False
+        return []
 
 
 if __name__ == "__main__":
