@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSignal
 from vi.resources import resourcePath
 import clipboard
 import vi.ui.JumpbridgeChooser
-from vi.JumpBridge import Import
+from vi.jumpbridge import Import
 
 class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
     set_jump_bridge_url = pyqtSignal(str, str)

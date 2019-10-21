@@ -44,7 +44,7 @@ from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
 from PyQt5.uic import loadUi
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
-from vi.JumpBridge.JumpbridgeDialog import JumpbridgeDialog
+from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
 from vi.region.RegionChooserList import RegionChooserList
 from vi.systemchat import SystemChat
 from vi.character.CharacterMenu import CharacterMenu, Characters
@@ -52,6 +52,7 @@ from vi.region.RegionMenu import RegionMenu
 from vi.dotlan import Regions
 from vi.esi.EsiInterface import EsiInterface
 from vi.sound.SoundSettingDialog import SoundSettingDialog
+from vi.ui.MainWindow import Ui_MainWindow
 
 
 # Timer intervals
@@ -59,10 +60,6 @@ MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
 CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
 
-from vi.ui.MainWindow import Ui_MainWindow
-
-
-# class MainWindow(QMainWindow):
 class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # file_change = pyqtSignal()
     # newer_version = pyqtSignal()
@@ -72,12 +69,20 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def __init__(self, pathToLogs, trayIcon, backGroundColor):
 
         super(self.__class__, self).__init__()
-        # QMainWindow.__init__(self)
+        self.avatarFindThread = None
+        self.esiThread = None
+        self.filewatcherThread = None
+        self.statisticsThread = None
+        self.versionCheckThread = None
         self.cache = Cache()
         self.setupUi(self)
         self.setWindowTitle(vi.version.DISPLAY)
+        # let's try this differently
         if backGroundColor:
-            self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
+            # self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
+            p = self.palette()
+            p.setColor(self.backgroundRole(), backGroundColor)
+            self.setPalette(p)
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -100,12 +105,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.scanIntelForKosRequestsEnabled = False
         self.mapPositionsDict = {}
         self.content = None
-        # TODO: add Popup to select Logging-Level which applies to the
         self.logWindow = LogWindow()
 
         # Load user's toon names
         self.knownPlayers = Characters()
-        self.knownPlayerNames = self.knownPlayers.getActiveNames()
         self.menubar.removeAction(self.menuCharacters.menuAction())
         self.menubar.removeAction(self.menuRegion.menuAction())
         self.menuCharacters = CharacterMenu("Characters", self, self.knownPlayers)
@@ -166,13 +169,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def char_menu_clicked(self, action: 'QAction'):
         logging.debug("Setting Character {} to Monitor {}".format(action.text(), action.isChecked()))
         self.knownPlayers[action.text()].setMonitoring(action.isChecked())
-        # do the same with knownPlayerNames
-        if action.isChecked():
-            if action.text() not in self.knownPlayerNames:
-                self.knownPlayerNames.append(action.text())
-        else:
-            if action.text() in self.knownPlayerNames:
-                self.knownPlayerNames.remove(action.text())
 
     # TODO: unknown where is used (Window-Paint?)
     def paintEvent(self, event):
@@ -290,6 +286,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def setupThreads(self):
         logging.debug("Creating threads")
 
+        # let's hope, this will speed up start-up
+        self.esiThread = vi.esi.EsiInterface.EsiThread()
+        self.esiThread.start()
+        self.esiThread.requestInstance()
+
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
         self.avatarFindThread.avatar_update.connect(self.updateAvatarOnChatEntry)
@@ -312,10 +313,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # statisticsThread is blocked until first call of requestStatistics
         self.statisticsThread.start()
 
-        # let's hope, this will speed up start-up
-        self.esiThread = vi.esi.EsiInterface.EsiThread()
-        self.esiThread.start()
-        self.esiThread.requestInstance()
         logging.debug("Finished Creating threads")
 
     # TODO: store each system configured in Regions
@@ -614,7 +611,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # Limit redundant kos checks
         if contentTuple != self.oldClipboardContent:
             parts = tuple(content.split("\n"))
-            knownPlayers = set().union(self.knownPlayerNames, self.chatparser.getListeners())
+            knownPlayers = set().union(self.knownPlayers.getActiveNames(), self.chatparser.getListeners())
             for part in parts:
                 # Make sure user is in the content (this is a check of the local system in Eve).
                 # also, special case for when you have no knonwnPlayers (initial use)
@@ -630,7 +627,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
         system = self.systems[str(systemName)]
         sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries, list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
-        # sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries, self.knownPlayerNames)
         self.chat_message_added.connect(sc.addChatEntry)
         self.avatar_loaded.connect(sc.newAvatarAvailable)
         sc.location_set.connect(self.setLocation)
@@ -753,10 +749,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                         if len(parts) == 3:
                             data.append(parts)
                 else:
-                    from vi.JumpBridge.Import import Import
+                    from vi.jumpbridge.Import import Import
                     data = Import().readGarpaFile(url)
             elif clipdata:
-                from vi.JumpBridge.Import import Import
+                from vi.jumpbridge.Import import Import
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
                 data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
@@ -915,7 +911,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         for message in messages:
             # If players location has changed
             if message.status == states.LOCATION:
-                self.knownPlayerNames.append(message.user)
                 self.knownPlayers[message.user].setLocation(message.systems[0])
                 self.setLocation(message.user, message.systems[0])
             elif message.status == states.KOS_STATUS_REQUEST:
@@ -937,7 +932,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     for system in message.systems:
                         systemname = system.name
                         systemList[systemname].setStatus(message.status)
-                        if message.status in (states.REQUEST, states.ALARM) and message.user not in self.knownPlayerNames:
+                        if message.status in (states.REQUEST, states.ALARM) and message.user not in self.knownPlayers.getActiveNames():
                             alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
                             for nSystem, data in system.getNeighbours(alarmDistance).items():
                                 distance = data["distance"]

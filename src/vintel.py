@@ -105,6 +105,7 @@ class Application(QApplication):
             logLevel = logging.WARN
         backColor = vintelCache.getFromCache("background_color")
         if backColor:
+
             backGroundColor = backColor
             self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 

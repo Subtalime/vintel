@@ -58,14 +58,12 @@ class SoundManager(six.with_metaclass(Singleton)):
     _soundThread = None
 
     def __init__(self):
-        # self.soundThread = self.SoundThread()
+        self.soundThread = self.SoundThread()
         self.soundAvailable = self.platformSupportsAudio()
         if not self.platformSupportsSpeech():
             self.useSpokenNotifications = False
         if self.soundAvailable:
-            # self.soundThread.start()
-            self.player = pyglet.media.Player()
-            self.player.loop = True
+            self.soundThread.start()
 
     def platformSupportsAudio(self):
         return self.platformSupportsSpeech() or gPygletAvailable
@@ -83,9 +81,7 @@ class SoundManager(six.with_metaclass(Singleton)):
         """ Accepts and stores a number between 0 and 100.
         """
         self.soundVolume = max(0, min(100, newValue))
-        if self.player:
-            self.player.volume = self.soundVolume
-        # self.soundThread.setVolume(self.soundVolume)
+        self.soundThread.setVolume(self.soundVolume)
 
     def playSound(self, name="alarm", message="", abbreviatedMessage="", loop=False):
         """ Schedules the work, which is picked up by SoundThread.run()
@@ -95,31 +91,11 @@ class SoundManager(six.with_metaclass(Singleton)):
                 audioFile = None
             else:
                 audioFile = resourcePath("vi/ui/res/{0}".format(self.SOUNDS[name]))
-            if self.player:
-                try:
-                    src = media.load(audioFile, streaming=False)
-                    with wave.open(audioFile, "r") as f:
-                        duration = f.getnframes() / float(f.getnchannels() * f.getframerate())
-                except Exception as e:
-                    logging.error("Problem loading Audio-File \"{}\"".format(audioFile), e)
-
-                self.player.queue(src)
-                if self.player.playing:
-                    self.player.next_source()
-                else:
-                    self.player.play()
-                if not loop:
-                    time.sleep(duration)
-                    self.player.next_source()
-                # if name != "stop":
-                #     self.playSound("stop")
-            # self.soundThread.queue.put((audioFile, message, abbreviatedMessage))
+            self.soundThread.queue.put((audioFile, message, abbreviatedMessage))
 
     def quit(self):
         if self.soundAvailable:
-            self.player.pause()
-            self.player.delete()
-            # self.soundThread.quit()
+            self.soundThread.quit()
 
     #
     #  Inner class handle audio playback without blocking the UI
@@ -175,7 +151,7 @@ class SoundManager(six.with_metaclass(Singleton)):
 
         def stop(self):
             if self.player:
-                self.player.pause()
+                self.player.next_source()
 
         def speak(self, message):
             if self.useGoogleTTS:
@@ -192,17 +168,19 @@ class SoundManager(six.with_metaclass(Singleton)):
         def handleIdleTasks(self):
             self.speakRandomChuckNorrisJoke()
 
-
         # Audio subsytem access
-
         def playAudioFile(self, filename, stream=False):
             try:
                 volume = float(self.volume) / 100.0
                 if self.player:
+                    with wave.open(filename, "r") as f:
+                        duration = f.getnframes() / float(f.getnchannels() * f.getframerate())
                     src = media.load(filename, streaming=stream)
                     self.player.queue(src)
                     self.player.volume = volume
                     self.player.play()
+                    time.sleep(duration)
+                    self.player.next_source()
                 elif self.isDarwin:
                     subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
             except Exception as e:
