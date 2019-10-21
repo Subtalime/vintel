@@ -81,14 +81,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle(vi.version.DISPLAY)
         # let's try this differently
-        if backGroundColor:
-            # self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
-            p = self.palette()
-            backGroundColor = backGroundColor.lstrip("#")
-            lv = len(backGroundColor)
-            bg = tuple(int(backGroundColor[i:i + lv //3], 16) for i in range(0, lv, lv //3 ))
-            p.setColor(self.backgroundRole(), QColor(bg[0], bg[1], bg[2]))
-            self.setPalette(p)
+        self.setColor(backGroundColor)
+        self.message_expiry = MESSAGE_EXPIRY_SECS
+        self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
+        self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
+        self.setConstants()
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -165,6 +162,32 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.setupThreads()
         self.setupMap(True)
 
+
+    def setColor(self, color: str=None):
+        if not color:
+            color = self.cache.getFromCache("background_color", True)
+        if color:
+            # self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
+            p = self.palette()
+            backGroundColor = color.lstrip("#")
+            lv = len(backGroundColor)
+            bg = tuple(int(backGroundColor[i:i + lv //3], 16) for i in range(0, lv, lv //3 ))
+            p.setColor(self.backgroundRole(), QColor(bg[0], bg[1], bg[2]))
+            self.setPalette(p)
+
+    def setConstants(self):
+        self.map_update_interval = self.cache.getFromCache("map_update_interval", True)
+        if not self.map_update_interval:
+            self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
+            self.cache.putIntoCache("map_update_interval", self.map_update_interval)
+        self.clipboard_check_interval = self.cache.getFromCache("clipboard_check_interval", True)
+        if not self.clipboard_check_interval:
+            self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
+            self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
+        self.message_expiry = self.cache.getFromCache("message_expiry", True)
+        if not self.message_expiry:
+            self.message_expiry = MESSAGE_EXPIRY_SECS
+            self.cache.putIntoCache("message_expiry", self.message_expiry)
 
     def updateCharacterMenu(self):
         self.menuCharacters.removeItems()
@@ -267,6 +290,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def settings(self):
         setting = SettingsDialog(self)
+        setting.settings_saved.connect(self.setConstants)
+        setting.settings_saved.connect(self.setColor)
+        setting.show()
 
     # Menu-Selection of Regions
     def processRegionSelect(self, qAction: 'QAction'):
@@ -391,7 +417,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         logging.debug("Updating the map")
         self.updateMapView()
         self.setInitialMapPositionForRegion(regionName)
-        self.mapTimer.start(MAP_UPDATE_INTERVAL_MSECS)
+        self.mapTimer.start(self.map_update_interval)
         # Allow the file watcher to run now that all else is set up
         self.filewatcherThread.paused = False
         logging.debug("Map setup complete")
@@ -403,7 +429,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         """
         self.oldClipboardContent = tuple(six.text_type(self.clipboard.text()))
         self.clipboardTimer.timeout.connect(self.clipboardChanged)
-        self.clipboardTimer.start(CLIPBOARD_CHECK_INTERVAL_MSECS)
+        self.clipboardTimer.start(self.clipboard_check_interval)
 
     def stopClipboardTimer(self):
         if self.clipboardTimer:
@@ -810,7 +836,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 chatListWidgetItem = self.chatListWidget.item(0)
                 chatEntryWidget = self.chatListWidget.itemWidget(chatListWidgetItem)
                 message = chatEntryWidget.message
-                if now - time.mktime(message.timestamp.timetuple()) > MESSAGE_EXPIRY_SECS:
+                if now - time.mktime(message.timestamp.timetuple()) > self.message_expiry:
                     self.chatEntries.remove(chatEntryWidget)
                     self.chatListWidget.takeItem(0)
 
