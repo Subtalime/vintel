@@ -53,6 +53,8 @@ from vi.dotlan import Regions
 from vi.esi.EsiInterface import EsiInterface
 from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
+from vi.settings.SettingsDialog import SettingsDialog
+
 
 
 # Timer intervals
@@ -257,7 +259,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.mapView.page().scrollPositionChanged().connect(self.mapPositionChanged)
         self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
 
+        self.actionSettings.triggered.connect(self.settings)
 
+    def settings(self):
+        setting = SettingsDialog(self)
 
     # Menu-Selection of Regions
     def processRegionSelect(self, qAction: 'QAction'):
