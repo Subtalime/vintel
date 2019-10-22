@@ -31,16 +31,15 @@ from vi.chatentrywidget import ChatEntryWidget
 from vi.esi.EsiHelper import EsiHelper
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 
-
+# attempt to run this in a thread rather thana timer
+# to reduce flickering on reload
 class MapUpdateThread(QThread):
     map_update = pyqtSignal(str)
 
     def __init__(self):
         QThread.__init__(self)
         self.queue = queue.Queue
-        self.initialMapPosition = None
         self.active = True
-
 
     def run(self):
         def injectScrollPosition(self, content: str, scroll: str) -> str:
@@ -56,10 +55,6 @@ class MapUpdateThread(QThread):
                 return
             try:
                 logging.debug("Setting Map-Content start")
-                # only on change of Region, reload the last position stored
-                if self.initialMapPosition:
-                    scrollPosition = self.initialMapPosition
-                    self.initialMapPosition = None
                 zoomfactor = float(zoomFactor)
                 scrollTo = ""
                 if scrollPosition:

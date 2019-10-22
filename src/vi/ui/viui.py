@@ -725,7 +725,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             logging.error("updateStatisticsOnMap, error: %s" % text)
 
     def updateMapView(self):
-        self.mapUpdateThread.queue.put(self.dotlan.svg, self.mapView.zoomFactor, self.mapView.page().scrollPosition())
+        scrollPosition = self.mapView.scrollPosition()
+        # scrollPosition = self.mapView.page().scrollPosition()
+        if self.initialMapPosition:
+            scrollPosition = self.initialMapPosition
+            self.initialMapPosition = None
+
+        self.mapUpdateThread.queue.put(self.dotlan.svg, self.mapView.zoomFactor, scrollPosition)
         # self.setMapContent(self.dotlan.svg)
 
     def zoomMapIn(self):
@@ -750,7 +756,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def mapPositionChanged(self, qPointF):
         regionName = self.cache.getFromCache("region_name")
         if regionName:
-            scrollPosition = self.mapView.page().scrollPosition()
+            scrollPosition = self.mapView.scrollPosition()
             # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
             self.mapPositionsDict[regionName] = (scrollPosition.x(), scrollPosition.y())
 

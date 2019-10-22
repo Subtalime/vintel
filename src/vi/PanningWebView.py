@@ -27,6 +27,9 @@ class PanningWebView(QWidget):
     def zoomFactor(self) -> float:
         return self.page().zoomFactor()
 
+    def scrollPosition(self):
+        return self.page().scrollPosition()
+
     # imitate QWebEngineView
     def page(self) -> QWebEnginePage:
         return self.mapView
