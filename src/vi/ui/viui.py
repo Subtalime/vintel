@@ -36,7 +36,7 @@ from vi import states
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
-from vi.threads import AvatarFindThread, MapStatisticsThread
+from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
 from vi.esi import EsiInterface
@@ -56,12 +56,11 @@ from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.settings.SettingsDialog import SettingsDialog
 
-
-
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
 CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
+
 
 class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # file_change = pyqtSignal()
@@ -77,6 +76,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.filewatcherThread = None
         self.statisticsThread = None
         self.versionCheckThread = None
+        self.mapUpdateThread = None
         self.cache = Cache()
         self.setupUi(self)
         self.setWindowTitle(vi.version.DISPLAY)
@@ -162,8 +162,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.setupThreads()
         self.setupMap(True)
 
-
-    def setColor(self, color: str=None):
+    def setColor(self, color: str = None):
         if not color:
             color = self.cache.getFromCache("background_color", True)
         if color:
@@ -171,7 +170,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             p = self.palette()
             backGroundColor = color.lstrip("#")
             lv = len(backGroundColor)
-            bg = tuple(int(backGroundColor[i:i + lv //3], 16) for i in range(0, lv, lv //3 ))
+            bg = tuple(int(backGroundColor[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
             p.setColor(self.backgroundRole(), QColor(bg[0], bg[1], bg[2]))
             self.setPalette(p)
 
@@ -196,7 +195,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.menuCharacters.triggered.connect(self.char_menu_clicked)
 
     def char_menu_clicked(self, action: 'QAction'):
-        logging.debug("Setting Character {} to Monitor {}".format(action.text(), action.isChecked()))
+        logging.debug(
+            "Setting Character {} to Monitor {}".format(action.text(), action.isChecked()))
         self.knownPlayers[action.text()].setMonitoring(action.isChecked())
 
     # TODO: unknown where is used (Window-Paint?)
@@ -214,7 +214,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             # todo: add a button to delete the cache / DB
             self.cache.putIntoCache("settings", "", 0)
             self.trayIcon.showMessage("Settings error",
-                                      "Something went wrong loading saved state:\n {0}".format(str(e)), 1)
+                                      "Something went wrong loading saved state:\n {0}".format(
+                                          str(e)), 1)
 
     def wireUpUIConnections(self):
         # Wire up general UI connections
@@ -227,76 +228,47 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.clipboard.changed(QClipboard.Clipboard).connect(self.clipboardChanged)
         # self.connect(self.clipboard, PYQT_SIGNAL("changed(QClipboard::Mode)"), self.clipboardChanged)
         self.autoScanIntelAction.triggered.connect(self.changeAutoScanIntel)
-        # self.connect(self.autoScanIntelAction, PYQT_SIGNAL("triggered()"), self.changeAutoScanIntel)
         self.kosClipboardActiveAction.triggered.connect(self.changeKosCheckClipboard)
-        # self.connect(self.kosClipboardActiveAction, PYQT_SIGNAL("triggered()"), self.changeKosCheckClipboard)
         self.zoomInButton.clicked.connect(self.zoomMapIn)
-        # self.connect(self.zoomInButton, PYQT_SIGNAL("clicked()"), self.zoomMapIn)
         self.zoomOutButton.clicked.connect(self.zoomMapOut)
-        # self.connect(self.zoomOutButton, PYQT_SIGNAL("clicked()"), self.zoomMapOut)
         self.statisticsButton.clicked.connect(self.changeStatisticsVisibility)
-        # self.connect(self.statisticsButton, PYQT_SIGNAL("clicked()"), self.changeStatisticsVisibility)
         self.jumpbridgesButton.clicked.connect(self.changeJumpbridgesVisibility)
-        # self.connect(self.jumpbridgesButton, PYQT_SIGNAL("clicked()"), self.changeJumpbridgesVisibility)
         self.chatLargeButton.clicked.connect(self.chatLarger)
-        # self.connect(self.chatLargeButton, PYQT_SIGNAL("clicked()"), self.chatLarger)
         self.chatSmallButton.clicked.connect(self.chatSmaller)
-        # self.connect(self.chatSmallButton, PYQT_SIGNAL("clicked()"), self.chatSmaller)
-        # self.infoAction.triggered.connect(self.showInfo)
-        # self.connect(self.infoAction, PYQT_SIGNAL("triggered()"), self.showInfo)
         self.actionAbout.triggered.connect(self.showInfo)
-        # self.connect(self.showChatAvatarsAction, PYQT_SIGNAL("triggered()"), self.changeShowAvatars)
         self.showChatAvatarsAction.triggered.connect(self.changeShowAvatars)
-        # self.connect(self.alwaysOnTopAction, PYQT_SIGNAL("triggered()"), self.changeAlwaysOnTop)
         self.alwaysOnTopAction.triggered.connect(self.changeAlwaysOnTop)
-        # self.connect(self.chooseChatRoomsAction, PYQT_SIGNAL("triggered()"), self.showChatroomChooser)
         self.chooseChatRoomsAction.triggered.connect(self.showChatroomChooser)
 
+        self.showChatAction.triggered.connect(self.changeChatVisibility)
+        self.soundSetupAction.triggered.connect(self.showSoundSetup)
+        self.activateSoundAction.triggered.connect(self.changeSound)
+        self.useSpokenNotificationsAction.triggered.connect(self.changeUseSpokenNotifications)
+        self.trayIcon.alarm_distance.connect(self.changeAlarmDistance)
+        self.framelessWindowAction.triggered.connect(self.changeFrameless)
+        self.trayIcon.change_frameless.connect(self.changeFrameless)
+        self.frameButton.clicked.connect(self.changeFrameless)
+        # self.quitAction.triggered.connect(self.close)
+        self.actionQuit.triggered.connect(self.close)
+        self.trayIcon.quit_me.connect(self.close)
+        self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
+        self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
+        self.actionSettings.triggered.connect(self.settings)
+
+        # if Log-Window is disabled for any reason
         if not self.logWindow:
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
-
-        # self.chooseRegionAction.triggered.connect(self.showRegionChooser)
-        # self.connect(self.showChatAction, PYQT_SIGNAL("triggered()"), self.changeChatVisibility)
-        self.showChatAction.triggered.connect(self.changeChatVisibility)
-        # self.connect(self.soundSetupAction, PYQT_SIGNAL("triggered()"), self.showSoundSetup)
-        self.soundSetupAction.triggered.connect(self.showSoundSetup)
-        # self.connect(self.activateSoundAction, PYQT_SIGNAL("triggered()"), self.changeSound)
-        self.activateSoundAction.triggered.connect(self.changeSound)
-        # self.connect(self.useSpokenNotificationsAction, PYQT_SIGNAL("triggered()"), self.changeUseSpokenNotifications)
-        self.useSpokenNotificationsAction.triggered.connect(self.changeUseSpokenNotifications)
-        # self.connect(self.trayIcon, PYQT_SIGNAL("alarm_distance"), self.changeAlarmDistance)
-        self.trayIcon.alarm_distance.connect(self.changeAlarmDistance)
-        # self.connect(self.framelessWindowAction, PYQT_SIGNAL("triggered()"), self.changeFrameless)
-        self.framelessWindowAction.triggered.connect(self.changeFrameless)
-        # self.connect(self.trayIcon, PYQT_SIGNAL("change_frameless"), self.changeFrameless)
-        self.trayIcon.change_frameless.connect(self.changeFrameless)
-        # self.connect(self.frameButton, PYQT_SIGNAL("clicked()"), self.changeFrameless)
-        self.frameButton.clicked.connect(self.changeFrameless)
-        # self.connect(self.quitAction, PYQT_SIGNAL("triggered()"), self.close)
-        # self.quitAction.triggered.connect(self.close)
-        self.actionQuit.triggered.connect(self.close)
-        # self.connect(self.trayIcon, PYQT_SIGNAL("quit"), self.close)
-        self.trayIcon.quit_me.connect(self.close)
-        # self.connect(self.jumpbridgeDataAction, PYQT_SIGNAL("triggered()"), self.showJumbridgeChooser)
-        self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
-        # self.jumpbridgeDataAction.triggered.connect(self.showJumbridgeChooser)
-        # TODO: this needs to be fixed/adapted to new WebWidget
-        # self.mapView.page().scrollPosition().connect(self.mapPositionChanged)
-        # self.mapView.page().scrollPositionChanged().connect(self.mapPositionChanged)
-        self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
-
-        self.actionSettings.triggered.connect(self.settings)
 
     def settings(self):
         setting = SettingsDialog(self)
         setting.settings_saved.connect(self.setConstants)
         setting.settings_saved.connect(self.setColor)
+        setting.settings_saved.connect(self.restartClipboardTimer)
         setting.show()
 
     # Menu-Selection of Regions
     def processRegionSelect(self, qAction: 'QAction'):
-        var = qAction.objectName()
         if qAction.objectName() == "region_select":
             logging.debug("Opened Region-Selector Dialog")
             self.showRegionChooser()
@@ -304,7 +276,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             logging.debug("Opened JumpBridge dialog")
             self.showJumpBridgeChooser()
         else:
-            Cache().putIntoCache("region_name", qAction.text(), Regions.CACHE_TIME)
+            self.cache.putIntoCache("region_name", qAction.text(), Regions.CACHE_TIME)
             logging.debug("Set Region to {}".format(qAction.text()))
             self.setupMap()
 
@@ -343,6 +315,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
         self.versionCheckThread.start()
 
+        self.mapUpdateThread = MapUpdateThread()
+        self.mapUpdateThread.map_update.connect(self.mapUpdate)
+        self.mapUpdateThread.start()
+
         self.statisticsThread = MapStatisticsThread()
         self.statisticsThread.statistic_data_update.connect(self.updateStatisticsOnMap)
         # statisticsThread is blocked until first call of requestStatistics
@@ -363,16 +339,29 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             regionName = "Delve"
         svg = None
         try:
-            with open(resourcePath("vi/ui/res/mapdata/{0}.svg".format(regionName))) as svgFile:
+            if regionName.endswith(".svg"):
+                path = resourcePath("vi/ui/res/mapdata/{0}".format(regionName))
+            else:
+                path = resourcePath("vi/ui/res/mapdata/{0}.svg".format(regionName))
+            with open(path) as svgFile:
                 svg = svgFile.read()
         except Exception as e:
+            if regionName.endswith(".svg"):
+                msgBox = QMessageBox()
+                msgBox.move(self.rect().center())
+                msgBox.critical(None, "Error loading map file \"{}\"".format(path),
+                                six.text_type(e), QMessageBox.Ok)
+                msgBox.exec_()
             pass
 
         try:
             self.dotlan = dotlan.Map(regionName, svg)
         except dotlan.DotlanException as e:
             logging.error(e)
-            QMessageBox.critical(None, "Error getting map", six.text_type(e), QMessageBox.Ok)
+            msgBox = QMessageBox()
+            msgBox.move(self.rect().center())
+            msgBox.critical(None, "Error getting map", six.text_type(e), QMessageBox.Ok)
+            msgBox.exec_()
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 self.cache.putIntoCache("region_name", "Delve")
@@ -382,8 +371,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
             diagText = "Something went wrong getting map data. Proceeding with older cached data. " \
-                       "Check for a newer version and inform the maintainer.\n\nError: {0} {1}".format(type(e),
-                                                                                                       six.text_type(e))
+                       "Check for a newer version and inform the maintainer.\n\nError: {0} {1}".format(
+                type(e),
+                six.text_type(e))
             logging.warning(diagText)
             QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
@@ -417,10 +407,14 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         logging.debug("Updating the map")
         self.updateMapView()
         self.setInitialMapPositionForRegion(regionName)
-        self.mapTimer.start(self.map_update_interval)
+        self.restartMapTimer()
         # Allow the file watcher to run now that all else is set up
         self.filewatcherThread.paused = False
         logging.debug("Map setup complete")
+
+    def restartMapTimer(self):
+        # according to Documentation, if timer is already running, it will stop and start with new interval
+        self.mapTimer.start(self.map_update_interval)
 
     def startClipboardTimer(self):
         """
@@ -438,6 +432,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             except Exception:
                 pass
             self.clipboardTimer.stop()
+
+    def restartClipboardTimer(self):
+        self.stopClipboardTimer()
+        self.startClipboardTimer()
 
     def closeEvent(self, event):
         """
@@ -461,7 +459,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     (None, "loadInitialMapPositions", self.mapPositionsDict),
                     (None, "setSoundVolume", SoundManager().soundVolume),
                     (None, "changeFrameless", self.framelessWindowAction.isChecked()),
-                    (None, "changeUseSpokenNotifications", self.useSpokenNotificationsAction.isChecked()),
+                    (None, "changeUseSpokenNotifications",
+                     self.useSpokenNotificationsAction.isChecked()),
                     (None, "changeKosCheckClipboard", self.kosClipboardActiveAction.isChecked()),
                     (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled))
         strsettings = str(settings)
@@ -480,6 +479,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.versionCheckThread.wait()
             self.statisticsThread.quit()
             self.statisticsThread.wait()
+            self.mapUpdateThread.quit()
+            self.mapUpdateThread.wait()
             self.esiThread.quit()
             self.esiThread.wait()
         except Exception:
@@ -490,18 +491,16 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
         event.accept()
 
-
     def notifyNewerVersion(self, newestVersion):
         self.trayIcon.showMessage("Newer Version",
-                                  ("An update is available for {}.\n{}".format(vi.version.PROGNAME, vi.version.URL)))
-
+                                  ("An update is available for {}.\n{}".format(vi.version.PROGNAME,
+                                                                               vi.version.URL)))
 
     def changeChatVisibility(self, newValue=None):
         if newValue is None:
             newValue = self.showChatAction.isChecked()
         self.showChatAction.setChecked(newValue)
         self.chatbox.setVisible(newValue)
-
 
     def changeKosCheckClipboard(self, newValue=None):
         if newValue is None:
@@ -512,13 +511,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         else:
             self.stopClipboardTimer()
 
-
     def changeAutoScanIntel(self, newValue=None):
         if newValue is None:
             newValue = self.autoScanIntelAction.isChecked()
         self.autoScanIntelAction.setChecked(newValue)
         self.scanIntelForKosRequestsEnabled = newValue
-
 
     def changeUseSpokenNotifications(self, newValue=None):
         if SoundManager().platformSupportsSpeech():
@@ -530,7 +527,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.useSpokenNotificationsAction.setChecked(False)
             self.useSpokenNotificationsAction.setEnabled(False)
 
-
     def changeOpacity(self, newValue=None):
         if newValue is not None:
             for action in self.opacityGroup.actions():
@@ -538,7 +534,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     action.setChecked(True)
         action = self.opacityGroup.checkedAction()
         self.setWindowOpacity(action.opacity)
-
 
     def changeSound(self, newValue=None, disable=False):
         if disable:
@@ -558,7 +553,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.soundSetupAction.setEnabled(newValue)
             SoundManager().soundActive = newValue
 
-
     def changeAlwaysOnTop(self, newValue=None):
         if newValue is None:
             newValue = self.alwaysOnTopAction.isChecked()
@@ -569,7 +563,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         else:
             self.setWindowFlags(self.windowFlags() & (~QtCore.Qt.WindowStaysOnTopHint))
         self.show()
-
 
     def changeFrameless(self, newValue=None):
         if newValue is None:
@@ -588,7 +581,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             cm.framelessCheck.setChecked(newValue)
         self.show()
 
-
     def changeShowAvatars(self, newValue=None):
         if newValue is None:
             newValue = self.showChatAvatarsAction.isChecked()
@@ -597,23 +589,19 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         for entry in self.chatEntries:
             entry.avatarLabel.setVisible(newValue)
 
-
     def changeChatFontSize(self, newSize):
         if newSize:
             for entry in self.chatEntries:
                 entry.changeFontSize(newSize)
             ChatEntryWidget.TEXT_SIZE = newSize
 
-
     def chatSmaller(self):
         newSize = ChatEntryWidget.TEXT_SIZE - 1
         self.changeChatFontSize(newSize)
 
-
     def chatLarger(self):
         newSize = ChatEntryWidget.TEXT_SIZE + 1
         self.changeChatFontSize(newSize)
-
 
     def changeAlarmDistance(self, distance):
         self.alarmDistance = distance
@@ -623,12 +611,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     action.setChecked(True)
         self.trayIcon.alarmDistance = distance
 
-
     def changeJumpbridgesVisibility(self):
         newValue = self.dotlan.changeJumpbridgesVisibility()
         self.jumpbridgesButton.setChecked(newValue)
         self.updateMapView()
-
 
     def changeStatisticsVisibility(self):
         newValue = self.dotlan.changeStatisticsVisibility()
@@ -637,16 +623,17 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if newValue:
             self.statisticsThread.requestStatistics()
 
-
     def clipboardChanged(self, mode=0):
-        if not (mode == 0 and self.kosClipboardActiveAction.isChecked() and self.clipboard.mimeData().hasText()):
+        if not (
+                mode == 0 and self.kosClipboardActiveAction.isChecked() and self.clipboard.mimeData().hasText()):
             return
         content = six.text_type(self.clipboard.text())
         contentTuple = tuple(content)
         # Limit redundant kos checks
         if contentTuple != self.oldClipboardContent:
             parts = tuple(content.split("\n"))
-            knownPlayers = set().union(self.knownPlayers.getActiveNames(), self.chatparser.getListeners())
+            knownPlayers = set().union(self.knownPlayers.getActiveNames(),
+                                       self.chatparser.getListeners())
             for part in parts:
                 # Make sure user is in the content (this is a check of the local system in Eve).
                 # also, special case for when you have no knonwnPlayers (initial use)
@@ -656,27 +643,26 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     break
             self.oldClipboardContent = contentTuple
 
-
     # emitted by MapView
     def mapLinkClicked(self, url):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
         system = self.systems[str(systemName)]
-        sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries, list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
+        sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
+                        list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
         self.chat_message_added.connect(sc.addChatEntry)
         self.avatar_loaded.connect(sc.newAvatarAvailable)
         sc.location_set.connect(self.setLocation)
         sc.show()
-
 
     def markSystemOnMap(self, systemname):
         self.systems[six.text_type(systemname)].mark()
         # if this function is called from the Chat-Entry-Widget Click emitter
         # perhaps here, a Scroll-To the coordinates stored in self.systems[system-name]
         zoomfactor = float(self.mapView.zoomFactor)
-        self.scrollTo(self.systems[six.text_type(systemname)].mapCoordinates["center_x"]/zoomfactor,
-                      self.systems[six.text_type(systemname)].mapCoordinates["center_y"]/zoomfactor)
+        self.scrollTo(
+            self.systems[six.text_type(systemname)].mapCoordinates["center_x"] / zoomfactor,
+            self.systems[six.text_type(systemname)].mapCoordinates["center_y"] / zoomfactor)
         self.updateMapView()
-
 
     def setLocation(self, char, newSystem):
         for system in self.systems.values():
@@ -684,53 +670,69 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if not newSystem == "?" and newSystem in self.systems:
             self.systems[newSystem].addLocatedCharacter(char)
             self.knownPlayers[char].setLocation(newSystem)
-            self.setMapContent(self.dotlan.svg)
-
+            self.updateMapView()
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
-                       format(x / self.mapView.zoomFactor, y / self.mapView.zoomFactor))
+                        format(x / self.mapView.zoomFactor, y / self.mapView.zoomFactor))
         # self.mapView.page().runJavaScript(_scrollTo)
         self.initialMapPosition = QPointF(x, y)
 
-    def injectScrollPosition(self, content: str, scroll: str) -> str:
-        newContent = content
-        if scroll:
-            scrollText = """\n<script type="text/javascript"><![CDATA["""+scroll+"""]]></script>\n"""
-            newContent = newContent.replace("</svg>", scrollText+"</svg>")
-        return newContent
+    def mapUpdate(self, newContent):    # triggered by mapUpdateThread
+        self.mapView.setHtml(newContent)
 
-    def setMapContent(self, content):
-        try:
-            logging.debug("Setting Map-Content start")
-            # only on change of Region, reload the last position stored
-            if self.initialMapPosition:
-                scrollPosition = self.initialMapPosition
-                self.initialMapPosition = None
-            else:
-                scrollPosition = QPointF(self.mapView.page().scrollPosition())
-            zoomfactor = float(self.mapView.zoomFactor)
-            scrollTo = ""
-            if scrollPosition:
-                logging.debug("Current Scroll-Position {}".format(scrollPosition))
-                scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
-                                                      format(scrollPosition.x() / zoomfactor,
-                                                             scrollPosition.y() / zoomfactor))
-            newContent = self.injectScrollPosition(content, scrollTo)
-            self.mapView.setHtml(newContent)
-            # self.mapView.page().setHtml(content)
-            # page has been reloaded... go back to where we were
-            # here we need to take into account the Zoom-Factor
-            # if scrollPosition:
-            #     logging.debug("Current Scroll-Position {}".format(scrollPosition))
-            #     scrollTo = str("window.scrollTo({}, {});".
-            #                                           format(scrollPosition.x() / zoomfactor,
-            #                                                  scrollPosition.y() / zoomfactor))
-            #     self.mapView.page().runJavaScript(scrollTo)
-            #     logging.debug("New Scroll-Position {} (Zoom {})".format(QPointF(self.mapView.page().scrollPosition()), zoomfactor))
-            logging.debug("Setting Map-Content complete")
-        except Exception as e:
-            logging.error("Problem with setMapContent: %r", e)
+    # def setMapContent(self, content):
+    #     try:
+    #         logging.debug("Setting Map-Content start")
+    #         # only on change of Region, reload the last position stored
+    #         if self.initialMapPosition:
+    #             scrollPosition = self.initialMapPosition
+    #             self.initialMapPosition = None
+    #         else:
+    #             scrollPosition = QPointF(self.mapView.page().scrollPosition())
+    #         zoomfactor = float(self.mapView.zoomFactor)
+    #         scrollTo = ""
+    #         if scrollPosition:
+    #             logging.debug("Current Scroll-Position {}".format(scrollPosition))
+    #             scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
+    #                            format(scrollPosition.x() / zoomfactor,
+    #                                   scrollPosition.y() / zoomfactor))
+    #         newContent = self.injectScrollPosition(content, scrollTo)
+    #         self.mapView.setHtml(newContent)
+    #         # self.mapView.page().setHtml(content)
+    #         # page has been reloaded... go back to where we were
+    #         # here we need to take into account the Zoom-Factor
+    #         # if scrollPosition:
+    #         #     logging.debug("Current Scroll-Position {}".format(scrollPosition))
+    #         #     scrollTo = str("window.scrollTo({}, {});".
+    #         #                                           format(scrollPosition.x() / zoomfactor,
+    #         #                                                  scrollPosition.y() / zoomfactor))
+    #         #     self.mapView.page().runJavaScript(scrollTo)
+    #         #     logging.debug("New Scroll-Position {} (Zoom {})".format(QPointF(self.mapView.page().scrollPosition()), zoomfactor))
+    #         logging.debug("Setting Map-Content complete")
+    #     except Exception as e:
+    #         logging.error("Problem with setMapContent: %r", e)
+
+    def updateStatisticsOnMap(self, data):
+        if not self.statisticsButton.isChecked():
+            return
+        logging.debug("Updating statistics on Map")
+        if data["result"] == "ok":
+            self.dotlan.addSystemStatistics(data["statistics"])
+        elif data["result"] == "error":
+            text = data["text"]
+            self.trayIcon.showMessage("Loading statstics failed", text, 3)
+            logging.error("updateStatisticsOnMap, error: %s" % text)
+
+    def updateMapView(self):
+        self.mapUpdateThread.queue.put(self.dotlan.svg, self.mapView.zoomFactor, self.mapView.page().scrollPosition())
+        # self.setMapContent(self.dotlan.svg)
+
+    def zoomMapIn(self):
+        self.mapView.setZoomFactor(self.mapView.zoomFactor + 0.1)
+
+    def zoomMapOut(self):
+        self.mapView.setZoomFactor(self.mapView.zoomFactor - 0.1)
 
     def loadInitialMapPositions(self, newDictionary):
         self.mapPositionsDict = newDictionary
@@ -744,7 +746,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 self.initialMapPosition = QPoint(xy[0], xy[1])
         except Exception:
             pass
-
 
     def mapPositionChanged(self, qPointF):
         regionName = self.cache.getFromCache("region_name")
@@ -764,14 +765,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         chooser.rooms_changed.connect(self.changedRoomnames)
         chooser.show()
 
-
     def showJumpBridgeChooser(self):
         url = self.cache.getFromCache("jumpbridge_url")
         chooser = JumpbridgeDialog(self, url)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.show()
 
-    def setJumpbridges(self, url: str=None, clipdata: str=None):
+    def setJumpbridges(self, url: str = None, clipdata: str = None):
         if url is None:
             url = ""
         try:
@@ -795,9 +795,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.cache.putIntoCache("jumpbridge_url", url, 60 * 60 * 24 * 365 * 8)
             self.cache.putIntoCache("jumpbridge_data", clipdata, 60 * 60 * 24 * 365 * 8)
         except Exception as e:
-            QMessageBox.warning(self, "Loading jumpbridges failed!", "Error: {0}".format(six.text_type(e)),
+            QMessageBox.warning(self, "Loading jumpbridges failed!",
+                                "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)
-
 
     # TODO: add functionality to still store other Region actions
     def handleRegionMenuItemSelected(self, menuAction=None):
@@ -828,7 +828,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if scrollToBottom:
             self.chatListWidget.scrollToBottom()
 
-
     def pruneMessages(self):
         try:
             now = time.mktime(EsiInterface().currentEveTime().timetuple())
@@ -847,7 +846,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         except Exception as e:
             logging.error(e)
 
-
     def showKosResult(self, state, text, requestType, hasKos):
         if not self.scanIntelForKosRequestsEnabled:
             return
@@ -862,7 +860,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                         text = "None KOS"
                     self.trayIcon.showMessage("Your KOS-Check", text, 1)
                 text = text.replace("\n\n", "<br>")
-                message = ChatParser.chatparser.Message("Vintel KOS-Check", text, EsiInterface().currentEveTime(), "VINTEL",
+                message = ChatParser.chatparser.Message("Vintel KOS-Check", text,
+                                                        EsiInterface().currentEveTime(), "VINTEL",
                                                         [], states.NOT_CHANGE, text.upper(), text)
                 self.addMessageToIntelChat(message)
             elif state == "error":
@@ -871,14 +870,12 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             pass
         self.trayIcon.setIcon(self.taskbarIconQuiescent)
 
-
     def changedRoomnames(self, newRoomnames):
         self.cache.putIntoCache("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
         self.chatparser.rooms = newRoomnames
         # TODO: this is new (ST) to update the Rooms after changes
         # TODO: otherwise it wont have effect until restart of program
         self.chatparser.collectInitFileData()
-
 
     def showInfo(self):
         logging.debug("Opening About-Dialog")
@@ -912,31 +909,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         else:
             self.avatar_loaded.emit(chatEntry.message.user, avatarData)
 
-
-    def updateStatisticsOnMap(self, data):
-        if not self.statisticsButton.isChecked():
-            return
-        logging.debug("Updating statistics on Map")
-        if data["result"] == "ok":
-            self.dotlan.addSystemStatistics(data["statistics"])
-        elif data["result"] == "error":
-            text = data["text"]
-            self.trayIcon.showMessage("Loading statstics failed", text, 3)
-            logging.error("updateStatisticsOnMap, error: %s" % text)
-
-
-    def updateMapView(self):
-        self.setMapContent(self.dotlan.svg)
-
-
-    def zoomMapIn(self):
-        self.mapView.setZoomFactor(self.mapView.zoomFactor + 0.1)
-
-
-    def zoomMapOut(self):
-        self.mapView.setZoomFactor(self.mapView.zoomFactor - 0.1)
-
-
     def logFileChanged(self, path):
         logging.debug("Log file changed: {}".format(path))
         messages = self.chatparser.fileModified(path)
@@ -958,7 +930,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     self.trayIcon.setIcon(self.taskbarIconWorking)
                     self.kosRequestThread.addRequest(parts, "xxx", False)
             # Otherwise consider it a 'normal' chat message
-            elif message.user not in ("EVE-System", "EVE System") and message.status != states.IGNORE:
+            elif message.user not in (
+            "EVE-System", "EVE System") and message.status != states.IGNORE:
                 self.addMessageToIntelChat(message)
                 # For each system that was mentioned in the message, check for alarm distance to the current system
                 # and alarm if within alarm distance.
@@ -967,11 +940,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     for system in message.systems:
                         systemname = system.name
                         systemList[systemname].setStatus(message.status)
-                        if message.status in (states.REQUEST, states.ALARM) and message.user not in self.knownPlayers.getActiveNames():
+                        if message.status in (states.REQUEST,
+                                              states.ALARM) and message.user not in self.knownPlayers.getActiveNames():
                             alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
                             for nSystem, data in system.getNeighbours(alarmDistance).items():
                                 distance = data["distance"]
                                 chars = nSystem.getLocatedCharacters()
                                 if len(chars) > 0 and message.user not in chars:
-                                    self.trayIcon.showNotification(message, system.name, ", ".join(chars), distance)
+                                    self.trayIcon.showNotification(message, system.name,
+                                                                   ", ".join(chars), distance)
                 self.setMapContent(self.dotlan.svg)

@@ -22,15 +22,62 @@ import logging
 import six
 
 from six.moves import queue
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal, QPointF
 
-from vi import evegate
 from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.chatentrywidget import ChatEntryWidget
 from vi.esi.EsiHelper import EsiHelper
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
+
+
+class MapUpdateThread(QThread):
+    map_update = pyqtSignal(str)
+
+    def __init__(self):
+        QThread.__init__(self)
+        self.queue = queue.Queue
+        self.initialMapPosition = None
+        self.active = True
+
+
+    def run(self):
+        def injectScrollPosition(self, content: str, scroll: str) -> str:
+            newContent = content
+            if scroll:
+                scrollText = """\n<script type="text/javascript"><![CDATA[""" + scroll + """]]></script>\n"""
+                newContent = newContent.replace("</svg>", scrollText + "</svg>")
+            return newContent
+
+        while True:
+            content, zoomFactor, scrollPosition = self.queue.get()
+            if not self.active:
+                return
+            try:
+                logging.debug("Setting Map-Content start")
+                # only on change of Region, reload the last position stored
+                if self.initialMapPosition:
+                    scrollPosition = self.initialMapPosition
+                    self.initialMapPosition = None
+                zoomfactor = float(zoomFactor)
+                scrollTo = ""
+                if scrollPosition:
+                    logging.debug("Current Scroll-Position {}".format(scrollPosition))
+                    scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
+                                   format(scrollPosition.x() / zoomfactor,
+                                          scrollPosition.y() / zoomfactor))
+                newContent = injectScrollPosition(content, scrollTo)
+                self.map_update.emit(newContent)
+                logging.debug("Setting Map-Content complete")
+            except Exception as e:
+                logging.error("Problem with setMapContent: %r", e)
+
+    def quit(self):
+        self.active = False
+        self.queue.put(None)
+        QThread.quit(self)
+
 
 class AvatarFindThread(QThread):
     avatar_update = pyqtSignal(ChatEntryWidget, bytes)
