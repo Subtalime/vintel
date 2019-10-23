@@ -44,13 +44,13 @@ from vi.esi.EsiHelper import EsiHelper, EsiInterface
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")")
 
 
-def textReplace(element, newText):
+def textReplace(element: NavigableString, newText: str):
     newText = "<t>" + newText + "</t>"
     newElements = []
     for newPart in BeautifulSoup(newText, 'html.parser').select("t")[0].contents:
         newElements.append(newPart)
     for newElement in newElements:
-        element.insert_before(newElement)
+            element.insert_before(newElement)
     element.replace_with(six.text_type(""))
 
 
@@ -98,22 +98,17 @@ def parseShips(rtext: Tag) -> bool:
 
             # for shipName in evegate.SHIPNAMES:
             if upperText in EsiHelper().ShipNamesUpper:
-                formatted = formatShipName(text, upperText.capitalize(), part)
-                textReplace(text, formatted)
-        # else:
-        #     # for shipName in EsiHelper().ShipNames:
-        #         if shipName in EsiHelper().ShipNames:
-        #             hit = True
-        #             start = upperText.find(shipName)
-        #             end = start + len(shipName)
-        #             if ((start > 0 and upperText[start - 1] not in (" ", "X")) or (
-        #                     end < len(upperText) - 1 and upperText[end] not in ("S", " "))):
-        #                 hit = False
-        #             if hit:
-        #                 shipInText = text[start:end]
-        #                 formatted = formatShipName(text, shipName, shipInText)
-        #                 textReplace(text, formatted)
-        #                 return True
+                hit = True
+                start = text.upper().find(upperText)
+                end = start + len(upperText)
+                if ((start > 0 and text.upper()[start - 1] not in (".", ",", " ", "X")) or (
+                        end < len(text.upper()) - 1 and text.upper()[end] not in (".", ",", "S", " "))):
+                    hit = False
+                if hit:
+                    shipInText = text[start:end]
+                    formatted = formatShipName(text, shipInText, part)
+                    textReplace(text, formatted)
+                    return True
 
 
 def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:

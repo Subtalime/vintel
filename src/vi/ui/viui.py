@@ -92,8 +92,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
         self.pathToLogs = pathToLogs
-        self.mapTimer = QtCore.QTimer(self)
-        self.mapTimer.timeout.connect(self.updateMapView)
+        # self.mapTimer = QtCore.QTimer(self)
+        # self.mapTimer.timeout.connect(self.updateMapView)
         self.clipboardTimer = QtCore.QTimer(self)
         self.oldClipboardContent = ""
         self.trayIcon = trayIcon
@@ -104,6 +104,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.initialMapPosition = None
         self.lastStatisticsUpdate = 0
         self.chatEntries = []
+        self.refreshContent = None
         self.frameButton.setVisible(False)
         self.scanIntelForKosRequestsEnabled = False
         self.mapPositionsDict = {}
@@ -315,7 +316,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
         self.versionCheckThread.start()
 
-        self.mapUpdateThread = MapUpdateThread()
+        self.mapUpdateThread = MapUpdateThread(self.map_update_interval)
         self.mapUpdateThread.map_update.connect(self.mapUpdate)
         self.mapUpdateThread.start()
 
@@ -330,7 +331,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # TODO: therefore if we switch Region, we can update with previously found data
     # TODO: when clicking on System in Chat, scroll to the position within the Map
     def setupMap(self, initialize=False):
-        self.mapTimer.stop()
+        # self.mapTimer.stop()
         self.filewatcherThread.paused = True
 
         logging.debug("Finding map file")
@@ -399,22 +400,27 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
             # Clicking links
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)
+            self.refreshContent = self.dotlan.svg
+            self.mapUpdateThread.activeData = True
+            self.updateMapView()
+            self.setInitialMapPositionForRegion(regionName)
+            logging.debug("DONE Initializing contextual menus")
+
+            # self.restartMapTimer()
 
         self.jumpbridgesButton.setChecked(False)
         self.statisticsButton.setChecked(False)
 
         # Update the new map view, then clear old statistics from the map and request new
         logging.debug("Updating the map")
-        self.updateMapView()
-        self.setInitialMapPositionForRegion(regionName)
-        self.restartMapTimer()
         # Allow the file watcher to run now that all else is set up
         self.filewatcherThread.paused = False
         logging.debug("Map setup complete")
 
     def restartMapTimer(self):
         # according to Documentation, if timer is already running, it will stop and start with new interval
-        self.mapTimer.start(self.map_update_interval)
+        # self.mapTimer.start(self.map_update_interval)
+        pass
 
     def startClipboardTimer(self):
         """
@@ -448,7 +454,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     (None, "restoreState", bytes(self.saveState())),
                     ("splitter", "restoreGeometry", bytes(self.splitter.saveGeometry())),
                     ("splitter", "restoreState", bytes(self.splitter.saveState())),
-                    ("mapView", "setZoomFactor", self.mapView.zoomFactor),
+                    ("mapView", "setZoomFactor", self.mapView.page().zoomFactor()),
                     (None, "changeChatFontSize", ChatEntryWidget.TEXT_SIZE),
                     (None, "changeOpacity", self.opacityGroup.checkedAction().opacity),
                     (None, "changeAlwaysOnTop", self.alwaysOnTopAction.isChecked()),
@@ -658,7 +664,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.systems[six.text_type(systemname)].mark()
         # if this function is called from the Chat-Entry-Widget Click emitter
         # perhaps here, a Scroll-To the coordinates stored in self.systems[system-name]
-        zoomfactor = float(self.mapView.zoomFactor)
+        zoomfactor = float(self.mapView.page().zoomFactor())
         self.scrollTo(
             self.systems[six.text_type(systemname)].mapCoordinates["center_x"] / zoomfactor,
             self.systems[six.text_type(systemname)].mapCoordinates["center_y"] / zoomfactor)
@@ -674,12 +680,17 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
-                        format(x / self.mapView.zoomFactor, y / self.mapView.zoomFactor))
+                        format(x / self.mapView.page().zoomFactor(), y / self.mapView.page().zoomFactor()))
         # self.mapView.page().runJavaScript(_scrollTo)
         self.initialMapPosition = QPointF(x, y)
 
-    def mapUpdate(self, newContent):    # triggered by mapUpdateThread
-        self.mapView.setHtml(newContent)
+    def mapUpdate(self, newContent):
+        if newContent:
+            self.refreshContent = newContent# triggered by mapUpdateThread
+        if self.refreshContent:
+            self.mapView.setHtml(self.refreshContent)
+
+
 
     # def setMapContent(self, content):
     #     try:
@@ -725,13 +736,12 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             logging.error("updateStatisticsOnMap, error: %s" % text)
 
     def updateMapView(self):
-        scrollPosition = self.mapView.scrollPosition()
-        # scrollPosition = self.mapView.page().scrollPosition()
+        scrollPosition = self.mapView.page().scrollPosition()
         if self.initialMapPosition:
             scrollPosition = self.initialMapPosition
             self.initialMapPosition = None
 
-        self.mapUpdateThread.queue.put(self.dotlan.svg, self.mapView.zoomFactor, scrollPosition)
+        self.mapUpdateThread.queue.put((self.dotlan.svg, self.mapView.page().zoomFactor(), scrollPosition))
         # self.setMapContent(self.dotlan.svg)
 
     def zoomMapIn(self):
@@ -756,7 +766,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def mapPositionChanged(self, qPointF):
         regionName = self.cache.getFromCache("region_name")
         if regionName:
-            scrollPosition = self.mapView.scrollPosition()
+            scrollPosition = self.mapView.page().scrollPosition()
             # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
             self.mapPositionsDict[regionName] = (scrollPosition.x(), scrollPosition.y())
 
@@ -955,4 +965,5 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                                 if len(chars) > 0 and message.user not in chars:
                                     self.trayIcon.showNotification(message, system.name,
                                                                    ", ".join(chars), distance)
-                self.setMapContent(self.dotlan.svg)
+                self.updateMapView()
+                # self.setMapContent(self.dotlan.svg)

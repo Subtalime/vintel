@@ -163,11 +163,14 @@ class ChatParser(object):
                     break
         message.message = six.text_type(rtext)
         message.status = status
-        self.knownMessages.append(message)
-        if systems:
-            for system in systems:
-                system.messages.append(message)
-        return message
+        # multiple clients?
+        if not message in self.knownMessages:
+            self.knownMessages.append(message)
+            if systems:
+                for system in systems:
+                    system.messages.append(message)
+            return message
+        return None
 
     def _parseLocal(self, path, line):
         message = []

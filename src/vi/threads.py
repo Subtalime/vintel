@@ -21,7 +21,9 @@ import time
 import logging
 import six
 
-from six.moves import queue
+from six.moves import queue as SixQueue
+import queue
+from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal, QPointF
 
 from vi import koschecker
@@ -36,40 +38,58 @@ STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 class MapUpdateThread(QThread):
     map_update = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, timerInterval: int=4000):
         QThread.__init__(self)
-        self.queue = queue.Queue
-        self.active = True
+        logging.debug("Starting Map-Thread {}".format(timerInterval))
+        self.queue = queue.Queue()
+        self.activeData = False
+        self.timeout = timerInterval / 1000
 
     def run(self):
-        def injectScrollPosition(self, content: str, scroll: str) -> str:
-            newContent = content
-            if scroll:
-                scrollText = """\n<script type="text/javascript"><![CDATA[""" + scroll + """]]></script>\n"""
-                newContent = newContent.replace("</svg>", scrollText + "</svg>")
-            return newContent
+        def injectScrollPosition(content: str, scroll: str) -> str:
+            soup = BeautifulSoup(content, "html.parser")
+            js = soup.new_tag("script", attrs={"type": "text/javascript"})
+            js.string = scroll
+            soup.body.append(js)
+            return str(soup)
+            # newContent = content
+            # if scroll:
+            #     scrollText = """\n<script type="text/javascript"><![CDATA[""" + scroll + """]]></script>\n"""
+            #     newContent = newContent.replace("</svg>", scrollText + "</svg>")
+            # return newContent
 
         while True:
-            content, zoomFactor, scrollPosition = self.queue.get()
-            if not self.active:
-                return
             try:
-                logging.debug("Setting Map-Content start")
-                zoomfactor = float(zoomFactor)
-                scrollTo = ""
-                if scrollPosition:
-                    logging.debug("Current Scroll-Position {}".format(scrollPosition))
-                    scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
-                                   format(scrollPosition.x() / zoomfactor,
-                                          scrollPosition.y() / zoomfactor))
-                newContent = injectScrollPosition(content, scrollTo)
-                self.map_update.emit(newContent)
-                logging.debug("Setting Map-Content complete")
+                timeout = False
+                content, zoomFactor, scrollPosition = self.queue.get(timeout=self.timeout)
+            except Exception:
+                timeout  = True
+                pass
+            if not self.activeData: # we don't have initial Map-Data yet
+                logging.debug("Map-Content update attempt, but not active")
+                continue
+            try:
+                if not timeout:  # not based on Timeout
+                    logging.debug("Setting Map-Content start")
+                    zoomfactor = float(zoomFactor)
+                    scrollTo = ""
+                    if scrollPosition:
+                        logging.debug("Current Scroll-Position {}".format(scrollPosition))
+                        scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
+                                       format(scrollPosition.x() / zoomfactor,
+                                              scrollPosition.y() / zoomfactor))
+                    newContent = injectScrollPosition(content, scrollTo)
+                    self.map_update.emit(newContent)
+                    logging.debug("Setting Map-Content complete")
+                else:
+                    logging.debug("Map-Content from Cache")
+                    self.map_update.emit(None)
             except Exception as e:
                 logging.error("Problem with setMapContent: %r", e)
 
     def quit(self):
         self.active = False
+        logging.debug("Stopping Map-Thread")
         self.queue.put(None)
         QThread.quit(self)
 
@@ -79,7 +99,8 @@ class AvatarFindThread(QThread):
 
     def __init__(self):
         QThread.__init__(self)
-        self.queue = queue.Queue()
+        logging.debug("Starting Avatar-Thread")
+        self.queue = SixQueue.Queue()
         self.active = True
 
 
@@ -104,7 +125,7 @@ class AvatarFindThread(QThread):
                 # Block waiting for addChatEntry() to enqueue something
                 chatEntry = self.queue.get()
                 if not self.active:
-                    return
+                    continue
                 charname = chatEntry.message.user
                 logging.debug("AvatarFindThread getting avatar for %s" % charname)
                 avatar = None
@@ -133,6 +154,7 @@ class AvatarFindThread(QThread):
 
     def quit(self):
         self.active = False
+        logging.debug("Stopping Avatar-Thread")
         self.queue.put(None)
         QThread.quit(self)
 
@@ -142,7 +164,8 @@ class KOSCheckerThread(QThread):
 
     def __init__(self):
         QThread.__init__(self)
-        self.queue = queue.Queue()
+        logging.debug("Starting KOSChecker-Thread")
+        self.queue = SixQueue.Queue()
         self.recentRequestNamesAndTimes = {}
         self.active = True
 
@@ -193,6 +216,7 @@ class KOSCheckerThread(QThread):
 
     def quit(self):
         self.active = False
+        logging.debug("Stopping KOSChecker-Thread")
         self.queue.put((None, None, None))
         QThread.quit(self)
 
@@ -202,7 +226,8 @@ class MapStatisticsThread(QThread):
 
     def __init__(self):
         QThread.__init__(self)
-        self.queue = queue.Queue(maxsize=1)
+        logging.debug("Starting MapStatistics-Thread")
+        self.queue = SixQueue.Queue(maxsize=1)
         self.lastStatisticsUpdate = time.time()
         self.pollRate = STATISTICS_UPDATE_INTERVAL_MSECS
         self.refreshTimer = None
@@ -241,5 +266,6 @@ class MapStatisticsThread(QThread):
 
     def quit(self):
         self.active = False
+        logging.debug("Stopping MapStatistics-Thread")
         self.queue.put(None)
         QThread.quit(self)

@@ -26,17 +26,55 @@ import time
 import six
 import requests
 import logging
-from vi.evegate import EveGate
 from vi.version import URL
 from bs4 import BeautifulSoup
 from vi import states
 from vi.cache.cache import Cache
 from vi.esi.EsiInterface import EsiInterface
-# from . import evegate
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
              "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
+
+REALTIME_JS = """
+function startTimerCountdown(seconds, display) {
+    var start = new Date().getTime() + seconds * 1000, elapsed = '0.0';
+    window.setInterval(function() {
+        var time = start - new Date().getTime();
+        elapsed = Math.ceil(time / 100) / 10;
+
+        if (elapsed < 0) {
+            return;
+        }
+        minutes = parseInt(elapsed / 60, 10);
+        seconds = parseInt(elapsed % 60, 10);
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        display.textContent = minutes + ":" + seconds;
+    }, 1000);
+}
+function startTimer(secondsMax, display) {
+    var end = new Date().getTime() + secondsMax * 1000, elapsed = '0.0', start = new Date().getTime();
+    window.setInterval(function() {
+        var time = new Date().getTime();
+        elapsed = Math.ceil((end - time) / 100) / 10;
+
+        if (elapsed < 0) {
+            return;
+        }
+        elapsed = (time - start) / 1000;
+        minutes = parseInt(elapsed / 60, 10);
+        seconds = parseInt(elapsed % 60, 10);
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        display.textContent = minutes + ":" + seconds;
+    }, 1000);
+}
+"""
 
 
 class DotlanException(Exception):
@@ -129,6 +167,7 @@ class Map(object):
                     raise DotlanException(t)
         # Create soup from the svg
         self.soup = BeautifulSoup(svg, 'html.parser')
+
         self.systems = self._extractSystemsFromSoup(self.soup)
         self.systemsById = {}
         for system in self.systems.values():
@@ -138,6 +177,9 @@ class Map(object):
         self._jumpMapsVisible = False
         self._statisticsVisible = False
         self.marker = self.soup.select("#select_marker")[0]
+        js = self.soup.new_tag("script", attrs={"type": "text/javascript"})
+        js.string = REALTIME_JS
+        self.soup.append(js)
         logging.debug("Initializing Map for {}: Done".format(region))
 
     def _extractSystemsFromSoup(self, soup):
@@ -174,6 +216,10 @@ class Map(object):
         svg["onmousedown"] = "return false;"
         for line in soup.select("line"):
             line["class"] = "j"
+
+        # Here we want to add a Timer
+        # timer = soup.new_tag("tim", id="interval_timer")
+
 
         # Current system marker ellipse
         group = soup.new_tag("g", id="select_marker", opacity="0", activated="0", transform="translate(0, 0)")
@@ -339,6 +385,8 @@ class System(object):
         self.origSvgElement = svgElement
         self.rect = svgElement.select("rect")[0]
         self.secondLine = svgElement.select("text")[1]
+        if not self.secondLine.has_attr("id"):
+            self.secondLine["id"] = "sw" + self.rect.get("id")
         self.lastAlarmTime = 0
         self.messages = []
         self.setStatus(states.UNKNOWN)
@@ -485,6 +533,7 @@ class System(object):
             self.secondLine["style"] = "fill: #000000;"
         if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
             self.status = newStatus
+            self.secondLine["state"] = str(self.status)
 
     def setStatistics(self, statistics):
         if statistics is None:
@@ -496,7 +545,7 @@ class System(object):
 
     def update(self):
         # state changed?
-        if (self.status == states.ALARM):
+        if self.status == states.ALARM:
             alarmTime = time.time() - self.lastAlarmTime
             for maxDiff, alarmColor, secondLineColor in self.ALARM_COLORS:
                 if alarmTime < maxDiff:
@@ -521,6 +570,9 @@ class System(object):
                 string = "clr: {m:02d}:{s:02d}".format(m=minutes, s=seconds)
                 self.setBackgroundColor("rgb({r},{g},{b})".format(r=calcValue, g=255, b=calcValue))
             self.secondLine.string = string
+
+    def __repr__(self):
+        return ",".join("{}.{}".format(key, val) for key, val in self.statistics.items())
 
 
 def convertRegionName(name):
@@ -550,8 +602,28 @@ def convertRegionName(name):
 # this is for testing:
 if __name__ == "__main__":
     reg = Regions()
-    print(reg.getUrlPart('Black Rise'))
-    print(reg)
+    map = Map(reg.getUrlPart("Delve"))
+    system = map.systems['BX-VEX']
+    # print(map.systems['BX-VEX'])
+    elem = system.svgElement
+    print(elem)
+    print("Initial: ")
+    print(system.secondLine)
+    system.setStatus(states.ALARM)
+    print("Alarm: ")
+    print(system.secondLine)
+    time.sleep(2)
+    system.update()
+    print("Clear: ")
+    print(system.secondLine)
+    if not system.secondLine.has_attr("id"):
+        system.secondLine["id"] = "sw"+system.rect.get("id")
+    print(system.secondLine)
+    print(time.time())
+    # print(system.svgElement)
+
+    # print(reg.getUrlPart('Delve'))
+    # print(reg)
     # map = Map("Delve")
     # s = map.systems["1DQ1-A"]
     # s.setStatus(states.ALARM)
