@@ -177,9 +177,6 @@ class Map(object):
         self._jumpMapsVisible = False
         self._statisticsVisible = False
         self.marker = self.soup.select("#select_marker")[0]
-        js = self.soup.new_tag("script", attrs={"type": "text/javascript"})
-        js.string = REALTIME_JS
-        self.soup.append(js)
         logging.debug("Initializing Map for {}: Done".format(region))
 
     def _extractSystemsFromSoup(self, soup):
@@ -385,8 +382,6 @@ class System(object):
         self.origSvgElement = svgElement
         self.rect = svgElement.select("rect")[0]
         self.secondLine = svgElement.select("text")[1]
-        if not self.secondLine.has_attr("id"):
-            self.secondLine["id"] = "sw" + self.rect.get("id")
         self.lastAlarmTime = 0
         self.messages = []
         self.setStatus(states.UNKNOWN)
@@ -509,17 +504,12 @@ class System(object):
     def setStatus(self, newStatus):
         if newStatus == states.ALARM:
             self.lastAlarmTime = time.time()
-            if "stopwatch" not in self.secondLine["class"]:
-                self.secondLine["class"].append("stopwatch")
             self.secondLine["alarmtime"] = self.lastAlarmTime
             self.secondLine["style"] = "fill: #FFFFFF;"
             self.setBackgroundColor(self.ALARM_COLOR)
         elif newStatus == states.CLEAR:
             self.lastAlarmTime = time.time()
             self.setBackgroundColor(self.CLEAR_COLOR)
-            self.secondLine["alarmtime"] = 0
-            if "stopwatch" not in self.secondLine["class"]:
-                self.secondLine["class"].append("stopwatch")
             self.secondLine["alarmtime"] = self.lastAlarmTime
             self.secondLine["style"] = "fill: #000000;"
             self.secondLine.string = "clear"
