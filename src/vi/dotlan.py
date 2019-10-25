@@ -36,46 +36,6 @@ JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
              "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
 
-REALTIME_JS = """
-function startTimerCountdown(seconds, display) {
-    var start = new Date().getTime() + seconds * 1000, elapsed = '0.0';
-    window.setInterval(function() {
-        var time = start - new Date().getTime();
-        elapsed = Math.ceil(time / 100) / 10;
-
-        if (elapsed < 0) {
-            return;
-        }
-        minutes = parseInt(elapsed / 60, 10);
-        seconds = parseInt(elapsed % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-        display.textContent = minutes + ":" + seconds;
-    }, 1000);
-}
-function startTimer(secondsMax, display) {
-    var end = new Date().getTime() + secondsMax * 1000, elapsed = '0.0', start = new Date().getTime();
-    window.setInterval(function() {
-        var time = new Date().getTime();
-        elapsed = Math.ceil((end - time) / 100) / 10;
-
-        if (elapsed < 0) {
-            return;
-        }
-        elapsed = (time - start) / 1000;
-        minutes = parseInt(elapsed / 60, 10);
-        seconds = parseInt(elapsed % 60, 10);
-
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-        display.textContent = minutes + ":" + seconds;
-    }, 1000);
-}
-"""
-
 
 class DotlanException(Exception):
     def __init__(self, *args, **kwargs):
@@ -213,10 +173,6 @@ class Map(object):
         svg["onmousedown"] = "return false;"
         for line in soup.select("line"):
             line["class"] = "j"
-
-        # Here we want to add a Timer
-        # timer = soup.new_tag("tim", id="interval_timer")
-
 
         # Current system marker ellipse
         group = soup.new_tag("g", id="select_marker", opacity="0", activated="0", transform="translate(0, 0)")

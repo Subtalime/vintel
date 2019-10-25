@@ -1,16 +1,24 @@
-from bs4 import BeautifulSoup, CData
-from PyQt5 import QtCore, QtGui, QtWidgets, QtWebEngineWidgets, QtWebEngine
-import os, time, math
+from bs4 import CData, BeautifulSoup
+from PyQt5 import QtWidgets, QtWebEngineWidgets
+from PyQt5.QtCore import QEvent, pyqtSignal, QObject
+import os, time, math, logging
 from vi.dotlan import Map, System, states
 
+
 class TestPage(QtWebEngineWidgets.QWebEngineView):
+    mouse_pressed = pyqtSignal()
+
     def __init__(self, parent=None):
         super(TestPage, self).__init__(parent)
         self.installEventFilter(self)
+        # self.installEventFilter(self)
 
-    def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
-        # print(a1.type(), a0)
-        return super().eventFilter(a0, a1)
+    def eventFilter(self, source: QObject, event: QEvent) -> bool:
+        print(event.type(), source)
+        if event.type() == QEvent.ShortcutOverride:
+            self.mouse_pressed.emit()
+
+        return super().eventFilter(source, event)
 
     def loadPage(self, content):
         if self.size().isNull():
@@ -22,7 +30,75 @@ class MyMap(Map):
 
     def addTimerJs(self):
         realtime_js = """
-        function startTimerCountdown(seconds, display) {
+        var rgbToHex = function (rgb) { 
+            var hex = Number(rgb).toString(16);
+            if (hex.length < 2) {
+                hex = "0" + hex;
+            }
+            return hex;
+        };
+        var fullColorHex = function(r,g,b) {   
+          var red = rgbToHex(r);
+          var green = rgbToHex(g);
+          var blue = rgbToHex(b);
+          return red+green+blue;
+        };
+
+
+
+        // max time for alarm, rect color, secondLine color
+        var ALARM_COLORS = [60 * 4, "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#FFFFFF", 60 * 15, "#FFFA0F", "#000000",
+                        60 * 25, "#FFFDA2", "#000000", 60 * 60 * 24, "#FFFFFF", "#000000"];
+        var ALARM_COLOR = ALARM_COLORS[2];
+        var UNKNOWN_COLOR = "#FFFFFF";
+        var CLEAR_COLOR = "#59FF6C";
+        var STATE = ['alarm', 'was alarmed', 'clear', 'unknown', 'ignore', 'no change', 'request', 'location'];
+        // seconds to start at, where, fill, current state, alarm_colors offset
+        function showTimer(currentTime, secondline, rect, state, arrayoffset) {
+            var bgcolor = UNKNOWN_COLOR; // the default
+            var slcolor = '#000000';
+            var maxtime = 60 * 60 * 24 - currentTime;
+            var startTime = new Date().getTime();
+            if (state == STATE[0]) { // Alarm
+                bgcolor = ALARM_COLORS[arrayoffset + 1];
+                slcolor = ALARM_COLORS[arrayoffset + 2];
+                maxtime = ALARM_COLORS[arrayoffset] - currentTime;
+            }
+            else if (state == STATE[2]) { // Clear
+                bgcolor = CLEAR_COLOR;
+            }
+            window.setInterval(function() {
+                var time = new Date().getTime() - startTime;
+                var elapsed = Math.ceil(time / 100) / 10;
+                if (elapsed > maxtime) {
+                    // work out if there is a new color in alarm_colors
+                    return; 
+                }
+                minutes = parseInt(elapsed / 60, 10);
+                seconds = parseInt(elapsed % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                                
+                secondline.textContent = minutes + ":" + seconds;
+                if (state == STATE[2]) {
+                    var secondsUntilWhite = 10 * 60;
+                    var calcValue = Math.round(time / (secondsUntilWhite / 255));
+                    if (calcValue > 255) {
+                        calcValue = 255;
+                        secondline.style = "fill: #008100;";
+                    } 
+                    rect.style.backgroundColor = '#'+fullcolorhex(calcValue, 255, calcValue);
+                }
+                else { 
+                    secondline.style.color = slcolor;
+                    rect.style.backgroundColor = bgcolor;
+                }
+                 
+            }, 1000);
+                
+        }
+        function startTimerCountdown(seconds, display, frame) {
             var start = new Date().getTime() + seconds * 1000, elapsed = 0;
             window.setInterval(function() {
                 var time = start - new Date().getTime();
@@ -40,7 +116,7 @@ class MyMap(Map):
                 display.textContent = minutes + ":" + seconds;
             }, 1000);
         }
-        function startTimer(secondsMax, display) {
+        function startTimer(secondsMax, display, frame) {
             var end = new Date().getTime() + secondsMax * 1000, elapsed = 0, start = new Date().getTime();
             window.setInterval(function() {
                 var time = new Date().getTime();
@@ -65,7 +141,6 @@ class MyMap(Map):
         js.string = CData(realtime_js)
         self.soup.svg.append(js)
 
-
     @property
     def svg(self):
         # Re-render all systems
@@ -75,11 +150,12 @@ class MyMap(Map):
             if system.onload:
                 onload.append(system.onload)
         # Update the marker
-        js_onload = self.soup.find("script", {"id": "onload"})
+        js_onload = self.soup.find("script", attrs={"id": "onload"})
         if not js_onload:
-            js_onload = self.soup.new_tag("script", attrs={"id": "onload", "type": "text/javascript"})
+            js_onload = self.soup.new_tag("script",
+                                          attrs={"id": "onload", "type": "text/javascript"})
             self.soup.svg.append(js_onload)
-        js_onload = self.soup.find("script", {"id": "onload"})
+        js_onload = self.soup.find("script", attrs={"id": "onload"})
         if len(onload) > 0:
             startjs = "window.onload = function () {\n"
             for load in onload:
@@ -87,20 +163,12 @@ class MyMap(Map):
             startjs += "}\n"
             js_onload.string = startjs
 
-        if not self.marker["opacity"] == "0":
-            now = time.time()
-            newValue = (1 - (now - float(self.marker["activated"])) / 10)
-            if newValue < 0:
-                newValue = "0"
-            self.marker["opacity"] = newValue
-        content = str(self.soup)
-        return content
+        return super(MyMap, self).svg
 
-
-    def __init__(self, region: str=None, testFile=None):
+    def __init__(self, region: str = None, testFile=None):
         if not testFile:
             path, file = os.path.split(os.path.abspath(__file__))
-            testFile = os.path.join(path,"delve.svg")
+            testFile = os.path.join(path, "delve.svg")
             region = "Delve"
         self.testFile = testFile
         self.region = region
@@ -114,128 +182,29 @@ class MyMap(Map):
         self.mySystems = {}
         for key in self.systems:
             sys = self.systems[key]
-            self.mySystems[key] = MySystem(sys.name, sys.svgElement, sys.mapSoup, sys.mapCoordinates, sys.transform, sys.systemId)
+            self.mySystems[key] = MySystem(sys.name, sys.svgElement, sys.mapSoup,
+                                           sys.mapCoordinates, sys.transform, sys.systemId)
         # add the Time-JS
         self.addTimerJs()
 
-    def do_it(self):
-        realtime_js = """
-        function startTimerCountdown(seconds, display) {
-            var start = new Date().getTime() + seconds * 1000, elapsed = 0;
-            window.setInterval(function() {
-                var time = start - new Date().getTime();
-                elapsed = Math.ceil(time / 100) / 10;
-                
-                if (elapsed < 0) {
-                    return;
-                }
-                minutes = parseInt(elapsed / 60, 10);
-                seconds = parseInt(elapsed % 60, 10);
-        
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-        
-                display.textContent = minutes + ":" + seconds;
-            }, 1000);
-        }
-        function startTimer(secondsMax, display) {
-            var end = new Date().getTime() + secondsMax * 1000, elapsed = 0, start = new Date().getTime();
-            window.setInterval(function() {
-                var time = new Date().getTime();
-                elapsed = Math.ceil((end - time) / 100) / 10;
-                
-                if (elapsed < 0) {
-                    return;
-                }
-                elapsed = (time - start) / 1000;
-                minutes = parseInt(elapsed / 60, 10);
-                seconds = parseInt(elapsed % 60, 10);
-        
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-        
-                display.textContent = minutes + ":" + seconds;
-            }, 1000);
-        }
-        """
-        colors = """
-            var ALARM_COLORS = [(60 * 4, "#FF0000", "#FFFFFF"), (60 * 10, "#FF9B0F", "#FFFFFF"), (60 * 15, "#FFFA0F", "#000000"),
-                            (60 * 25, "#FFFDA2", "#000000"), (60 * 60 * 24, "#FFFFFF", "#000000")];
-            var ALARM_COLOR = ALARM_COLORS[0][1];
-            var UNKNOWN_COLOR = "#FFFFFF";
-            var CLEAR_COLOR = "#59FF6C";
-        """
+    def debugWriteSoup(self):
+        svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
+        dir, file = os.path.split(os.path.abspath(__file__))
+        try:
+            with open(os.path.join(dir, "output.svg"), "wb") as svgFile:
+                svgFile.write(svgData)
+        except Exception as e:
+            logging.error(e)
 
-        soup = BeautifulSoup(self.svg, features="html.parser")
-        header = soup.svg
-        body = soup.svg
-        style = soup.new_tag("style", attrs={"type": "text/css", "id": "style5"})
-        style.string = CData("""
-        .stopwatch {
-        fill: #ffd39f; 
-        stroke-width: 3; 
-        stroke: #000000;
-        }
-        .es	{ font-size: 9px; font-family: Arial, Helvetica, sans-serif; fill: #000000; }
-        .er	{ font-weight: bold; font-size: 7px; font-family: verdana, Arial, sans-serif; fill: #000000; }
-        """)
-
-        header.append(style)
-        output = soup.find("defs")
-        # output = soup.find("symbol",{"id": "def30004785"})
-
-        onload = ""
-        for i in range(1, 2):
-            s = soup.new_tag("symbol", attrs={"id": "def{f:08d}".format(f=i)})
-            a = soup.new_tag("a", attrs={"class": "sys", "id": "a{f:08d}".format(f=i), "xlink:href": "http://evemaps.dotlan.net/map/Querious/8QT-H4", "target": "_top"})
-            r = soup.new_tag("rect", attrs={"x": 4, "y": i * 8, "width": 100,
-                                            "height": 60, "id": "rect{f:08d}".format(f=i),
-                                            "class": "e"})
-            t = soup.new_tag("text", attrs={"x": 10, "y": i * 8 + 10, "id": "timer{f:08d}".format(f=i), "class": "es", "text-anchor": "middle"})
-            t.string="Time{}".format(i)
-            st = soup.new_tag("text", attrs={"class": "er", "style": "fill: #000000", "text-anchor": "middle", "x": 14, "y": i * 8 + 27})
-            st.string = "?"
-            d = soup.new_tag("div", attrs={"id": "timer{f:08d}".format(f=i)})
-            # d.append(r)
-            a.append(r)
-            a.append(t)
-            # if a.has_attr("target"):
-            #     target = a.get("target")
-            #     s["dummy"] = target
-            a.append(st)
-            s.append(a)
-            # print(a)
-            output.append(s)
-            use = soup.findAll("g", {"id": "sysuse"})
-            u = soup.new_tag("use", attrs={"height": 30, "id": "sys{f:08d}".format(f=i), "width": 62.5, "x": 4, "xlink:href": "#def{f:08d}".format(f=i), "y": i*8+16})
-            use[0].append(u)
-            onload += "var field{n:1} = document.querySelector('#timer{t:08d}');\nvar delay{n:1} = {n:1} * 60;\nstartTimer(delay{n:1}, field{n:1});\n".format(t=i, n=i)
-        # defs = body.find("defs")
-        # if not defs:
-        #     print("no spot to put")
-        #     exit(1)
-        # defs.append(output)
-
-        startjs = "window.onload = function () {\n"+onload+"\n}"
-        js = soup.new_tag("script", attrs={"id": "onload", "type": "text/javascript"})
-        js.string = CData(realtime_js)
-
-        header.append(js)
-        js = soup.new_tag("script", attrs={"id": "timer", "type": "text/javascript"})
-        js.string = startjs
-        header.append(js)
-        path, file = os.path.split(self.testFile)
-        file = file.replace(".", "1.")
-        res = os.path.join(os.path.abspath(path), file)
-        with open(res, "w") as f:
-            f.write(soup.prettify())
-        return res
 
 class MySystem(System):
     def __init__(self, name, svgElement, mapSoup, mapCoordinates, transform, systemId):
-        super(MySystem, self).__init__(name, svgElement, mapSoup, mapCoordinates, transform, systemId)
+        super(MySystem, self).__init__(name, svgElement, mapSoup, mapCoordinates, transform,
+                                       systemId)
         self.setStatusTime = None
         self.onload = None
+        rect = self.svgElement.select("rect")[0]
+        self.rectId = rect["id"]
         if not self.secondLine.has_attr("id"):
             self.secondLine["id"] = "watch{}".format(self.name)
 
@@ -245,35 +214,60 @@ class MySystem(System):
 
     def update(self):
         super(MySystem, self).update()
-        if self.status == states.CLEAR:
+        if self.status in (states.CLEAR, states.UNKNOWN):
             self.setStatusTime = None
         if self.setStatusTime:
+            offset = 0
+            if self.status == states.ALARM:
+                alarmTime = time.time() - self.lastAlarmTime
+                for maxDiff, alarmColor, secondLineColor in self.ALARM_COLORS:
+                    if alarmTime < maxDiff:
+                        break
+                    offset += 1
+
             # calc the new timer for injecting into JS
             diff = time.time() - self.setStatusTime
             minutes = int(math.floor(diff / 60))
             seconds = int(diff - minutes * 60)
             ndiff = minutes * 60 + seconds
-            self.onload = "startTimer({1}, document.querySelector('#{0}'));".format(self.secondLine["id"], ndiff)
+            self.onload = "showTimer({0}, document.querySelector('#{1}'), document.querySelector('#{2}'), '{3}', {4});".format(
+                ndiff, self.secondLine["id"], self.rectId, self.status, offset)
+            # self.onload = "startTimer({1}, document.querySelector('#{0}'), document.querySelector('#{2}'));".format(
+            #     self.secondLine["id"], ndiff, self.rectId)
             self.secondLine.string = "here comes the time"
+        elif self.status == states.UNKNOWN:
+            self.secondLine.string = "??"
+            self.onload = None
 
+class MainApp:
 
+    def __init__(self):
+        self.webPage = TestPage()
+        self.webPage.mouse_pressed.connect(self.updateMapView)
+        self.map = MyMap()
+        self.webPage.loadPage(self.map.svg)
+
+    def updateMapView(self):
+        system = self.map.mySystems['Y5C-YD']
+        if system.status == states.UNKNOWN:
+            system.setStatus(states.ALARM)
+        elif system.status == states.ALARM:
+            system.setStatus(states.CLEAR)
+        elif system.status == states.CLEAR:
+            system.setStatus(states.UNKNOWN)
+        try:
+            self.webPage.loadPage(self.map.svg)
+            self.map.debugWriteSoup()
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":
     import sys
 
+
     app = QtWidgets.QApplication(sys.argv)
-    map = MyMap()
-
-    # received = map.do_it()
-    systems = map.mySystems
-
-    system = systems['Y5C-YD']
-    system.setStatus(states.ALARM)
-    page = TestPage()
-    page.show()
-    # while True:
-    page.loadPage(map.svg)
-    # time.sleep(3)
-    # system.update()
+    mainapp = MainApp()
+    mainapp.webPage.show()
+    mainapp.webPage.raise_()
     app.exec()
