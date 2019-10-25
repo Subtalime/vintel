@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QAction, QMainWindow, QActionGroup
 from PyQt5.QtCore import QRect
-from vi.dotlan import Regions
+from vi.dotlan.regions import Regions
 from vi.region.RegionMenu import RegionMenu
 from vi.region.RegionChooserList import RegionChooserList
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog

@@ -31,7 +31,7 @@ from PyQt5.QtGui import QColor
 
 from vi.LogWindow import LogWindow
 from vi import amazon_s3
-from vi import dotlan, filewatcher
+from vi import dotlan_mdoule, filewatcher
 from vi import states
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
@@ -50,7 +50,10 @@ from vi.region.RegionChooserList import RegionChooserList
 from vi.systemchat import SystemChat
 from vi.character.CharacterMenu import CharacterMenu, Characters
 from vi.region.RegionMenu import RegionMenu
-from vi.dotlan import Regions
+from vi.dotlan.regions import Regions, convertRegionName
+from vi.dotlan.mymap import MyMap
+from vi.dotlan.exception import DotlanException
+# from vi.dotlan_mdoule import Regions
 from vi.esi.EsiInterface import EsiInterface
 from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
@@ -356,8 +359,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             pass
 
         try:
-            self.dotlan = dotlan.Map(regionName, svg)
-        except dotlan.DotlanException as e:
+            self.dotlan = MyMap(regionName, svg)
+        except DotlanException as e:
             logging.error(e)
             msgBox = QMessageBox()
             msgBox.move(self.rect().center())
@@ -463,7 +466,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     (None, "changeSound", self.activateSoundAction.isChecked()),
                     (None, "changeChatVisibility", self.showChatAction.isChecked()),
                     (None, "loadInitialMapPositions", self.mapPositionsDict),
-                    (None, "setSoundVolume", SoundManager().soundVolume),
+                    (SoundManager, "setSoundVolume", SoundManager().soundVolume),
                     (None, "changeFrameless", self.framelessWindowAction.isChecked()),
                     (None, "changeUseSpokenNotifications",
                      self.useSpokenNotificationsAction.isChecked()),
@@ -806,10 +809,16 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 from vi.jumpbridge.Import import Import
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
-                data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
+                try:
+                    data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
+                except Exception:
+                    data = self.cache.getFromCache("jumpbridge_data_[]".format(self.dotlan.region.lower()))
+                    if not data:
+                        raise
+                    pass
             self.dotlan.setJumpbridges(data)
             self.cache.putIntoCache("jumpbridge_url", url, 60 * 60 * 24 * 365 * 8)
-            self.cache.putIntoCache("jumpbridge_data", clipdata, 60 * 60 * 24 * 365 * 8)
+            self.cache.putIntoCache("jumpbridge_data_{}".self.dotlan.region.lower(), clipdata, 60 * 60 * 24 * 365 * 8)
         except Exception as e:
             QMessageBox.warning(self, "Loading jumpbridges failed!",
                                 "Error: {0}".format(six.text_type(e)),
@@ -820,7 +829,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if menuAction:
             menuAction.setChecked(True)
             regionName = six.text_type(menuAction.property("regionName"))
-            regionName = dotlan.convertRegionName(regionName)
+            regionName = Regions.convertRegionName(regionName)
             Cache().putIntoCache("region_name", regionName, 60 * 60 * 24 * 365)
             self.setupMap()
 

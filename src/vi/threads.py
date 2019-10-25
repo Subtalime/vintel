@@ -50,7 +50,7 @@ class MapUpdateThread(QThread):
             soup = BeautifulSoup(content, "html.parser")
             js = soup.new_tag("script", attrs={"type": "text/javascript"})
             js.string = scroll
-            soup.body.append(js)
+            soup.svg.append(js)
             return str(soup)
             # newContent = content
             # if scroll:
