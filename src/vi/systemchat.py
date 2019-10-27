@@ -1,21 +1,26 @@
 import six
 from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QDialog, QListWidgetItem
+from PyQt5.QtCore import pyqtSignal, QObject
 from vi.chatentrywidget import ChatEntryWidget
 from vi import states
-
+from vi.character import Characters
 
 import vi.ui.SystemChat
+import logging
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
 
-    def __init__(self, parent, chatType, selector, chatEntries, knownPlayerNames):
-        QtGui.QDialog.__init__(self, parent)
+    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: 'list'):
+        QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
+        if not isinstance(knownPlayers, list):
+            logging.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
+            exit(-1)
         self.setupUi(self)
         self.parent = parent
-        self.chatType = 0
+        self.chatType = chatType
         self.selector = selector
         self.chatEntries = []
         for entry in chatEntries:
@@ -24,17 +29,17 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         if self.chatType == SystemChat.SYSTEM:
             titleName = self.selector.name
             self.system = selector
-        for name in knownPlayerNames:
-            self.playerNamesBox.addItem(name)
+        for player in knownPlayers:
+            self.playerNamesBox.addItem(player)
         self.setWindowTitle("Chat for {0}".format(titleName))
-        self.closeButton.clicked.connect(self.closeDialog())
         # self.connect(self.closeButton, PYQT_SIGNAL("clicked()"), self.closeDialog)
+        self.closeButton.clicked.connect(self.closeDialog)
         # self.connect(self.alarmButton, PYQT_SIGNAL("clicked()"), self.setSystemAlarm)
-        self.alarmButton.clicked.connect(self.setSystemAlarm())
+        self.alarmButton.clicked.connect(self.setSystemAlarm)
         # self.connect(self.clearButton, PYQT_SIGNAL("clicked()"), self.setSystemClear)
-        self.clearButton.clicked.connect(self.setSystemClear())
+        self.clearButton.clicked.connect(self.setSystemClear)
         # self.connect(self.locationButton, PYQT_SIGNAL("clicked()"), self.locationSet)
-        self.locationButton.clicked.connect(self.locationSet())
+        self.locationButton.clicked.connect(self.locationSet)
 
 
     def _addMessageToChat(self, message, avatarPixmap):
@@ -43,7 +48,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
             scrollToBottom = True
         entry = ChatEntryWidget(message)
         entry.avatarLabel.setPixmap(avatarPixmap)
-        listWidgetItem = QtGui.QListWidgetItem(self.chat)
+        listWidgetItem = QListWidgetItem(self.chat)
         listWidgetItem.setSizeHint(entry.sizeHint())
         self.chat.addItem(listWidgetItem)
         self.chat.setItemWidget(listWidgetItem, entry)
@@ -86,5 +91,3 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
 
     def closeDialog(self):
         self.accept()
-
-

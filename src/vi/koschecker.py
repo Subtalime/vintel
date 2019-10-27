@@ -62,7 +62,7 @@ def check(parts):
     # Corporation check
     corpCheckData = {}
     try:
-        namesAsIds = evegate.namesToIds(checkBylastChars)
+        namesAsIds = evegate.EveGate().namesToIds(checkBylastChars)
     except Exception:
         pass
 
@@ -74,14 +74,14 @@ def check(parts):
     # Anything left - do the corp check and fill in kos status
     if namesAsIds:
         for name, id in namesAsIds.items():
-            corpCheckData[name] = {"id": id, "need_check": False, "corpids": evegate.getCorpidsForCharId(id)}
+            corpCheckData[name] = {"id": id, "need_check": False, "corpids": evegate.EveGate().getCorpidsForCharId(id)}
 
         corpIds = set()
         for name in namesAsIds.keys():
             for number in corpCheckData[name]["corpids"]:
                 corpIds.add(number)
 
-        corpIdName = evegate.idsToNames(corpIds)
+        corpIdName = evegate.EveGate().idsToNames(corpIds)
         for name, nameData in corpCheckData.items():
             nameData["corpnames"] = [corpIdName[id] for id in nameData["corpids"]]
             for corpname in nameData["corpnames"]:

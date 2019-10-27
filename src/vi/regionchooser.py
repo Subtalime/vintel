@@ -6,7 +6,8 @@ import logging
 from PyQt5.QtCore import pyqtSignal
 from vi.resources import resourcePath
 from vi.cache.cache import Cache
-from vi import dotlan
+from vi.dotlan.regions import convertRegionName
+from vi.dotlan.mymap import Map
 
 
 from vi.ui.RegionChooser import Ui_Dialog
@@ -27,11 +28,11 @@ class RegionChooser(QtWidgets.QDialog, Ui_Dialog):
 
     def saveClicked(self):
         text = six.text_type(self.regionNameField.toPlainText())
-        text = dotlan.convertRegionName(text)
+        text = convertRegionName(text)
         self.regionNameField.setPlainText(text)
         correct = False
         try:
-            url = dotlan.Map.DOTLAN_BASIC_URL.format(text)
+            url = Map.DOTLAN_BASIC_URL.format(text)
             content = requests.get(url).text
             if u"not found" in content:
                 correct = False
@@ -43,6 +44,7 @@ class RegionChooser(QtWidgets.QDialog, Ui_Dialog):
                     logging.error(e)
                     correct = False
                 if not correct:
+                    logging.warning("Unable to find region \"{}\"".format(text))
                     QMessageBox.warning(self, u"No such region!", u"I can't find a region called '{0}'".format(text),
                                         QMessageBox.Ok)
             else:

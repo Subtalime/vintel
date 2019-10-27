@@ -1,4 +1,6 @@
 *.pyc
-.idea/workspace.xml
 .vs/*
 *.pyproj
+/.idea/
+/env/
+/.idea/

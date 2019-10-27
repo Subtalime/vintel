@@ -26,17 +26,18 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QActionGroup, QMenu
 from vi.resources import resourcePath
 from vi import states
-from vi.soundmanager import SoundManager
+from vi.sound.soundmanager import SoundManager
 
 class TrayContextMenu(QtWidgets.QMenu):
     instances = set()
 
-    def __init__(self, trayIcon):
+    def __init__(self, trayIcon=None):
         """ trayIcon = the object with the methods to call
         """
         QMenu.__init__(self)
         TrayContextMenu.instances.add(self)
-        self.trayIcon = trayIcon
+        if trayIcon:
+            self.trayIcon = trayIcon
         self._buildMenu()
 
     def _buildMenu(self):
@@ -99,12 +100,11 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
 
     def changeAlarmDistance(self):
-        self.alarm_distance.emit(self.alarm_distance)
-        # self.emit(PYQT_SIGNAL("alarm_distance"), distance)
+        distance = self.alarmDistance
+        self.alarm_distance.emit(distance)
 
     def changeFrameless(self):
         self.change_frameless.emit()
-        # self.emit(PYQT_SIGNAL("change_frameless"))
 
     @property
     def distanceGroup(self):
@@ -112,7 +112,6 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def quit(self):
         self.quit_me.emit()
-        # self.emit(PYQT_SIGNAL("quit"))
 
     def switchAlarm(self):
         newValue = not self.showAlarm
@@ -134,19 +133,20 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         text = None
         icon = None
         text = ""
-        if (message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION):
+        if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "ALARM!"
             icon = 2
             speechText = (u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
-            text = speechText + (u"\nText: %s" % text)
+            text = speechText + (u"\nText: %s" % message.plainText)
             SoundManager().playSound("alarm", text, speechText)
             self.lastNotifications[states.ALARM] = time.time()
-        elif (message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION):
+        elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "Status request"
             icon = 1
-            text = (u"Someone is requesting status of {0} in {1}.".format(system, room))
+            text = u"Someone is requesting status of {0} in {1}.".format(system, room)
             self.lastNotifications[states.REQUEST] = time.time()
             SoundManager().playSound("request", text)
-        if not (title is None or text is None or icon):
-            text = text.format(**locals())
-            self.showMessage(title, text, icon)
+        if not title is None or text is None or icon:
+            text = "{}".format(**locals())
+            self.showMessage(title, text)
+            # self.showMessage(title, text, icon)

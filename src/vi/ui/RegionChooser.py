@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'RegionChooser.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -45,5 +46,3 @@ class Ui_Dialog(object):
         self.label.setText(_translate("Dialog", "Enter the region to watch into the following field."))
         self.cancelButton.setText(_translate("Dialog", "Cancel"))
         self.saveButton.setText(_translate("Dialog", "Save"))
-
-

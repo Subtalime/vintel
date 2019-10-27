@@ -35,27 +35,32 @@
 		the tree and so the original generator is not longer stable.
 """
 
-import six
-
-import vi.evegate as evegate
-from bs4 import BeautifulSoup
+import six, re
+from bs4 import BeautifulSoup, Tag
 from bs4.element import NavigableString
 from vi import states
+from vi.esi.EsiHelper import EsiHelper, EsiInterface
 
-CHARS_TO_IGNORE = ("*", "?", ",", "!", ".")
+CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
 
 
-def textReplace(element, newText):
+def textReplace(element: NavigableString, newText: str):
     newText = "<t>" + newText + "</t>"
     newElements = []
     for newPart in BeautifulSoup(newText, 'html.parser').select("t")[0].contents:
         newElements.append(newPart)
-    for newElement in newElements:
-        element.insert_before(newElement)
-    element.replace_with(six.text_type(""))
+    try:
+        for newElement in newElements:
+            element.insert_before(newElement)
+        element.replace_with(six.text_type(""))
+    except Exception:
+        pass
 
 
 def parseStatus(rtext):
+    """
+    parse the Chat-Line to see if there are any System-Statuses triggered
+    """
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
     for text in texts:
         upperText = text.strip().upper()
@@ -73,31 +78,50 @@ def parseStatus(rtext):
             return states.CLEAR
 
 
-def parseShips(rtext):
-    def formatShipName(text, word):
-        newText = u"""<span style="color:#d95911;font-weight:bold"> {0}</span>"""
-        text = text.replace(word, newText.format(word))
+def parseShips(rtext: Tag) -> bool:
+    """
+    check the Chat-Entry to see if any ships are mentioned. If so, tag them with "ship_name"
+    :param rtext: Tag
+    :return: bool if content has changed
+    """
+    def formatShipName(text: str, realShipName: str, word: str) -> str:
+        newText = u"""<a style="color:green;font-weight:bold" href="ship_name/{0}">{1}</a>"""
+        text = text.replace(word, newText.format(realShipName, word))
         return text
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
     for text in texts:
-        upperText = text.upper()
-        for shipName in evegate.SHIPNAMES:
-            if shipName in upperText:
+        if len(text.strip(" ")) == 0:
+            continue
+        parts = text.strip(" ").split(" ")
+        for part in parts:
+            upperText = part.upper()
+            for char in CHARS_TO_IGNORE:
+                upperText = upperText.replace(char, "")
+
+            # for shipName in evegate.SHIPNAMES:
+            if upperText in EsiHelper().ShipNamesUpper:
                 hit = True
-                start = upperText.find(shipName)
-                end = start + len(shipName)
-                if ((start > 0 and upperText[start - 1] not in (" ", "X")) or (
-                        end < len(upperText) - 1 and upperText[end] not in ("S", " "))):
+                start = text.upper().find(upperText)
+                end = start + len(upperText)
+                if ((start > 0 and text.upper()[start - 1] not in (".", ",", " ", "X")) or (
+                        end < len(text.upper()) - 1 and text.upper()[end] not in (".", ",", "S", " "))):
                     hit = False
                 if hit:
                     shipInText = text[start:end]
-                    formatted = formatShipName(text, shipInText)
+                    formatted = formatShipName(text, shipInText, part)
                     textReplace(text, formatted)
                     return True
 
 
-def parseSystems(systems, rtext, foundSystems):
+def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
+    """
+    check for any System-Names or Gates mentioned in the Chat-Entry
+    :param systems:
+    :param rtext:
+    :param foundSystems:
+    :return: bool
+    """
     
     systemNames = systems.keys()
     
@@ -172,7 +196,12 @@ def parseSystems(systems, rtext, foundSystems):
     return False
 
 
-def parseUrls(rtext):
+def parseUrls(rtext: Tag) -> bool:
+    """
+    check the Chat-Message for any URLs and tag appropiately
+    :param rtext:
+    :return:
+    """
     def findUrls(s):
         # yes, this is faster than regex and less complex to read
         urls = []
@@ -200,3 +229,93 @@ def parseUrls(rtext):
         for url in urls:
             textReplace(text, formatUrl(text, url))
             return True
+
+def parseCharnames(rtext: Tag) -> bool:
+    """
+    check the Chat-Entry for any Character-Names and mark them with "show_enemy"
+    :param rtext:
+    :return:
+    """
+
+    def findNames(text: NavigableString) -> dict:
+
+        def chunks(listofwords: list, size: int = 1, offset = 0) -> list:
+            return (listofwords[pos:pos + size] for pos in range(0 + offset, len(listofwords), size))
+
+        names = {}
+        if len(text.strip()) == 0:
+            return names
+        words = text.split("  ")
+        for checkname in words:
+            if len(checkname) >= 3:
+                found = False
+                for a in names.items():
+                    if re.search(checkname, a[0], re.IGNORECASE):
+                        found = True
+                        break
+                if not found and EsiHelper().checkPlayerName(checkname):
+                    names[checkname] = checkname
+        return names
+
+        # words = text.strip(" ").split()
+        # for offset in range(0, min(3, len(words) - 1)):
+        #     # start with 3 words and work down
+        #     for chunk in range(3, 0, -1):
+        #         for groups in chunks(words, chunk, offset):
+        #             checkname = toreplace = " ".join(groups)
+        #             for char in CHARS_TO_IGNORE:
+        #                 checkname = checkname.replace(char, "")
+        #             if len(checkname) >= 3:
+        #                 found = False
+        #                 for a in names.items():
+        #                     if re.search(checkname, a[0], re.IGNORECASE):
+        #                         found = True
+        #                         break
+        #                 if not found and EsiHelper().checkPlayerName(checkname):
+        #                     names[checkname] = toreplace
+        #
+        # return names
+
+    def formatCharname(text: str, charname: str, originalname: str):
+        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{1}</a>"""
+        text = text.replace(charname, newText.format(charname, originalname))
+        return text
+
+    texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t) >= 3]
+
+    replaced = False
+    for text in texts: # iterate through each
+        names = findNames(text) # line
+        for name in names.items():
+            newText = formatCharname(text, name[0], name[1])
+            textReplace(text, newText)
+            replaced = True
+    return replaced
+
+if __name__ == "__main__":
+    chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix"
+    charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
+
+    rtext = Tag(name="ChatMessage")
+    rtext.contents.append(chat_text)
+
+    parts = chat_text.strip(" ").split(" ")
+    checkwords = ""
+    while len(parts) > 0:
+        for part in parts:
+            checkwords += " " + part
+            checkwords = checkwords.lstrip(" ")
+            originalText = checkwords
+            if len(checkwords) > 3:
+                if checkwords in charnames:
+                    print ("Hit with {}".format(checkwords))
+                    # last hit
+                    index = parts.index(part)
+                    i = 0
+                    while i < index:
+                        parts.pop(0)
+                        i+=1
+                    break
+        checkwords = ""
+        parts.pop(0)
+

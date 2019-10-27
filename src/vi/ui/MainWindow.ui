@@ -336,9 +336,6 @@
     <addaction name="autoScanIntelAction"/>
     <addaction name="kosClipboardActiveAction"/>
     <addaction name="separator"/>
-    <addaction name="infoAction"/>
-    <addaction name="separator"/>
-    <addaction name="quitAction"/>
    </widget>
    <widget class="QMenu" name="menuChat">
     <property name="title">
@@ -361,12 +358,6 @@
     <property name="title">
      <string>Region</string>
     </property>
-    <addaction name="delveRegionAction"/>
-    <addaction name="queriousRegionAction"/>
-    <addaction name="separator"/>
-    <addaction name="chooseRegionAction"/>
-    <addaction name="separator"/>
-    <addaction name="jumpbridgeDataAction"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -380,9 +371,32 @@
     <addaction name="alwaysOnTopAction"/>
     <addaction name="framelessWindowAction"/>
     <addaction name="menuTransparency"/>
+    <addaction name="actionLogging"/>
+    <addaction name="separator"/>
+    <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuCharacters">
+    <property name="title">
+     <string>Characters</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionSettings"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
    <addaction name="menu"/>
    <addaction name="menuChat"/>
+   <addaction name="menuCharacters"/>
    <addaction name="menuSound"/>
    <addaction name="menuRegion"/>
    <addaction name="menuWindow"/>
@@ -619,6 +633,26 @@
    </property>
    <property name="regionName" stdset="0">
     <string>querious</string>
+   </property>
+  </action>
+  <action name="actionLogging">
+   <property name="text">
+    <string>Logging</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionSettings">
+   <property name="text">
+    <string>Settings...</string>
    </property>
   </action>
  </widget>

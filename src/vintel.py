@@ -34,6 +34,7 @@ from vi.resources import resourcePath
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
+
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
         Global function to catch unhandled exceptions.
@@ -47,14 +48,20 @@ def exceptHook(exceptionType, exceptionValue, tracebackObject):
         pass
 
 sys.excepthook = exceptHook
+
 backGroundColor = "#c6d9ec"
 
-
 class Application(QApplication):
-
     def __init__(self, args):
         super(Application, self).__init__(args)
 
+        if not sys.platform.startswith("darwin"):
+            # this may set the Window-Icon in the Taskbar too
+            import ctypes
+            myApplicationID = str("{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT))
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myApplicationID)
+
+        global backGroundColor
         # Set up paths
         chatLogDirectory = ""
         if len(sys.argv) > 1:
@@ -89,21 +96,23 @@ class Application(QApplication):
         if not os.path.exists(vintelLogDirectory):
             os.mkdir(vintelLogDirectory)
 
-        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/Dominix.png")))
+        # splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
 
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:
             logLevel = logging.WARN
-        backGroundColor = vintelCache.getFromCache("background_color")
-        if backGroundColor:
+        backColor = vintelCache.getFromCache("background_color")
+        if backColor:
+            backGroundColor = backColor
             self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
         splash.show()
         self.processEvents()
 
         # Setup logging for console and rotated log files
-        formatter = logging.Formatter('%(asctime)s| %(message)s', datefmt='%m/%d %I:%M:%S')
+        formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
         rootLogger = logging.getLogger()
         rootLogger.setLevel(level=logLevel)
 
@@ -115,10 +124,9 @@ class Application(QApplication):
         consoleHandler = StreamHandler()
         consoleHandler.setFormatter(formatter)
         rootLogger.addHandler(consoleHandler)
+        # output logging to a Window
 
-        logging.critical("")
-        logging.critical("------------------- Vintel %s starting up -------------------", version.VERSION)
-        logging.critical("")
+        logging.debug("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
         logging.debug("Looking for chat logs at: %s", chatLogDirectory)
         logging.debug("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
         logging.debug("Writing logs to: %s", vintelLogDirectory)

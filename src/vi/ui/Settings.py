@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'Settings.ui'
+#
+# Created by: PyQt5 UI code generator 5.13.1
+#
+# WARNING! All changes made in this file will be lost!
+
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+
+class Ui_Dialog(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Dialog")
+        Dialog.resize(653, 397)
+        Dialog.setSizeGripEnabled(True)
+        self.widget = QtWidgets.QWidget(Dialog)
+        self.widget.setGeometry(QtCore.QRect(9, 9, 611, 381))
+        self.widget.setObjectName("widget")
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.widget)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.tabWidget = QtWidgets.QTabWidget(self.widget)
+        self.tabWidget.setObjectName("tabWidget")
+        self.tab_1 = QtWidgets.QWidget()
+        self.tab_1.setObjectName("tab_1")
+        self.groupBox = QtWidgets.QGroupBox(self.tab_1)
+        self.groupBox.setGeometry(QtCore.QRect(0, 10, 571, 181))
+        self.groupBox.setObjectName("groupBox")
+        self.formLayoutWidget = QtWidgets.QWidget(self.groupBox)
+        self.formLayoutWidget.setGeometry(QtCore.QRect(10, 23, 573, 255))
+        self.formLayoutWidget.setObjectName("formLayoutWidget")
+        self.formLayout = QtWidgets.QFormLayout(self.formLayoutWidget)
+        self.formLayout.setContentsMargins(0, 0, 0, 0)
+        self.formLayout.setObjectName("formLayout")
+        self.label = QtWidgets.QLabel(self.formLayoutWidget)
+        self.label.setObjectName("label")
+        self.formLayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label)
+        self.txtMessageExpiry = QtWidgets.QTextEdit(self.formLayoutWidget)
+        self.txtMessageExpiry.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.txtMessageExpiry.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.txtMessageExpiry.setObjectName("txtMessageExpiry")
+        self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.txtMessageExpiry)
+        self.label_2 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.label_2.setObjectName("label_2")
+        self.formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_2)
+        self.txtMapExpiry = QtWidgets.QTextEdit(self.formLayoutWidget)
+        self.txtMapExpiry.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.txtMapExpiry.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.txtMapExpiry.setObjectName("txtMapExpiry")
+        self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.txtMapExpiry)
+        self.label_3 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.label_3.setObjectName("label_3")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_3)
+        self.txtClipboardCheckInterval = QtWidgets.QTextEdit(self.formLayoutWidget)
+        self.txtClipboardCheckInterval.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.txtClipboardCheckInterval.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.txtClipboardCheckInterval.setObjectName("txtClipboardCheckInterval")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.txtClipboardCheckInterval)
+        self.formLayoutWidget_2 = QtWidgets.QWidget(self.tab_1)
+        self.formLayoutWidget_2.setGeometry(QtCore.QRect(10, 200, 431, 80))
+        self.formLayoutWidget_2.setObjectName("formLayoutWidget_2")
+        self.formLayout_2 = QtWidgets.QFormLayout(self.formLayoutWidget_2)
+        self.formLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.formLayout_2.setObjectName("formLayout_2")
+        self.label_4 = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.label_4.setObjectName("label_4")
+        self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_4)
+        self.btnColor = QtWidgets.QPushButton(self.formLayoutWidget_2)
+        self.btnColor.setObjectName("btnColor")
+        self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.btnColor)
+        self.tabWidget.addTab(self.tab_1, "")
+        self.tab_2 = QtWidgets.QWidget()
+        self.tab_2.setObjectName("tab_2")
+        self.tabWidget.addTab(self.tab_2, "")
+        self.verticalLayout.addWidget(self.tabWidget)
+        self.buttonBox = QtWidgets.QDialogButtonBox(self.widget)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.retranslateUi(Dialog)
+        self.tabWidget.setCurrentIndex(0)
+        QtCore.QMetaObject.connectSlotsByName(Dialog)
+
+    def retranslateUi(self, Dialog):
+        _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
+        self.groupBox.setTitle(_translate("Dialog", "in Seconds"))
+        self.label.setText(_translate("Dialog", "Message expiry :"))
+        self.label_2.setText(_translate("Dialog", "Map-Update interval :"))
+        self.label_3.setText(_translate("Dialog", "Clipboard Check-Interval :"))
+        self.label_4.setText(_translate("Dialog", "Window Background Color :"))
+        self.btnColor.setText(_translate("Dialog", "Color..."))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), _translate("Dialog", "General"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Dialog", "Sound"))
