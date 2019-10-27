@@ -50,7 +50,7 @@ class EveGate:
             idlist = char["character"]
             return int(idlist[0])
         except Exception as e:
-            logging.error("Exception turning charname to id via API: %s", e)
+            logging.error("Exception turning charname to id via API: %r", e)
 
         return None
         # except Exception as e:
@@ -85,7 +85,7 @@ class EveGate:
             if character:
                 name = character['character'][0]
         except Exception as e:
-            logging.error("Character {} not found".format(charid), e)
+            logging.error("Character {} not found: %r".format(charid), e)
         return name
 
     def idsToNames(self, ids):

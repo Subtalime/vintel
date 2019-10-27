@@ -61,7 +61,7 @@ class Import:
             if content:
                 return self.convertGarpaData(content)
         except Exception as e:
-            logging.error("Error in importing Garpa Jumpbridges", e)
+            logging.error("Error in importing Garpa Jumpbridges: %r", e)
         return []
 
 

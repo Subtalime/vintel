@@ -31,12 +31,12 @@ from PyQt5.QtGui import QColor
 
 from vi.LogWindow import LogWindow
 from vi import amazon_s3
-from vi import dotlan_mdoule, filewatcher
+# from vi import dotlan_mdoule, filewatcher
 from vi import states
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
-from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread
+from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
 from vi.esi import EsiInterface
@@ -59,10 +59,17 @@ from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.settings.SettingsDialog import SettingsDialog
 
+try:
+    import pickle
+except ImportError:  # pragma: no cover
+    import cPickle as pickle
+
+
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
 CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
+
 
 
 class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
@@ -105,6 +112,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.clipboard.clear(mode=self.clipboard.Clipboard)
         self.alarmDistance = 0
         self.initialMapPosition = None
+        self.initialZoom = None
         self.lastStatisticsUpdate = 0
         self.chatEntries = []
         self.refreshContent = None
@@ -225,6 +233,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # Wire up general UI connections
         # KOS disabled, since it's only working for CVA
         self.kosClipboardActiveAction.setEnabled(False)
+        self.autoScanIntelAction.setEnabled(False)
         # TODO: Sort Clipboard out
         # self.clipboard.changed(QClipboard.Clipboard).connect(self.clipboardChanged(QClipboard.Clipboard))
         self.clipboard.changed.connect(self.clipboardChanged)
@@ -311,7 +320,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.kosRequestThread.kos_result.connect(self.showKosResult)
         # self.kosRequestThread.start()
 
-        self.filewatcherThread = filewatcher.FileWatcher(self.pathToLogs)
+        self.filewatcherThread = FileWatcherThread(self.pathToLogs)
         self.filewatcherThread.file_change.connect(self.logFileChanged)
         self.filewatcherThread.start()
 
@@ -336,7 +345,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def setupMap(self, initialize=False):
         # self.mapTimer.stop()
         self.filewatcherThread.paused = True
-
+        self.mapUpdateThread.activeData = False
         logging.debug("Finding map file")
         regionName = self.cache.getFromCache("region_name")
         if not regionName:
@@ -351,27 +360,21 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 svg = svgFile.read()
         except Exception as e:
             if regionName.endswith(".svg"):
-                msgBox = QMessageBox()
-                msgBox.move(self.rect().center())
-                msgBox.critical(None, "Error loading map file \"{}\"".format(path),
-                                six.text_type(e), QMessageBox.Ok)
-                msgBox.exec_()
+                QMessageBox.critical(self, "Setup Map", "Error loading map file \"{}\"".format(path))
             pass
 
         try:
-            self.dotlan = MyMap(regionName, svg)
+            self.dotlan = MyMap(regionName, svg, self)
         except DotlanException as e:
             logging.error(e)
-            msgBox = QMessageBox()
-            msgBox.move(self.rect().center())
-            msgBox.critical(None, "Error getting map", six.text_type(e), QMessageBox.Ok)
-            msgBox.exec_()
+            QMessageBox.critical(self, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 self.cache.putIntoCache("region_name", "Delve")
                 return self.setupMap(initialize)
             sys.exit(1)
         logging.debug("Map File found, Region set to {}".format(regionName))
+        self.cache.putIntoCache("region_name", "Delve")
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
             diagText = "Something went wrong getting map data. Proceeding with older cached data. " \
@@ -383,7 +386,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
         # Load the jumpbridges
         logging.debug("Load jump bridges")
-        self.setJumpbridges(self.cache.getFromCache("jumpbridge_url"))
+        self.setJumpbridges()
+        logging.debug("Load jump bridges done")
+
         self.systems = self.dotlan.systems
         logging.debug("Creating chat parser")
         self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems)
@@ -402,18 +407,18 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.mapView.view.contextMenu = self.trayIcon.contextMenu()
 
             # Clicking links
+            self.jumpbridgesButton.setChecked(False)
+            self.statisticsButton.setChecked(False)
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)
-            self.refreshContent = self.dotlan.svg
-            self.mapUpdateThread.activeData = True
-            self.updateMapView()
-            self.setInitialMapPositionForRegion(regionName)
             logging.debug("DONE Initializing contextual menus")
 
             # self.restartMapTimer()
 
-        self.jumpbridgesButton.setChecked(False)
-        self.statisticsButton.setChecked(False)
-
+        self.mapUpdateThread.activeData = True
+        self.setInitialMapPositionForRegion(regionName)
+        self.updateMapView()
+        self.refreshContent = self.dotlan.svg
+        self.setInitialMapPositionForRegion(regionName)
         # Update the new map view, then clear old statistics from the map and request new
         logging.debug("Updating the map")
         # Allow the file watcher to run now that all else is set up
@@ -466,7 +471,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     (None, "changeSound", self.activateSoundAction.isChecked()),
                     (None, "changeChatVisibility", self.showChatAction.isChecked()),
                     (None, "loadInitialMapPositions", self.mapPositionsDict),
-                    (SoundManager, "setSoundVolume", SoundManager().soundVolume),
+                    (None, "setSoundVolume", SoundManager().soundVolume),
                     (None, "changeFrameless", self.framelessWindowAction.isChecked()),
                     (None, "changeUseSpokenNotifications",
                      self.useSpokenNotificationsAction.isChecked()),
@@ -479,19 +484,20 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         try:
             SoundManager().quit()
             self.avatarFindThread.quit()
-            self.avatarFindThread.wait()
+            # self.avatarFindThread.wait()
+            self.filewatcherThread.paused = True
             self.filewatcherThread.quit()
-            self.filewatcherThread.wait()
+            # self.filewatcherThread.wait()
             # self.kosRequestThread.quit()
             # self.kosRequestThread.wait()
             self.versionCheckThread.quit()
-            self.versionCheckThread.wait()
+            # self.versionCheckThread.wait()
             self.statisticsThread.quit()
-            self.statisticsThread.wait()
+            # self.statisticsThread.wait()
             self.mapUpdateThread.quit()
-            self.mapUpdateThread.wait()
+            # self.mapUpdateThread.wait()
             self.esiThread.quit()
-            self.esiThread.wait()
+            # self.esiThread.wait()
         except Exception:
             pass
         self.trayIcon.hide()
@@ -500,9 +506,12 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
         event.accept()
 
+    def setSoundVolume(self, value):
+        SoundManager().setSoundVolume(value)
+
     def notifyNewerVersion(self, newestVersion):
         self.trayIcon.showMessage("Newer Version",
-                                  ("An update is available for {}.\n{}".format(vi.version.PROGNAME,
+                              ("An update is available for {}.\n{}".format(vi.version.PROGNAME,
                                                                                vi.version.URL)))
 
     def changeChatVisibility(self, newValue=None):
@@ -740,11 +749,14 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def updateMapView(self):
         scrollPosition = self.mapView.page().scrollPosition()
+        zoom = self.mapView.page().zoomFactor()
         if self.initialMapPosition:
             scrollPosition = self.initialMapPosition
-            self.initialMapPosition = None
+            zoom = self.initialZoom
+            self.initialMapPosition = self.initialZoom = None
 
-        self.mapUpdateThread.queue.put((self.dotlan.svg, self.mapView.page().zoomFactor(), scrollPosition))
+
+        self.mapUpdateThread.queue.put((self.dotlan.svg, zoom, scrollPosition))
         # self.setMapContent(self.dotlan.svg)
 
     def zoomMapIn(self):
@@ -761,8 +773,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             if not regionName:
                 regionName = self.cache.getFromCache("region_name")
             if regionName:
-                xy = self.mapPositionsDict[regionName]
+                xy, zoom = self.mapPositionsDict[regionName]
                 self.initialMapPosition = QPoint(xy[0], xy[1])
+                self.initialZoom = zoom
         except Exception:
             pass
 
@@ -771,7 +784,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if regionName:
             scrollPosition = self.mapView.page().scrollPosition()
             # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
-            self.mapPositionsDict[regionName] = (scrollPosition.x(), scrollPosition.y())
+            self.mapPositionsDict[regionName] = ((scrollPosition.x(), scrollPosition.y()), self.mapView.page().zoomFactor())
 
     def showLoggingWindow(self):
         if self.logWindow.isHidden():
@@ -802,6 +815,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                         parts = line.strip().split()
                         if len(parts) == 3:
                             data.append(parts)
+                    if len(data) <= 0:
+                        url = ""
                 else:
                     from vi.jumpbridge.Import import Import
                     data = Import().readGarpaFile(url)
@@ -809,20 +824,24 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 from vi.jumpbridge.Import import Import
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
-                try:
-                    data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
-                except Exception:
-                    data = self.cache.getFromCache("jumpbridge_data_[]".format(self.dotlan.region.lower()))
-                    if not data:
-                        raise
-                    pass
-            self.dotlan.setJumpbridges(data)
-            self.cache.putIntoCache("jumpbridge_url", url, 60 * 60 * 24 * 365 * 8)
-            self.cache.putIntoCache("jumpbridge_data_{}".self.dotlan.region.lower(), clipdata, 60 * 60 * 24 * 365 * 8)
+                data = self.cache.getFromCache("jumpbridge_data_{}".format(self.dotlan.region.lower()), default=[])
+                # data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
+                # if not data:
+                #     data = self.cache.getFromCache("jumpbridge_data_{}".format(self.dotlan.region.lower()), default=[])
+            self.dotlan.setJumpbridges(self, data)
+            if url or len(data) > 0:
+                if url:
+                    self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()), url, maxAge=Cache.FOREVER)
+                else:
+                    self.cache.putIntoCache("jumpbridge_data_{}".format(self.dotlan.region.lower()), data, maxAge=Cache.FOREVER)
+                self.jumpbridgesButton.setCheckable(True)
         except Exception as e:
             QMessageBox.warning(self, "Loading jumpbridges failed!",
                                 "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)
+            self.cache.delFromCache("jumpbridge_url_{}".format(self.dotlan.region.lower()))
+            self.cache.delFromCache("jumpbridge_data_{}".format(self.dotlan.region.lower()))
+            self.jumpbridgesButton.setCheckable(False)
 
     # TODO: add functionality to still store other Region actions
     def handleRegionMenuItemSelected(self, menuAction=None):

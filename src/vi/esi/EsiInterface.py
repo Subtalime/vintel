@@ -205,7 +205,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             self.wfile.write(
                                 b"You have verified your account on ESI. You can now close this window")
                     except Exception as e:
-                        self.logger.error("Unexpected response: {}".format(self.requestline))
+                        self.logger.error("Unexpected response: %s: %r", self.requestline, e)
                         self.wfile.write(b"I don't know what you are on about")
 
         def __str__(self):
@@ -266,7 +266,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             except Exception as e:
                 if self.caching:
                     Cache().delFromCache(cacheKey)
-                self.logger.error("Error retrieving Character \"{}\" from ESI".format(characterId), e)
+                self.logger.error("Error retrieving Character \"%d\" from ESI: %r", characterId, e)
         return response
 
     def getCorporation(self, corpid: int) -> Response.data:
@@ -288,7 +288,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 #            "war_elligible": xx, "url": xx, "ticker": xx, "shares": xx, "name": xx, "member_count": xx,
                 #            "home_station_id": xx }
         except Exception as e:
-            self.logger.error("Error retrieving Corporation \"{}\" from ESI".format(corpid), e)
+            self.logger.error("Error retrieving Corporation \"%d\" from ESI: %r", corpid, e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
         return response
@@ -312,8 +312,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
         except Exception as e:
             self.logger.error(
-                "Error retrieving Corporation-History for Character \"{}\" from ESI".format(
-                    characterId), e)
+                "Error retrieving Corporation-History for Character \"%d\" from ESI: %r", characterId, e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
         return response
@@ -321,7 +320,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def getCharacterId(self, charname: str, strict: bool = True) -> Response.data:
         response = None
         try:
-            cacheKey = "_".join(("esicache", "getcharacterid", charname))
+            cacheKey = "_".join(("esicache", "getcharacterid", "0" if not strict else "1", charname))
             if self.caching:
                 result = Cache().getFromCache(cacheKey)
                 if result:
@@ -336,8 +335,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     if self.caching:
                         Cache().putIntoCache(cacheKey, str(response))
         except Exception as e:
-            self.logger.error("Error retrieving Character-ID by Name \"{}\" from ESI".format(charname),
-                              e)
+            self.logger.error("Error retrieving Character-ID by Name \"%s\" from ESI: %r", charname, e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
         return response
@@ -360,7 +358,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         Cache().putIntoCache(cacheKey, str(response))
         except Exception as e:
             self.logger.error(
-                "Error retrieving Character Avatar for ID \"{}\" from ESI".format(characterId), e)
+                "Error retrieving Character Avatar for ID \"%d\" from ESI: %r",characterId, e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
         return response
@@ -388,7 +386,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         Cache().putIntoCache(cacheKey, str(response))
                     # format is [{"name": xx, "id": xx} ...]
         except Exception as e:
-            self.logger.error("Error retrieving System-IDs for \"{}\" from ESI".format(namelist), e)
+            self.logger.error("Error retrieving System-IDs for \"%r\" from ESI: %r".namelist, e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
         return response
@@ -410,7 +408,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     if self.caching:
                         Cache().putIntoCache(cacheKey, str(response))
         except Exception as e:
-            self.logger.error("Error retrieving System-Names for \"{}\" from ESI".format(idlist), e)
+            self.logger.error("Error retrieving System-Names for \"%r\" from ESI: %r", idlist, e)
             if self.caching:
                 Cache().delFromCache(cacheKey)
 
@@ -589,7 +587,7 @@ class EsiThread(QThread):
                 EsiInterface().getShipList
 
             except Exception as e:
-                logging.error("Error in EsiThread: %s", e)
+                logging.error("Error in EsiThread: %r", e)
                 exit(-1)
             self.lastStatisticsUpdate = time.time()
             self.refreshTimer.start(self.pollRate)

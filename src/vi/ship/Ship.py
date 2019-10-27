@@ -3,6 +3,7 @@ import vi.ship.ShipDialog
 from vi.esi.EsiHelper import EsiHelper, EsiInterface
 import logging
 
+# TODO: show some information about the Ship...
 class Ship(QWidget, vi.ship.ShipDialog.Ui_Dialog):
 
     def __init__(self, shipName: str=None, shipId: int=None):

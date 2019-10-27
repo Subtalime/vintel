@@ -66,7 +66,7 @@ class Ui_MainWindow(object):
         self.jumpbridgesButton = QtWidgets.QPushButton(self.mapbuttonwidget)
         self.jumpbridgesButton.setMaximumSize(QtCore.QSize(16777215, 19))
         self.jumpbridgesButton.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.jumpbridgesButton.setCheckable(True)
+        self.jumpbridgesButton.setCheckable(False)
         self.jumpbridgesButton.setChecked(False)
         self.jumpbridgesButton.setObjectName("jumpbridgesButton")
         self.horizontalLayout_2.addWidget(self.jumpbridgesButton)

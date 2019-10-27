@@ -65,7 +65,7 @@ class EsiHelper:
             else:
                 systemData = json.loads(systemData)
         except Exception as e:
-            logging.error("Exception during getSystemStatistics: : %s", e)
+            logging.error("Exception during getSystemStatistics: : %r", e)
 
         data = {}
         # We collected all data (or loaded them from cache) - now zip it together

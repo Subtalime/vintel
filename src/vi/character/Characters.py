@@ -134,7 +134,7 @@ class Characters(dict):
                     arr = list(character.split("."))
                     self.addCharacter(Character(arr[0], arr[1], arr[2]))
                 except Exception as e:
-                    logging.error("could not add player \"{}\"".format(character), e)
+                    logging.error("could not add player \"%s\": %r", character, e)
                     pass
 
     def storeData(self):

@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup, CData
+from PyQt5 import QtGui, QtWidgets, QtCore
 from vi.dotlan.map import Map
 import time, logging, os, datetime
 
@@ -151,11 +152,11 @@ class MyMap(Map):
                 newValue = "0"
             self.marker["opacity"] = newValue
         content = str(self.soup)
-        self.debugWriteSoup(content)
+        # self.debugWriteSoup(content)
         return content
         # return super(MyMap, self).svg
 
-    def __init__(self, region: str = None, testFile=None):
+    def __init__(self, region: str = None, testFile=None, parent=None):
         if not testFile:
             path, file = os.path.split(os.path.abspath(__file__))
             testFile = os.path.join(path, "delve.svg")
@@ -168,14 +169,15 @@ class MyMap(Map):
         except FileNotFoundError as e:
             self.svgData = testFile
             pass
+        if parent:
+            progress = QtWidgets.QProgressDialog("Loading map data...", None, 0, 0, parent)
+            progress.setWindowModality(0)
+
         super(MyMap, self).__init__(region, self.svgData)
-        # self.mySystems = {}
-        # for key in self.systems:
-        #     sys = self.systems[key]
-        #     self.systems[key] = MySystem(sys.name, sys.svgElement, sys.mapSoup,
-        #                                  sys.mapCoordinates, sys.transform, sys.systemId)
-        # add the Time-JS
         self.addTimerJs()
+        if parent:
+            progress.accept()
+            progress.close()
 
     def debugWriteSoup(self, svgData):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
@@ -186,3 +188,66 @@ class MyMap(Map):
                 svgFile.write(svgData)
         except Exception as e:
             logging.error(e)
+
+
+    def setJumpbridges(self, parent, jumpbridgesData):
+        """
+            Adding the jumpbridges to the map soup; format of data:
+            tuples with 3 values (sys1, connection, sys2)
+        """
+        if len(jumpbridgesData) <= 0:
+            return
+        try:
+            progress = QtWidgets.QProgressDialog("Creating jump-bridges...", "Abort", 0, len(jumpbridgesData), parent)
+            progress.setWindowModality(1)
+            progress.setValue(0)
+            soup = self.soup
+            for bridge in soup.select(".jumpbridge"):
+                bridge.decompose()
+            jumps = soup.select("#jumps")[0]
+            colorCount = 0
+            jumpCount = 0
+            for bridge in jumpbridgesData:
+                jumpCount+=1
+                if jumpCount % 4:
+                    progress.setValue(jumpCount)
+                if progress.wasCanceled():
+                    break
+                sys1 = bridge[0]
+                connection = bridge[1]
+                sys2 = bridge[2]
+                if not (sys1 in self.systems and sys2 in self.systems):
+                    continue
+
+                if colorCount > len(JB_COLORS) - 1:
+                    colorCount = 0
+                jbColor = JB_COLORS[colorCount]
+                colorCount += 1
+                systemOne = self.systems[sys1]
+                systemTwo = self.systems[sys2]
+                systemOneCoords = systemOne.mapCoordinates
+                systemTwoCoords = systemTwo.mapCoordinates
+                systemOneOffsetPoint = systemOne.getTransformOffsetPoint()
+                systemTwoOffsetPoint = systemTwo.getTransformOffsetPoint()
+
+                systemOne.setJumpbridgeColor(jbColor)
+                systemTwo.setJumpbridgeColor(jbColor)
+
+                # Construct the line, color it and add it to the jumps
+                line = soup.new_tag("line", x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
+                                    y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
+                                    x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
+                                    y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1], visibility="hidden",
+                                    style="stroke:#{0}".format(jbColor))
+                line["stroke-width"] = 2
+                line["class"] = ["jumpbridge", ]
+                if "<" in connection:
+                    line["marker-start"] = "url(#arrowstart_{0})".format(jbColor)
+                if ">" in connection:
+                    line["marker-end"] = "url(#arrowend_{0})".format(jbColor)
+                jumps.insert(0, line)
+        except Exception as e:
+            raise
+        finally:
+            if progress:
+                progress.accept()

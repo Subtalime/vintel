@@ -35,7 +35,7 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             self.accept()
             self.set_jump_bridge_url.emit(url, None)
         except Exception as e:
-            logging.error("Finding Jumpbridgedata failed for \"{}\"".format(url), e)
+            logging.error("Finding Jumpbridgedata failed for \"%s\": %r", url, e)
 
     def saveClipboard(self):
             try:
@@ -45,5 +45,7 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
                     if len(jb) > 0:
                         self.accept()
                         self.set_jump_bridge_url.emit(None, data)
+                    else:
+                        QtWidgets.QMessageBox.warning(self, "Jumpbridgedata from Clipboard", "Invalid data found in Clipboard")
             except Exception as e:
-                logging.error("Error while using Clipboard-Jumpdata", e)
+                logging.error("Error while using Clipboard-Jumpdata: %r", e)

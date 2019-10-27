@@ -67,6 +67,7 @@ class NotifyNewVersionThread(QThread):
 
     def __init__(self):
         QThread.__init__(self)
+        logging.debug("Starting Version-Thread")
         self.alerted = False
 
     def run(self):
@@ -79,3 +80,7 @@ class NotifyNewVersionThread(QThread):
                     self.alerted = True
             except Exception as e:
                 logging.error("Failed NotifyNewVersionThread: %s", e)
+
+    def quit(self) -> None:
+        logging.debug("Stopping Version-Thread")
+        QThread.quit(self)

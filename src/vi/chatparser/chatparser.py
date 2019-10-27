@@ -78,8 +78,8 @@ class ChatParser(object):
                 content = f.read()
             lines = content.split("\n")
         except Exception as e:
+            logging.warning("Failed to read log file \"%s\" %r", path, e)
             self.ignoredPaths.append(path)
-            logging.warning("Failed to read log file \"{}\"".format(path), e)
             return None
 
         if path not in self.fileData or (roomname in LOCAL_NAMES and "charname" not in self.fileData.get(path, [])):
@@ -145,8 +145,8 @@ class ChatParser(object):
             continue
         while parseSystems(self.systems, rtext, systems):
             continue
-        # while parseCharnames(rtext):
-        #     continue
+        while parseCharnames(rtext):
+            continue
 
         parsedStatus = parseStatus(rtext)
         status = parsedStatus if parsedStatus is not None else states.ALARM

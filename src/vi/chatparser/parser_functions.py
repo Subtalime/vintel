@@ -35,13 +35,13 @@
 		the tree and so the original generator is not longer stable.
 """
 
-import six
+import six, re
 from bs4 import BeautifulSoup, Tag
 from bs4.element import NavigableString
 from vi import states
 from vi.esi.EsiHelper import EsiHelper, EsiInterface
 
-CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")")
+CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
 
 
 def textReplace(element: NavigableString, newText: str):
@@ -49,9 +49,12 @@ def textReplace(element: NavigableString, newText: str):
     newElements = []
     for newPart in BeautifulSoup(newText, 'html.parser').select("t")[0].contents:
         newElements.append(newPart)
-    for newElement in newElements:
+    try:
+        for newElement in newElements:
             element.insert_before(newElement)
-    element.replace_with(six.text_type(""))
+        element.replace_with(six.text_type(""))
+    except Exception:
+        pass
 
 
 def parseStatus(rtext):
@@ -233,45 +236,61 @@ def parseCharnames(rtext: Tag) -> bool:
     :param rtext:
     :return:
     """
-    def findNames(text: str) -> list:
-        names = []
-        if len(text.strip(" ")) == 0:
+
+    def findNames(text: NavigableString) -> dict:
+
+        def chunks(listofwords: list, size: int = 1, offset = 0) -> list:
+            return (listofwords[pos:pos + size] for pos in range(0 + offset, len(listofwords), size))
+
+        names = {}
+        if len(text.strip()) == 0:
             return names
-        parts = text.strip(" ").split(" ")
-        checkwords = ""
-        while len(parts) > 0:
-            for part in parts:
-                checkwords += " " + part
-                checkwords = checkwords.lstrip(" ")
-                originalText = checkwords
-                for char in CHARS_TO_IGNORE:
-                    cleanText = checkwords.replace(char, "")
-                if len(cleanText) > 3:
-                    if EsiHelper().checkPlayerName(cleanText):
-                        names.append(originalText)
-                        index = parts.index(part)
-                        i = 0
-                        while i < index:
-                            parts.pop(0)
-                            i += 1
+        words = text.split("  ")
+        for checkname in words:
+            if len(checkname) >= 3:
+                found = False
+                for a in names.items():
+                    if re.search(checkname, a[0], re.IGNORECASE):
+                        found = True
                         break
-            checkwords = ""
-            parts.pop(0)
+                if not found and EsiHelper().checkPlayerName(checkname):
+                    names[checkname] = checkname
+        return names
 
+        # words = text.strip(" ").split()
+        # for offset in range(0, min(3, len(words) - 1)):
+        #     # start with 3 words and work down
+        #     for chunk in range(3, 0, -1):
+        #         for groups in chunks(words, chunk, offset):
+        #             checkname = toreplace = " ".join(groups)
+        #             for char in CHARS_TO_IGNORE:
+        #                 checkname = checkname.replace(char, "")
+        #             if len(checkname) >= 3:
+        #                 found = False
+        #                 for a in names.items():
+        #                     if re.search(checkname, a[0], re.IGNORECASE):
+        #                         found = True
+        #                         break
+        #                 if not found and EsiHelper().checkPlayerName(checkname):
+        #                     names[checkname] = toreplace
+        #
+        # return names
 
-    def formatCharname(text: str, charname: str):
-        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{0}</a>"""
-        text = text.replace(charname, newText.format(charname))
+    def formatCharname(text: str, charname: str, originalname: str):
+        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{1}</a>"""
+        text = text.replace(charname, newText.format(charname, originalname))
         return text
 
-    texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
+    texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t) >= 3]
 
+    replaced = False
     for text in texts: # iterate through each
         names = findNames(text) # line
-        for name in names:
-            formatCharname(text, name)
-            return True
-    return False
+        for name in names.items():
+            newText = formatCharname(text, name[0], name[1])
+            textReplace(text, newText)
+            replaced = True
+    return replaced
 
 if __name__ == "__main__":
     chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix"

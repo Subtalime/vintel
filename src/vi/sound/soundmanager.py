@@ -184,13 +184,13 @@ class SoundManager(six.with_metaclass(Singleton)):
                 elif self.isDarwin:
                     subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
             except Exception as e:
-                logging.error("SoundThread.playAudioFile exception: %s", e)
+                logging.error("SoundThread.playAudioFile exception: %r", e)
 
         def darwinSpeak(self, message):
             try:
                 os.system("say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message))
             except Exception as e:
-                logging.error("SoundThread.darwinSpeak exception: %s", e)
+                logging.error("SoundThread.darwinSpeak exception: %r", e)
 
         #
         #  Experimental text-to-speech stuff below
@@ -236,7 +236,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                         args.timeout.write(requests.get(mp3url, headers=headers).content)
                         time.sleep(.5)
                     except requests.exceptions.RequestException as e:
-                        logging.error('audioExtractToMp3 error: %s', e)
+                        logging.error('audioExtractToMp3 error: %r', e)
             args.output.close()
             return args.output.name
 

@@ -20,18 +20,25 @@
 import time
 import logging
 import six
+import os
+import stat
+import glob
 
 from six.moves import queue as SixQueue
 import queue
 from bs4 import BeautifulSoup
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal, QPointF
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal, QFileSystemWatcher
 
 from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.chatentrywidget import ChatEntryWidget
 from vi.esi.EsiHelper import EsiHelper
+
+
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
+FILE_DEFAULT_MAX_AGE = 60 * 60 * 24
+
 
 # attempt to run this in a thread rather thana timer
 # to reduce flickering on reload
@@ -43,20 +50,17 @@ class MapUpdateThread(QThread):
         logging.debug("Starting Map-Thread {}".format(timerInterval))
         self.queue = queue.Queue()
         self.activeData = False
-        self.timeout = timerInterval / 1000
+        if timerInterval > 1000:
+            timerInterval = timerInterval / 1000
+        self.timeout = timerInterval
 
     def run(self):
-        def injectScrollPosition(content: str, scroll: str) -> str:
-            soup = BeautifulSoup(content, "html.parser")
+        def injectScrollPosition(svg_content: str, scroll: str) -> str:
+            soup = BeautifulSoup(svg_content, "html.parser")
             js = soup.new_tag("script", attrs={"type": "text/javascript"})
             js.string = scroll
             soup.svg.append(js)
             return str(soup)
-            # newContent = content
-            # if scroll:
-            #     scrollText = """\n<script type="text/javascript"><![CDATA[""" + scroll + """]]></script>\n"""
-            #     newContent = newContent.replace("</svg>", scrollText + "</svg>")
-            # return newContent
 
         while True:
             try:
@@ -82,13 +86,14 @@ class MapUpdateThread(QThread):
                     self.map_update.emit(newContent)
                     logging.debug("Setting Map-Content complete")
                 else:
-                    logging.debug("Map-Content from Cache")
-                    self.map_update.emit(None)
+                    pass
+                    # logging.debug("Map-Content from Cache")
+                    # self.map_update.emit(None)
             except Exception as e:
                 logging.error("Problem with setMapContent: %r", e)
 
     def quit(self):
-        self.active = False
+        self.activeData = False
         logging.debug("Stopping Map-Thread")
         self.queue.put(None)
         QThread.quit(self)
@@ -113,7 +118,7 @@ class AvatarFindThread(QThread):
             # Enqeue the data to be picked up in run()
             self.queue.put(chatEntry)
         except Exception as e:
-            logging.error("Error in AvatarFindThread: %s", e)
+            logging.error("Error in AvatarFindThread: %r", e)
 
 
     def run(self):
@@ -141,7 +146,6 @@ class AvatarFindThread(QThread):
                     if diffLastCall < wait:
                         time.sleep((wait - diffLastCall) / 1000.0)
                     avatar = EsiHelper().getAvatarByName(charname)
-                    # avatar = evegate.EveGate().getAvatarForPlayer(charname)
                     lastCall = time.time()
                     if avatar:
                         cache.putAvatar(charname, avatar)
@@ -149,7 +153,7 @@ class AvatarFindThread(QThread):
                     logging.debug("AvatarFindThread emit avatar_update for %s" % charname)
                     self.avatar_update.emit(chatEntry, avatar)
             except Exception as e:
-                logging.error("Error in AvatarFindThread : %s", e)
+                logging.error("Error in AvatarFindThread : %r", e)
 
 
     def quit(self):
@@ -183,7 +187,7 @@ class KOSCheckerThread(QThread):
             # Enqeue the data to be picked up in run()
             self.queue.put((names, requestType, onlyKos))
         except Exception as e:
-            logging.error("Error in KOSCheckerThread.addRequest: %s", e)
+            logging.error("Error in KOSCheckerThread.addRequest: %r", e)
 
 
     def run(self):
@@ -206,7 +210,7 @@ class KOSCheckerThread(QThread):
                         hasKos = True
                         break
             except Exception as e:
-                logging.error("Error in KOSCheckerThread.run: %s", e)
+                logging.error("Error in KOSCheckerThread.run: %r", e)
                 continue
 
             logging.info("KOSCheckerThread emitting kos_result for: state = {0}, text = {1}, requestType = {2}, hasKos = {3}".format(
@@ -240,7 +244,6 @@ class MapStatisticsThread(QThread):
 
     def run(self):
         self.refreshTimer = QTimer()
-        # self.connect(self.refreshTimer, PYQT_SIGNAL("timeout()"), self.requestStatistics)
         self.refreshTimer.timeout.connect(self.requestStatistics)
         while True:
             # Block waiting for requestStatistics() to enqueue a token
@@ -255,12 +258,11 @@ class MapStatisticsThread(QThread):
                 #time.sleep(2)  # sleeping to prevent a "need 2 arguments"-error
                 requestData = {"result": "ok", "statistics": statistics}
             except Exception as e:
-                logging.error("Error in MapStatisticsThread: %s", e)
+                logging.error("Error in MapStatisticsThread: %r", e)
                 requestData = {"result": "error", "text": six.text_type(e)}
             self.lastStatisticsUpdate = time.time()
             self.refreshTimer.start(self.pollRate)
             self.statistic_data_update.emit(requestData)
-            # self.emit(PYQT_SIGNAL("statistic_data_update"), requestData)
             logging.debug("MapStatisticsThread emitted statistic_data_update")
 
 
@@ -269,3 +271,97 @@ class MapStatisticsThread(QThread):
         logging.debug("Stopping MapStatistics-Thread")
         self.queue.put(None)
         QThread.quit(self)
+
+class FileWatcherThread(QThread):
+    file_change = pyqtSignal(str)
+
+    def __init__(self, folder, maxAge=FILE_DEFAULT_MAX_AGE):
+        super(__class__, self).__init__()
+        logging.debug("Starting FileWatcher-Thread")
+        self.folder = folder
+        self.active = True
+        self._warned = False
+        self.maxAge = maxAge
+        self.maxFiles = 200
+        # index = Folder, content = {path, os.stat}
+        self.filesInFolder = {}
+        self._addFiles(folder)
+
+    def addPath(self, path):
+        self._addFiles(path)
+
+    def run(self):
+        while True:
+            # don't overload the disk scanning
+            time.sleep(1)
+            # here, periodically, we check if any files have been added to the folder
+            if self.active:
+                self._scanPaths()
+                for path in self.filesInFolder.keys(): # dict
+                    self.filesInFolder[path] = self._checkChanges(list(self.filesInFolder[path].items()))
+            pass
+
+    def quit(self) -> None:
+        self.active = False
+        logging.debug("Stopping FileWatcher-Thread")
+        super(__class__, self).quit()
+
+    def fileChanged(self, path):
+        self.file_change.emit(path)
+
+    def _sendWarning(self, path, length):
+        # only do this ONCE at startup
+        if self._warned:
+            return
+        logging.warning("Log-Folder \"{}\" has more than {} files (actually has {})! This will impact performance! Consider tidying up!".format(path, self.maxFiles, length))
+        self._warned = True
+
+    def _checkChanges(self, checkList):
+        fileList = {}
+        for file, fstat in checkList:
+            # might be tidying up..., so try
+            try:
+                pathStat = os.stat(file)
+                if pathStat != fstat:
+                    fstat = pathStat
+                    self.fileChanged(file)
+                fileList[file] = fstat
+            except Exception:
+                pass
+        return fileList
+
+    # scan all configured paths
+    def _scanPaths(self):
+        for path in self.filesInFolder.keys():
+            self._addFiles(path)
+
+    # check for new files in folder and add if necessary
+    def _addFiles(self, path):
+        filesInDir = self.filesInFolder[path] if path in self.filesInFolder.keys() else {}
+        changed = False
+        now = time.time()
+        # order by date descending
+        folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True)
+        if self.maxFiles and len(folderContent) > self.maxFiles:
+            self._sendWarning(path, len(folderContent))
+        for fullPath in folderContent:
+            try:
+                pathStat = os.stat(fullPath)
+                # this file currently not logged
+                if not fullPath in filesInDir:
+                    if not stat.S_ISREG(pathStat.st_mode):
+                        continue
+                    if self.maxAge and ((now - pathStat.st_mtime) > self.maxAge):
+                        # we now BREAK, since not interested in older files
+                        break
+                    filesInDir[fullPath] = pathStat
+                    changed = True
+                # this file now older than wanted
+                elif self.maxAge and (now - pathStat.st_mtime) > self.maxAge:
+                    filesInDir.pop(fullPath)
+                    changed = True
+            except Exception:
+                pass
+        if changed:
+            self.filesInFolder[path] = filesInDir
+
