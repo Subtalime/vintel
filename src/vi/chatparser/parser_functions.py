@@ -35,7 +35,7 @@
 		the tree and so the original generator is not longer stable.
 """
 
-import six, re
+import six, re, logging
 from bs4 import BeautifulSoup, Tag
 from bs4.element import NavigableString
 from vi import states
@@ -245,8 +245,11 @@ def parseCharnames(rtext: Tag) -> bool:
         names = {}
         if len(text.strip()) == 0:
             return names
+        logging.debug("Analysing Names: {}".format(text))
         words = text.split("  ")
         for checkname in words:
+            for char in CHARS_TO_IGNORE:
+                checkname = checkname.replace(char, "")
             if len(checkname) >= 3:
                 found = False
                 for a in names.items():
@@ -293,7 +296,7 @@ def parseCharnames(rtext: Tag) -> bool:
     return replaced
 
 if __name__ == "__main__":
-    chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix"
+    chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix AntsintheEyeJohnsen +4  4K-TRB"
     charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
 
     rtext = Tag(name="ChatMessage")

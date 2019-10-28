@@ -215,6 +215,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         if not EsiInterface._instance:
             self.caching = useCaching
             self.logger = logging.getLogger(logrepr(__class__))
+            self.logger.setLevel(logging.ERROR)
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
             EsiInterface._instance = EsiInterface.__OnceOnly(useCaching)
 

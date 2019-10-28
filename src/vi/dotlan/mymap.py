@@ -195,7 +195,7 @@ class MyMap(Map):
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
         """
-        if len(jumpbridgesData) <= 0:
+        if not jumpbridgesData or len(jumpbridgesData) <= 0:
             return
         try:
             progress = QtWidgets.QProgressDialog("Creating jump-bridges...", "Abort", 0, len(jumpbridgesData), parent)

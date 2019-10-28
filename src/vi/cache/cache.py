@@ -195,6 +195,43 @@ class Cache(object):
             logging.error("Cache-Error removeAvatar: %r", e)
             raise
 
+    def putJumpbridge(self, regionName: str, data: list):
+        with Cache.SQLITE_WRITE_LOCK:
+            try:
+                cacheKey = "jumpbridge_data_{}".format(regionName.lower())
+                query = "DELETE FROM cache WHERE key = ?"
+                self.con.execute(query, (cacheKey,))
+                query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
+                self.con.execute(query, (cacheKey, pickle.dumps(data), time.time(), Cache.FOREVER))
+                self.con.commit()
+            except Exception as e:
+                logging.error("Cache-Error putJumpbridg \"%s\": %r", regionName, e)
+                raise
+
+    def getJumpbridge(self, regionName: str) -> list:
+        try:
+            cacheKey = "jumpbridge_data_{}".format(regionName.lower())
+            query = "SELECT data FROM cache WHERE key = ?"
+            founds = self.con.execute(query, (cacheKey,)).fetchall()
+            if len(founds) > 0:
+                return pickle.loads(founds[0][0])
+        except Exception as e:
+            logging.error("Cache-Error getJumpbridge \"%s\": %r", regionName, e)
+            raise
+        return None
+
+
+    def delJumpbridge(self, regionName: str):
+        try:
+            cacheKey = "jumpbridge_data_{}".format(regionName.lower())
+            with Cache.SQLITE_WRITE_LOCK:
+                query = "DELETE FROM cache WHERE key = ?"
+                self.con.execute(query, (cacheKey,))
+                self.con.commit()
+        except Exception as e:
+            logging.error("Cache-Error delJumpbridge \"%s\": %r", regionName, e)
+            raise
+
     def recallAndApplySettings(self, responder, settingsIdentifier):
         settings = self.getFromCache(settingsIdentifier)
         if settings:

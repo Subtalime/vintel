@@ -407,7 +407,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.mapView.view.contextMenu = self.trayIcon.contextMenu()
 
             # Clicking links
-            self.jumpbridgesButton.setChecked(False)
+            self.statisticsButton.setCheckable(True)
             self.statisticsButton.setChecked(False)
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)
             logging.debug("DONE Initializing contextual menus")
@@ -416,6 +416,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
         self.mapUpdateThread.activeData = True
         self.setInitialMapPositionForRegion(regionName)
+        self.checkJumpbridges()
         self.updateMapView()
         self.refreshContent = self.dotlan.svg
         self.setInitialMapPositionForRegion(regionName)
@@ -702,40 +703,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if self.refreshContent:
             self.mapView.setHtml(self.refreshContent)
 
-
-
-    # def setMapContent(self, content):
-    #     try:
-    #         logging.debug("Setting Map-Content start")
-    #         # only on change of Region, reload the last position stored
-    #         if self.initialMapPosition:
-    #             scrollPosition = self.initialMapPosition
-    #             self.initialMapPosition = None
-    #         else:
-    #             scrollPosition = QPointF(self.mapView.page().scrollPosition())
-    #         zoomfactor = float(self.mapView.zoomFactor)
-    #         scrollTo = ""
-    #         if scrollPosition:
-    #             logging.debug("Current Scroll-Position {}".format(scrollPosition))
-    #             scrollTo = str("window.scrollTo({:.0f}, {:.0f});".
-    #                            format(scrollPosition.x() / zoomfactor,
-    #                                   scrollPosition.y() / zoomfactor))
-    #         newContent = self.injectScrollPosition(content, scrollTo)
-    #         self.mapView.setHtml(newContent)
-    #         # self.mapView.page().setHtml(content)
-    #         # page has been reloaded... go back to where we were
-    #         # here we need to take into account the Zoom-Factor
-    #         # if scrollPosition:
-    #         #     logging.debug("Current Scroll-Position {}".format(scrollPosition))
-    #         #     scrollTo = str("window.scrollTo({}, {});".
-    #         #                                           format(scrollPosition.x() / zoomfactor,
-    #         #                                                  scrollPosition.y() / zoomfactor))
-    #         #     self.mapView.page().runJavaScript(scrollTo)
-    #         #     logging.debug("New Scroll-Position {} (Zoom {})".format(QPointF(self.mapView.page().scrollPosition()), zoomfactor))
-    #         logging.debug("Setting Map-Content complete")
-    #     except Exception as e:
-    #         logging.error("Problem with setMapContent: %r", e)
-
     def updateStatisticsOnMap(self, data):
         if not self.statisticsButton.isChecked():
             return
@@ -803,6 +770,18 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.show()
 
+    def checkJumpbridges(self):
+        data = self.cache.getJumpbridge(self.dotlan.region)
+        if data:
+            self.jumpbridgesButton.setEnabled(True)
+            self.jumpbridgesButton.setCheckable(True)
+            self.jumpbridgesButton.setChecked(False)
+        else:
+            self.jumpbridgesButton.setEnabled(False)
+            self.jumpbridgesButton.setCheckable(False)
+            self.jumpbridgesButton.setChecked(False)
+
+
     def setJumpbridges(self, url: str = None, clipdata: str = None):
         if url is None:
             url = ""
@@ -824,24 +803,20 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 from vi.jumpbridge.Import import Import
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
-                data = self.cache.getFromCache("jumpbridge_data_{}".format(self.dotlan.region.lower()), default=[])
-                # data = amazon_s3.getJumpbridgeData(self.dotlan.region.lower())
-                # if not data:
-                #     data = self.cache.getFromCache("jumpbridge_data_{}".format(self.dotlan.region.lower()), default=[])
+                data = self.cache.getJumpbridge(self.dotlan.region)
             self.dotlan.setJumpbridges(self, data)
-            if url or len(data) > 0:
+            if url or (data and len(data) > 0):
                 if url:
                     self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()), url, maxAge=Cache.FOREVER)
                 else:
-                    self.cache.putIntoCache("jumpbridge_data_{}".format(self.dotlan.region.lower()), data, maxAge=Cache.FOREVER)
-                self.jumpbridgesButton.setCheckable(True)
+                    self.cache.putJumpbridge(self.dotlan.region, data)
         except Exception as e:
             QMessageBox.warning(self, "Loading jumpbridges failed!",
                                 "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)
             self.cache.delFromCache("jumpbridge_url_{}".format(self.dotlan.region.lower()))
-            self.cache.delFromCache("jumpbridge_data_{}".format(self.dotlan.region.lower()))
-            self.jumpbridgesButton.setCheckable(False)
+            self.cache.delJumpbridge(self.dotlan.region)
+        self.checkJumpbridges()
 
     # TODO: add functionality to still store other Region actions
     def handleRegionMenuItemSelected(self, menuAction=None):

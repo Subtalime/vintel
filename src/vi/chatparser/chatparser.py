@@ -51,6 +51,8 @@ class ChatParser(object):
         self.knownMessages = []  # message we allready analyzed
         self.locations = {}  # informations about the location of a char
         self.ignoredPaths = []
+        # for the following to work, SVG JS has to use Message-Timestamp to determine the actual reporting time
+        self.goBackInTime = 60 * 20  # 20 minutes prior messages analysed
         self.collectInitFileData()
 
     def collectInitFileData(self):
@@ -145,8 +147,8 @@ class ChatParser(object):
             continue
         while parseSystems(self.systems, rtext, systems):
             continue
-        while parseCharnames(rtext):
-            continue
+        # while parseCharnames(rtext):
+        #     continue
 
         parsedStatus = parseStatus(rtext)
         status = parsedStatus if parsedStatus is not None else states.ALARM
