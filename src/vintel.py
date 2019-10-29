@@ -49,11 +49,11 @@ def exceptHook(exceptionType, exceptionValue, tracebackObject):
 
 sys.excepthook = exceptHook
 
-backGroundColor = "#c6d9ec"
 
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
+        backGroundColor = "#c6d9ec"
 
         if not sys.platform.startswith("darwin"):
             # this may set the Window-Icon in the Taskbar too
@@ -61,7 +61,6 @@ class Application(QApplication):
             myApplicationID = str("{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT))
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myApplicationID)
 
-        global backGroundColor
         # Set up paths
         chatLogDirectory = ""
         if len(sys.argv) > 1:
@@ -96,20 +95,17 @@ class Application(QApplication):
         if not os.path.exists(vintelLogDirectory):
             os.mkdir(vintelLogDirectory)
 
-        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/Dominix.png")))
-        # splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+        # splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/Dominix.png")))
+        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
 
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:
-            logLevel = logging.WARN
+            logLevel = logging.DEBUG
         backColor = vintelCache.getFromCache("background_color")
         if backColor:
             backGroundColor = backColor
             self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
-
-        splash.show()
-        self.processEvents()
 
         # Setup logging for console and rotated log files
         formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
@@ -125,11 +121,13 @@ class Application(QApplication):
         consoleHandler.setFormatter(formatter)
         rootLogger.addHandler(consoleHandler)
         # output logging to a Window
-
         logging.debug("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
         logging.debug("Looking for chat logs at: %s", chatLogDirectory)
         logging.debug("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
         logging.debug("Writing logs to: %s", vintelLogDirectory)
+
+        splash.show()
+        self.processEvents()
 
         trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()

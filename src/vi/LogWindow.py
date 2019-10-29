@@ -14,8 +14,12 @@ class LogWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
-        logHandler = LogWindowHandler(self)
-        logging.getLogger().addHandler(logHandler)
+        self.logLevel = Cache().getFromCache("log_window_level")
+        if not self.logLevel:
+            self.logLevel = logging.getLogger().getEffectiveLevel()
+        self.logHandler = LogWindowHandler(self)
+        self.logHandler.setLevel(self.logLevel)
+        logging.getLogger().addHandler(self.logHandler)
 
         self.setBaseSize(400, 300)
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
@@ -40,7 +44,7 @@ class LogWindow(QtWidgets.QWidget):
             self.show()
 
     def setTitle(self):
-        self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging._levelToName[logging.getLogger().getEffectiveLevel()]))
+        self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging._levelToName[self.logLevel]))
 
     def write(self, text):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
@@ -68,10 +72,10 @@ class LogWindow(QtWidgets.QWidget):
 
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
-        logLevel = Cache().getFromCache("logging_level")
-        if not logLevel:
-            logLevel = logging.WARN
-        currLevel = logging.getLogger().getEffectiveLevel()
+        # logLevel = Cache().getFromCache("logging_level_window")
+        # if not logLevel:
+        #     logLevel = logging.WARN
+        currLevel = self.logLevel
         menu = QMenu(self)
         debug = QtWidgets.QAction("Debug", checkable=True)
         if currLevel == logging.DEBUG:
@@ -98,27 +102,28 @@ class LogWindow(QtWidgets.QWidget):
         menu.addAction(clear)
         setting = menu.exec_(self.mapToGlobal(event))
         if setting == debug:
-            logLevel = logging.DEBUG
+            currLevel = logging.DEBUG
         elif setting == info:
-            logLevel = logging.INFO
+            currLevel = logging.INFO
         elif setting == warning:
-            logLevel = logging.WARN
+            currLevel = logging.WARN
         elif setting == error:
-            logLevel = logging.ERROR
+            currLevel = logging.ERROR
         elif setting == crit:
-            logLevel = logging.CRITICAL
+            currLevel = logging.CRITICAL
         elif setting == clear:
             self.textEdit.clear()
-        logging.getLogger().setLevel(logLevel)
-        Cache().putIntoCache("logging_level", logLevel)
+        self.logLevel = currLevel
+        self.logHandler.setLevel(self.logLevel)
+        Cache().putIntoCache("log_window_level", self.logLevel)
         self.setTitle()
-        self.logging_level_event.emit(logLevel)
+        self.logging_level_event.emit(self.logLevel)
 
 class LogWindowHandler(logging.Handler):
     def __init__(self, parent):
         logging.Handler.__init__(self)
         self.parent = parent
-        formatter = logging.Formatter('%(asctime)s|%(levelname)s: %(message)s', datefmt='%H:%M:%S')
+        formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
         self.setFormatter(formatter)
 
     def emit(self, record):
