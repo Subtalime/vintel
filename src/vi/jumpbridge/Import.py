@@ -7,10 +7,7 @@ class Bridges(list):
     def export(self):
         bridgeList = []
         for bridge in self:
-            routes = []
-            routes.append(bridge.start)
-            routes.append(bridge.direction)
-            routes.append(bridge.end)
+            routes = [bridge.start, bridge.direction, bridge.end]
             bridgeList.append(routes)
         return bridgeList
 

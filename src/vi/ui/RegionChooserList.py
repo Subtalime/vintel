@@ -2,10 +2,9 @@
 
 # Form implementation generated from reading ui file 'RegionChooserList.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.1
+# Created by: PyQt5 UI code generator 5.12.1
 #
 # WARNING! All changes made in this file will be lost!
-
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -39,14 +38,17 @@ class Ui_Dialog(object):
         self.verticalLayout.addWidget(self.txtRegions)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.cancelButton = QtWidgets.QPushButton(Dialog)
-        self.cancelButton.setAutoDefault(False)
-        self.cancelButton.setObjectName("cancelButton")
-        self.horizontalLayout_2.addWidget(self.cancelButton)
         self.saveButton = QtWidgets.QPushButton(Dialog)
         self.saveButton.setDefault(True)
         self.saveButton.setObjectName("saveButton")
         self.horizontalLayout_2.addWidget(self.saveButton)
+        self.cancelButton = QtWidgets.QPushButton(Dialog)
+        self.cancelButton.setAutoDefault(False)
+        self.cancelButton.setObjectName("cancelButton")
+        self.horizontalLayout_2.addWidget(self.cancelButton)
+        self.helpButton = QtWidgets.QPushButton(Dialog)
+        self.helpButton.setObjectName("helpButton")
+        self.horizontalLayout_2.addWidget(self.helpButton)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
 
         self.retranslateUi(Dialog)
@@ -58,5 +60,8 @@ class Ui_Dialog(object):
         self.label.setText(_translate("Dialog", "Select the regions to keep on the watch list:"))
         self.listWidget.setSortingEnabled(True)
         self.label_2.setText(_translate("Dialog", "Region-Files (comma separated):"))
-        self.cancelButton.setText(_translate("Dialog", "Cancel"))
         self.saveButton.setText(_translate("Dialog", "Save"))
+        self.cancelButton.setText(_translate("Dialog", "Cancel"))
+        self.helpButton.setText(_translate("Dialog", "Help..."))
+
+

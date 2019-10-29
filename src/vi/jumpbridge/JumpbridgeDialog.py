@@ -14,10 +14,9 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
 
     def __init__(self, parent, url):
         QDialog.__init__(self, parent)
-
         self.setupUi(self)
         self.saveButton.clicked.connect(self.savePath)
-        self.cancelButton.clicked.connect(self.accept)
+        self.cancelButton.clicked.connect(self.reject)
         self.clipboardButton.clicked.connect(self.saveClipboard)
         self.clipboardButton.setEnabled(True)
         self.urlField.setText(url)
@@ -37,6 +36,10 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
         except Exception as e:
             logging.error("Finding Jumpbridgedata failed for \"%s\": %r", url, e)
 
+    def accept(self) -> None:
+        QDialog.accept(self)
+        self.close()
+
     def saveClipboard(self):
             try:
                 data = clipboard.paste()
@@ -45,6 +48,7 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
                     if len(jb) > 0:
                         self.accept()
                         self.set_jump_bridge_url.emit(None, data)
+                        self.close()
                     else:
                         QtWidgets.QMessageBox.warning(self, "Jumpbridgedata from Clipboard", "Invalid data found in Clipboard")
             except Exception as e:

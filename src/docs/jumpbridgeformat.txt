@@ -1,6 +1,6 @@
-How to format the data for the jumpbridges:
+<b>How to format the data for the jumpbridges:</b>
 
-Put all the jumpbridges in one single textfile, wher a line in the file
+Put all the jumpbridges in one single textfile, where a line in the file
 represents a jumpbridge.
 
 The line contains the first system, the connection between the systems and
@@ -19,7 +19,7 @@ System5 - System6
 The first line will draw a jumpbridge between System1 and System2 with an 
 arrow on both sides.
 The second line will draw a jumpbridge between System3 and System4, but only
-the side to Syste3 will have an arrow pointing on the system (could be helpfull
+the side to System3 will have an arrow pointing on the system (could be helpfull
 for "oneway"-jumpbridges).
 The last line draws a line between System5 and System 6 and no arrows at the 
 endpoints.

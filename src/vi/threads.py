@@ -293,7 +293,7 @@ class FileWatcherThread(QThread):
     def run(self):
         while True:
             # don't overload the disk scanning
-            time.sleep(1)
+            time.sleep(0.5)
             # here, periodically, we check if any files have been added to the folder
             if self.active:
                 self._scanPaths()
@@ -326,7 +326,8 @@ class FileWatcherThread(QThread):
                     fstat = pathStat
                     self.fileChanged(file)
                 fileList[file] = fstat
-            except Exception:
+            except Exception as e:
+                logging.warning("Filewatcher-Thread error on \"%s\": %r", file, e)
                 pass
         return fileList
 

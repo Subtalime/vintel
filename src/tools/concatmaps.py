@@ -37,7 +37,11 @@ def checkArguments(args):
 
 def concat(firstFile, secondFile):
     firstSvg = loadSvg(firstFile)
+    if not firstSvg:
+        return None
     secondSvg = loadSvg(secondFile)
+    if not secondSvg:
+        return None
     symbols = []
     jumps = []
     systemUses = []
@@ -76,7 +80,7 @@ def loadSvg(path):
     content = None
     with open(path) as f:
         content = f.read()
-    return BeautifulSoup(content)
+    return BeautifulSoup(content, features="html.parser")
 
 
 def main():
@@ -88,7 +92,9 @@ def main():
         sys.exit(1)
     checkArguments(sys.argv)
     newSvg = concat(sys.argv[1], sys.argv[2])
-    result = newSvg.body.next.prettify().encode("utf-8")
+    result = None
+    if newSvg:
+        result = newSvg.prettify().encode("utf-8")
     print(result)
 
 

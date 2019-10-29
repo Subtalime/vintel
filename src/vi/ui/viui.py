@@ -87,6 +87,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.statisticsThread = None
         self.versionCheckThread = None
         self.mapUpdateThread = None
+        self.chatparser = None
         self.cache = Cache()
         self.setupUi(self)
         self.setWindowTitle(vi.version.DISPLAY)
@@ -96,6 +97,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
         self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
         self.setConstants()
+        self.myMap = MyMap(self)
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -350,31 +352,20 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         regionName = self.cache.getFromCache("region_name")
         if not regionName:
             regionName = "Delve"
-        svg = None
-        try:
-            if regionName.endswith(".svg"):
-                path = resourcePath("vi/ui/res/mapdata/{0}".format(regionName))
-            else:
-                path = resourcePath("vi/ui/res/mapdata/{0}.svg".format(regionName))
-            with open(path) as svgFile:
-                svg = svgFile.read()
-        except Exception as e:
-            if regionName.endswith(".svg"):
-                QMessageBox.critical(self, "Setup Map", "Error loading map file \"{}\"".format(path))
-            pass
 
         try:
-            self.dotlan = MyMap(regionName, svg, self)
+            self.dotlan = self.myMap.loadMap(regionName)
         except DotlanException as e:
             logging.error(e)
             QMessageBox.critical(self, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 self.cache.putIntoCache("region_name", "Delve")
-                return self.setupMap(initialize)
-            sys.exit(1)
+                self.dotlan = self.myMap.loadMap(regionName)
+            else:
+                sys.exit(1)
         logging.debug("Map File found, Region set to {}".format(regionName))
-        self.cache.putIntoCache("region_name", "Delve")
+        # self.cache.putIntoCache("region_name", "Delve")
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
             diagText = "Something went wrong getting map data. Proceeding with older cached data. " \
@@ -689,7 +680,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if not newSystem == "?" and newSystem in self.systems:
             self.systems[newSystem].addLocatedCharacter(char)
             self.knownPlayers[char].setLocation(newSystem)
-            self.updateMapView()
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
@@ -768,7 +758,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         url = self.cache.getFromCache("jumpbridge_url")
         chooser = JumpbridgeDialog(self, url)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
-        chooser.show()
+        chooser.exec_()
 
     def checkJumpbridges(self):
         data = self.cache.getJumpbridge(self.dotlan.region)
@@ -930,15 +920,23 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def logFileChanged(self, path):
         logging.debug("Log file changed: {}".format(path))
+        # wait for Map to be completly loaded
+        while not self.chatparser:
+            continue
         messages = self.chatparser.fileModified(path)
         if self.knownPlayers.addNames(self.chatparser.getListeners()):
             logging.debug("Found new Player")
             self.updateCharacterMenu()
+        messageLogged = False
         for message in messages:
             # If players location has changed
             if message.status == states.LOCATION:
                 self.knownPlayers[message.user].setLocation(message.systems[0])
                 self.setLocation(message.user, message.systems[0])
+                messageLogged = True
+            elif message.status == states.SOUND_TEST:
+                SoundManager().playSound("alarm", message)
+
             elif message.status == states.KOS_STATUS_REQUEST:
                 # Do not accept KOS requests from any but monitored intel channels
                 # as we don't want to encourage the use of xxx in those channels.
@@ -948,6 +946,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     parts = (name.strip() for name in text.split(","))
                     self.trayIcon.setIcon(self.taskbarIconWorking)
                     self.kosRequestThread.addRequest(parts, "xxx", False)
+                    messageLogged = True
             # Otherwise consider it a 'normal' chat message
             elif message.user not in (
             "EVE-System", "EVE System") and message.status != states.IGNORE:
@@ -956,6 +955,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                 # and alarm if within alarm distance.
                 systemList = self.dotlan.systems
                 if message.systems:
+                    messageLogged = True
                     for system in message.systems:
                         systemname = system.name
                         systemList[systemname].setStatus(message.status)
@@ -968,5 +968,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                                 if len(chars) > 0 and message.user not in chars:
                                     self.trayIcon.showNotification(message, system.name,
                                                                    ", ".join(chars), distance)
-                self.updateMapView()
+
+        if messageLogged:  # stop the flickering
+            self.updateMapView()
                 # self.setMapContent(self.dotlan.svg)

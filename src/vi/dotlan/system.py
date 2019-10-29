@@ -67,7 +67,8 @@ class System(object):
         marker["activated"] = time.time()
 
     def addLocatedCharacter(self, charname):
-        idName = self.name + u"_loc"
+        idName = self.getSoupId()
+        # idName = self.name + u"_loc"
         wasLocated = bool(self.__locatedCharacters)
         if charname not in self.__locatedCharacters:
             self.__locatedCharacters.append(charname)
@@ -90,8 +91,12 @@ class System(object):
             characters.append(char)
         return characters
 
+    def getSoupId(self):
+        return self.name.replace("-", "_").lower() + u"_loc"
+
     def removeLocatedCharacter(self, charname):
-        idName = self.name + u"_loc"
+        idName = self.getSoupId()
+        # idName = self.name + u"_loc"
 
         if charname in self.__locatedCharacters:
             self.__locatedCharacters.remove(charname)

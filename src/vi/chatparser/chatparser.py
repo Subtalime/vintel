@@ -235,6 +235,7 @@ class ChatParser(object):
                     message = self._lineToMessage(line, roomname)
                 if message:
                     messages.append(message)
+        self.fileData[path]["lines"] = len(lines) - 1
         return messages
 
 
@@ -256,6 +257,9 @@ class Message(object):
 
     def __eq__(x, y):
         return x.__key() == y.__key()
+
+    def __repr__(self):
+        return "{} {}/{}: {}".format(self.timestamp, self.room, self.user, self.message)
 
     def __hash__(self):
         return hash(self.__key())

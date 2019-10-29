@@ -3,6 +3,15 @@ from PyQt5.QtCore import QObject
 from vi.cache.cache import Cache
 import logging
 
+
+def getRegionName(word: str):
+    if word.endswith(".svg"):
+        regionName = word.replace(".svg", "")
+    else:
+        regionName = word
+    return regionName
+
+
 class RegionMenu(QMenu):
     def __init__(self, menuname: str, parent: QObject = None):
         super(RegionMenu, self).__init__(menuname, parent)
@@ -15,16 +24,15 @@ class RegionMenu(QMenu):
     def _actionName(self, region: str) -> str:
         return str(region).replace(' ', '_').replace('-', '_') + "_action"
 
-    def addItem(self, region: str) -> QAction:
-        if region in self._menu_actions.keys():
+    def addItem(self, regionName: str) -> QAction:
+        if regionName in self._menu_actions.keys():
             return None
-        action = QAction(region, self, checkable=True)
-        action.setData(self._actionName(region))
-        action.setProperty("regionName", region)
-        action.setObjectName(region)
-        action.setChecked(region == self.selectedRegion)
-        # action.triggered.connect(self.region_selected)
-        self._menu_actions[region] = action
+        action = QAction(regionName, self, checkable=True)
+        action.setData(self._actionName(regionName))
+        action.setProperty("regionName", regionName)
+        action.setObjectName(regionName)
+        action.setChecked(regionName == self.selectedRegion)
+        self._menu_actions[regionName] = action
         a = self.group.addAction(action)
         self.addAction(a)
         return a
@@ -48,7 +56,10 @@ class RegionMenu(QMenu):
         regionNames = Cache().getFromCache("region_name_range")
         logging.debug("Updating Region-Menu with {}".format(regionNames))
         if regionNames:
-            self.regionNames = regionNames.split(",")
+            self.regionNames = [ getRegionName(y) for y in regionNames.split(",") ]
+            for name in self.regionNames:
+                if name is None or name == "":
+                    self.regionNames.pop()
         self.regionNames.sort()
         self.selectedRegion = self.getSelectedRegion
         if not self.selectedRegion in self.regionNames:

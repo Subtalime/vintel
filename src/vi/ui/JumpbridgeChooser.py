@@ -2,10 +2,9 @@
 
 # Form implementation generated from reading ui file 'JumpbridgeChooser.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.1
+# Created by: PyQt5 UI code generator 5.12.1
 #
 # WARNING! All changes made in this file will be lost!
-
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -51,8 +50,8 @@ class Ui_Dialog(object):
         self.groupBox2.setObjectName("groupBox2")
         self.gridLayout_5 = QtWidgets.QGridLayout(self.groupBox2)
         self.gridLayout_5.setObjectName("gridLayout_5")
-        self.formatInfoField = QtWidgets.QPlainTextEdit(self.groupBox2)
-        self.formatInfoField.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        self.formatInfoField = QtWidgets.QTextEdit(self.groupBox2)
+        self.formatInfoField.setStyleSheet("background-color: rgb(217, 217, 217);")
         self.formatInfoField.setReadOnly(True)
         self.formatInfoField.setObjectName("formatInfoField")
         self.gridLayout_5.addWidget(self.formatInfoField, 0, 0, 1, 1)
@@ -63,6 +62,7 @@ class Ui_Dialog(object):
         self.horizontalLayout_4 = QtWidgets.QHBoxLayout(self.widget3)
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
         self.cancelButton = QtWidgets.QPushButton(self.widget3)
+        self.cancelButton.setAutoDefault(False)
         self.cancelButton.setObjectName("cancelButton")
         self.horizontalLayout_4.addWidget(self.cancelButton)
         self.saveButton = QtWidgets.QPushButton(self.widget3)
@@ -83,3 +83,5 @@ class Ui_Dialog(object):
         self.groupBox2.setTitle(_translate("Dialog", "Format of the jumpbridge data:"))
         self.cancelButton.setText(_translate("Dialog", "Cancel"))
         self.saveButton.setText(_translate("Dialog", "Save"))
+
+

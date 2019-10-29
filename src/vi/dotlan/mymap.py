@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup, CData
 from PyQt5 import QtGui, QtWidgets, QtCore
 from vi.dotlan.map import Map
+from vi.resources import resourcePath
 import time, logging, os, datetime
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
@@ -154,30 +155,34 @@ class MyMap(Map):
         content = str(self.soup)
         # self.debugWriteSoup(content)
         return content
-        # return super(MyMap, self).svg
 
-    def __init__(self, region: str = None, testFile=None, parent=None):
-        if not testFile:
-            path, file = os.path.split(os.path.abspath(__file__))
-            testFile = os.path.join(path, "delve.svg")
-            region = "Delve"
-        self.testFile = testFile
-        self.region = region
+    def __init__(self, parent=None):
+        self.progress = None
+        self.parent = parent
+        self.region = None
+
+    def loadMap(self, regionName):
+        testFile = resourcePath("vi/ui/res/mapdata/{}.svg".format(regionName))
+        self.region = regionName
         try:
-            with open(self.testFile, "r") as f:
+            with open(testFile, "r") as f:
                 self.svgData = f.read()
         except FileNotFoundError as e:
-            self.svgData = testFile
+            self.svgData = None
             pass
-        if parent:
-            progress = QtWidgets.QProgressDialog("Loading map data...", None, 0, 0, parent)
-            progress.setWindowModality(0)
+        if self.parent:
+            if not self.progress:
+                self.progress = QtWidgets.QProgressDialog("Loading map data...", None, 0, 1, self.parent)
+                self.progress.setModal(False)
 
-        super(MyMap, self).__init__(region, self.svgData)
+        super(MyMap, self).__init__(regionName, self.svgData)
         self.addTimerJs()
-        if parent:
-            progress.accept()
-            progress.close()
+        if self.parent:
+            # this closes...
+            self.progress.setValue(1)
+            self.progress = None
+        return self
+
 
     def debugWriteSoup(self, svgData):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
@@ -198,10 +203,12 @@ class MyMap(Map):
         if not jumpbridgesData or len(jumpbridgesData) <= 0:
             return
         try:
-            progress = QtWidgets.QProgressDialog("Creating jump-bridges...", "Abort", 0, len(jumpbridgesData), parent)
-            progress.setWindowModality(1)
+            progress = QtWidgets.QProgressDialog("Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridgesData), parent)
+            progress.setWindowTitle("Jump-Bridge")
+            progress.setModal(True)
             progress.setValue(0)
             soup = self.soup
+            # remove existing Jump-Brdiges
             for bridge in soup.select(".jumpbridge"):
                 bridge.decompose()
             jumps = soup.select("#jumps")[0]
@@ -250,4 +257,5 @@ class MyMap(Map):
             raise
         finally:
             if progress:
-                progress.accept()
+                # this will close it
+                progress.setValue(len(jumpbridgesData))
