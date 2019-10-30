@@ -92,9 +92,10 @@ def main():
         sys.exit(1)
     checkArguments(sys.argv)
     newSvg = concat(sys.argv[1], sys.argv[2])
-    result = None
-    if newSvg:
-        result = newSvg.prettify().encode("utf-8")
+    # result = newSvg.prettify(encoding="utf-8") if newSvg else None
+    result = str(newSvg).encode("UTF-8", errors="xmlcharrefreplace ")
+    result = str(newSvg).encode("utf-8")
+    # result = newSvg.prettify().encode("utf-8") if newSvg else None
     print(result)
 
 

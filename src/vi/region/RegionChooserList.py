@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtWidgets import QDialog, QErrorMessage, QMessageBox
+from PyQt5.QtWidgets import QDialog, QMessageBox
 from PyQt5.QtCore import pyqtSignal
 from vi.cache.cache import Cache
 from vi.dotlan.regions import Regions

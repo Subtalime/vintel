@@ -36,10 +36,10 @@
 """
 
 import six, re, logging
-from bs4 import BeautifulSoup, Tag
-from bs4.element import NavigableString
+from bs4 import BeautifulSoup
+from bs4.element import NavigableString, Tag
 from vi import states
-from vi.esi.EsiHelper import EsiHelper, EsiInterface
+from vi.esi.esihelper import EsiHelper
 
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
 

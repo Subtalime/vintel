@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from vi.esi import EsiInterface
+from vi.esi import esiinterface
 from vi.dotlan.mysystem import MySystem as System
 from vi.dotlan.exception import DotlanException
 from vi.cache.cache import Cache
@@ -49,7 +49,7 @@ class Map(object):
         if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg, EsiInterface().secondsTillDowntime() + 60 * 60)
+                cache.putIntoCache("map_" + self.region, svg, esiinterface().secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
                 svg = cache.getFromCache("map_" + self.region, True)

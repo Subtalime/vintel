@@ -27,13 +27,13 @@ import glob
 from six.moves import queue as SixQueue
 import queue
 from bs4 import BeautifulSoup
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal, QFileSystemWatcher
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal
 
 from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.chatentrywidget import ChatEntryWidget
-from vi.esi.EsiHelper import EsiHelper
+from vi.esi.esihelper import EsiHelper
 
 
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
@@ -75,7 +75,8 @@ class MapUpdateThread(QThread):
             try:
                 if not timeout:  # not based on Timeout
                     logging.debug("Setting Map-Content start")
-                    zoomfactor = float(zoomFactor)
+                    zoomfactor = zoomFactor if zoomFactor else 1.
+                    # zoomfactor = float(zoomFactor)
                     scrollTo = ""
                     if scrollPosition:
                         logging.debug("Current Scroll-Position {}".format(scrollPosition))

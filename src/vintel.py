@@ -30,7 +30,7 @@ from PyQt5 import QtGui, QtWidgets
 from vi import version
 from vi.ui import viui, systemtray
 from vi.cache import cache
-from vi.resources import resourcePath
+from vi.resources import resourcePath, getEveChatlogDir, getVintelDir
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -67,26 +67,14 @@ class Application(QApplication):
             chatLogDirectory = sys.argv[1]
 
         if not os.path.exists(chatLogDirectory):
-            if sys.platform.startswith("darwin"):
-                chatLogDirectory = os.path.join(os.path.expanduser("~"), "Documents", "EVE", "logs", "Chatlogs")
-                if not os.path.exists(chatLogDirectory):
-                    chatLogDirectory = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Eve Online",
-                                          "p_drive", "User", "My Documents", "EVE", "logs", "Chatlogs")
-            elif sys.platform.startswith("linux"):
-                chatLogDirectory = os.path.join(os.path.expanduser("~"), "EVE", "logs", "Chatlogs")
-            elif sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
-                import ctypes.wintypes
-                buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-                ctypes.windll.shell32.SHGetFolderPathW(0, 5, 0, 0, buf)
-                documentsPath = buf.value
-                chatLogDirectory = os.path.join(documentsPath, "EVE", "logs", "Chatlogs")
+            chatLogDirectory = getEveChatlogDir()
         if not os.path.exists(chatLogDirectory):
             # None of the paths for logs exist, bailing out
             QMessageBox.critical(None, "No path to Logs", "No logs found at: " + chatLogDirectory, QMessageBox.Ok)
             sys.exit(1)
 
         # Setting local directory for cache and logging
-        vintelDirectory = os.path.join(os.path.dirname(os.path.dirname(chatLogDirectory)), "vintel")
+        vintelDirectory = getVintelDir()
         if not os.path.exists(vintelDirectory):
             os.mkdir(vintelDirectory)
         cache.Cache.PATH_TO_CACHE = os.path.join(vintelDirectory, "cache-2.sqlite3")

@@ -13,7 +13,7 @@ import webbrowser, functools, threading
 from vi.cache.cache import Cache
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from http.client import HTTPException
-from vi.esi.EsiCache import  EsiCache
+from vi.esi.esicache import  EsiCache
 
 try:
     import pickle

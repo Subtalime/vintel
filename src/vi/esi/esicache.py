@@ -1,6 +1,7 @@
-from vi.cache.cache import Cache
+from ..cache import Cache
+from ..resources import getVintelDir
 from esipy.cache import BaseCache
-import hashlib
+import hashlib, os
 
 try:
     import pickle
@@ -19,7 +20,8 @@ def _hash(data):
 
 class EsiCache(BaseCache):
     def __init__(self):
-        self.cache = Cache("esi_cache.sqlite3", forceVersionCheck=True)
+        Cache.PATH_TO_CACHE = os.path.join(getVintelDir(), "esi_cache.sqlite3")
+        self.cache = Cache(forceVersionCheck=True)
 
     def get(self, key, default=None):
         value = self.cache.getFromCache(_hash(key))

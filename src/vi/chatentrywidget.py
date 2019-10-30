@@ -15,6 +15,8 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     SHOW_AVATAR = True
     questionMarkPixmap = None
     mark_system = pyqtSignal(str)
+    ship_detail = pyqtSignal(str)
+    enemy_detail = pyqtSignal(str)
 
     def __init__(self, message):
         QWidget.__init__(self)
@@ -31,7 +33,6 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         if not ChatEntryWidget.SHOW_AVATAR:
             self.avatarLabel.setVisible(False)
 
-
     def linkClicked(self, link):
         link = six.text_type(link)
         function, parameter = link.split("/", 1)
@@ -41,10 +42,10 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             webbrowser.open(parameter)
         elif function == "show_enemy":
             # TODO: open ZKillboard?
-            pass
+            self.enemy_detail.emit(parameter)
         elif function == "ship_name":
             # TODO: open Ship-Detail Window?
-            pass
+            self.ship_detail.emit(parameter)
 
 
 

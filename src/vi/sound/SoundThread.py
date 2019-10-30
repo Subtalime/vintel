@@ -1,18 +1,9 @@
 import six
 from vi.singleton import Singleton
-global gPygletAvailable
-
-try:
-    import pyglet
-    from pyglet import media
-
-    gPygletAvailable = True
-except ImportError:
-    gPygletAvailable = False
-
 
 from .SoundSetting import SoundSetting
 
+# TODO: not yet used
 class SoundThread(six.with_metaclass(Singleton), SoundSetting):
     SOUNDS = {"alarm": "178032__zimbot__redalert-klaxon-sttos-recreated.wav",
               "kos": "178031__zimbot__transporterstartbeep0-sttos-recreated.wav",
@@ -32,7 +23,8 @@ class SoundThread(six.with_metaclass(Singleton), SoundSetting):
             self._soundThread.start()
 
     def platformSupportsAudio(self):
-        return self.platformSupportsSpeech() or gPygletAvailable
+        return True
+        # return self.platformSupportsSpeech() or gPygletAvailable
 
     def platformSupportsSpeech(self):
         if self._soundThread.isDarwin:
@@ -43,7 +35,7 @@ class SoundThread(six.with_metaclass(Singleton), SoundSetting):
         if newValue is not None:
             self.useSpokenNotifications = newValue
 
-    def resourcePath(relativePath):
+    def resourcePath(self, relativePath):
         import sys, os
         """ Get absolute path to resource, works for dev and for PyInstaller
         """

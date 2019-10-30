@@ -1,13 +1,11 @@
-import six
+import six, logging
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtWidgets import QDialog, QListWidgetItem
 from PyQt5.QtCore import pyqtSignal, QObject
 from vi.chatentrywidget import ChatEntryWidget
 from vi import states
-from vi.character import Characters
-
 import vi.ui.SystemChat
-import logging
+
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)

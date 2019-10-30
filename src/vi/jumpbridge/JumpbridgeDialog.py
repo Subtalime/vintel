@@ -2,7 +2,7 @@ import six
 import requests
 import logging
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QMessageBox, QDialog
+from PyQt5.QtWidgets import QDialog
 from PyQt5.QtCore import pyqtSignal
 from vi.resources import resourcePath
 import clipboard

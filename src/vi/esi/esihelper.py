@@ -1,7 +1,5 @@
-from typing import Optional, Any
-
-import requests, datetime, json, logging
-from vi.esi.EsiInterface import EsiInterface
+import requests, json, logging
+from .esiinterface import EsiInterface
 from vi.cache.cache import Cache
 
 class EsiHelper:

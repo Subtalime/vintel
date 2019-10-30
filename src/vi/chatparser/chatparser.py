@@ -27,9 +27,6 @@ if six.PY2:
 
 from bs4 import BeautifulSoup
 from vi import states
-from vi.character.Characters import Characters
-from PyQt5.QtWidgets import QMessageBox
-
 
 from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, parseSystems, parseCharnames
 

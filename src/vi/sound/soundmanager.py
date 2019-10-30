@@ -32,16 +32,7 @@ from vi.resources import resourcePath
 from six.moves import queue
 import logging
 from vi.singleton import Singleton
-
-global gPygletAvailable
-
-try:
-    import pyglet
-    from pyglet import media
-
-    gPygletAvailable = True
-except ImportError:
-    gPygletAvailable = False
+from pyglet import media
 
 
 class SoundManager(six.with_metaclass(Singleton)):
@@ -66,7 +57,8 @@ class SoundManager(six.with_metaclass(Singleton)):
             self.soundThread.start()
 
     def platformSupportsAudio(self):
-        return self.platformSupportsSpeech() or gPygletAvailable
+        # return self.platformSupportsSpeech() or gPygletAvailable
+        return True
 
     def platformSupportsSpeech(self):
         # if self.soundThread.isDarwin:
@@ -114,11 +106,8 @@ class SoundManager(six.with_metaclass(Singleton)):
         def __init__(self):
             QThread.__init__(self)
             self.queue = queue.Queue()
-            if gPygletAvailable:
-                self.player = media.Player()
-                self.player.loop = False
-            else:
-                self.player = None
+            self.player = media.Player()
+            self.player.loop = False
             self.active = True
 
 

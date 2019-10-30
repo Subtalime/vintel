@@ -28,21 +28,20 @@ import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
+    QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
+from PyQt5.uic import loadUi
 
-from vi.LogWindow import LogWindow
-from vi import amazon_s3
-# from vi import dotlan_mdoule, filewatcher
 from vi import states
+from vi.LogWindow import LogWindow
+from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
-from vi.esi import EsiInterface
-from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
-    QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
-from PyQt5.uic import loadUi
+from vi.esi import EsiInterface, EsiThread
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
@@ -53,12 +52,10 @@ from vi.region.RegionMenu import RegionMenu
 from vi.dotlan.regions import Regions, convertRegionName
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
-# from vi.dotlan_mdoule import Regions
-from vi.esi.EsiInterface import EsiInterface
 from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.settings.SettingsDialog import SettingsDialog
-
+from vi.version import NotifyNewVersionThread
 try:
     import pickle
 except ImportError:  # pragma: no cover
@@ -236,12 +233,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # KOS disabled, since it's only working for CVA
         self.kosClipboardActiveAction.setEnabled(False)
         self.autoScanIntelAction.setEnabled(False)
-        # TODO: Sort Clipboard out
-        # self.clipboard.changed(QClipboard.Clipboard).connect(self.clipboardChanged(QClipboard.Clipboard))
+
         self.clipboard.changed.connect(self.clipboardChanged)
-        # self.clipboard.dataChanged.connect(self.clipboardChanged)
-        # self.clipboard.changed(QClipboard.Clipboard).connect(self.clipboardChanged)
-        # self.connect(self.clipboard, PYQT_SIGNAL("changed(QClipboard::Mode)"), self.clipboardChanged)
         self.autoScanIntelAction.triggered.connect(self.changeAutoScanIntel)
         self.kosClipboardActiveAction.triggered.connect(self.changeKosCheckClipboard)
         self.zoomInButton.clicked.connect(self.zoomMapIn)
@@ -263,7 +256,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.framelessWindowAction.triggered.connect(self.changeFrameless)
         self.trayIcon.change_frameless.connect(self.changeFrameless)
         self.frameButton.clicked.connect(self.changeFrameless)
-        # self.quitAction.triggered.connect(self.close)
         self.actionQuit.triggered.connect(self.close)
         self.trayIcon.quit_me.connect(self.close)
         self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
@@ -309,7 +301,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         logging.debug("Creating threads")
 
         # let's hope, this will speed up start-up
-        self.esiThread = vi.esi.EsiInterface.EsiThread()
+        self.esiThread = EsiThread()
         self.esiThread.start()
         self.esiThread.requestInstance()
 
@@ -326,7 +318,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.filewatcherThread.file_change.connect(self.logFileChanged)
         self.filewatcherThread.start()
 
-        self.versionCheckThread = amazon_s3.NotifyNewVersionThread()
+        self.versionCheckThread = NotifyNewVersionThread()
         self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
         self.versionCheckThread.start()
 
@@ -345,7 +337,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # TODO: therefore if we switch Region, we can update with previously found data
     # TODO: when clicking on System in Chat, scroll to the position within the Map
     def setupMap(self, initialize=False):
-        # self.mapTimer.stop()
         self.filewatcherThread.paused = True
         self.mapUpdateThread.activeData = False
         logging.debug("Finding map file")
@@ -411,16 +402,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.updateMapView()
         self.refreshContent = self.dotlan.svg
         self.setInitialMapPositionForRegion(regionName)
-        # Update the new map view, then clear old statistics from the map and request new
-        logging.debug("Updating the map")
         # Allow the file watcher to run now that all else is set up
         self.filewatcherThread.paused = False
         logging.debug("Map setup complete")
-
-    def restartMapTimer(self):
-        # according to Documentation, if timer is already running, it will stop and start with new interval
-        # self.mapTimer.start(self.map_update_interval)
-        pass
 
     def startClipboardTimer(self):
         """
@@ -476,20 +460,14 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         try:
             SoundManager().quit()
             self.avatarFindThread.quit()
-            # self.avatarFindThread.wait()
             self.filewatcherThread.paused = True
             self.filewatcherThread.quit()
-            # self.filewatcherThread.wait()
             # self.kosRequestThread.quit()
             # self.kosRequestThread.wait()
             self.versionCheckThread.quit()
-            # self.versionCheckThread.wait()
             self.statisticsThread.quit()
-            # self.statisticsThread.wait()
             self.mapUpdateThread.quit()
-            # self.mapUpdateThread.wait()
             self.esiThread.quit()
-            # self.esiThread.wait()
         except Exception:
             pass
         self.trayIcon.hide()
@@ -503,8 +481,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def notifyNewerVersion(self, newestVersion):
         self.trayIcon.showMessage("Newer Version",
-                              ("An update is available for {}.\n{}".format(vi.version.PROGNAME,
-                                                                               vi.version.URL)))
+                              ("An update is available for {}. Current V{} to V{}\nVisit {}".format(vi.version.PROGNAME,
+                                                                                              vi.version.VERSION,
+                                                                                              newestVersion,
+                                                                                              vi.version.URL)))
 
     def changeChatVisibility(self, newValue=None):
         if newValue is None:
@@ -656,13 +636,17 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     # emitted by MapView
     def mapLinkClicked(self, url):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
-        system = self.systems[str(systemName)]
-        sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
-                        list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
-        self.chat_message_added.connect(sc.addChatEntry)
-        self.avatar_loaded.connect(sc.newAvatarAvailable)
-        sc.location_set.connect(self.setLocation)
-        sc.show()
+        try:
+            system = self.systems[str(systemName)]
+            sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
+                            list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
+            self.chat_message_added.connect(sc.addChatEntry)
+            self.avatar_loaded.connect(sc.newAvatarAvailable)
+            sc.location_set.connect(self.setLocation)
+            sc.show()
+        except Exception as e:
+            logging.error("mapLinkClicked problem for \"%s\": %r", systemName, e)
+            pass
 
     def markSystemOnMap(self, systemname):
         self.systems[six.text_type(systemname)].mark()
@@ -711,10 +695,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             scrollPosition = self.initialMapPosition
             zoom = self.initialZoom
             self.initialMapPosition = self.initialZoom = None
-
-
         self.mapUpdateThread.queue.put((self.dotlan.svg, zoom, scrollPosition))
-        # self.setMapContent(self.dotlan.svg)
 
     def zoomMapIn(self):
         self.mapView.setZoomFactor(self.mapView.zoomFactor + 0.1)
@@ -740,7 +721,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         regionName = self.cache.getFromCache("region_name")
         if regionName:
             scrollPosition = self.mapView.page().scrollPosition()
-            # scrollPosition = self.mapView.page().mainFrame().scrollPosition()
             self.mapPositionsDict[regionName] = ((scrollPosition.x(), scrollPosition.y()), self.mapView.page().zoomFactor())
 
     def showLoggingWindow(self):
@@ -787,10 +767,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     if len(data) <= 0:
                         url = ""
                 else:
-                    from vi.jumpbridge.Import import Import
                     data = Import().readGarpaFile(url)
             elif clipdata:
-                from vi.jumpbridge.Import import Import
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
                 data = self.cache.getJumpbridge(self.dotlan.region)
@@ -826,16 +804,21 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
         self.chatListWidget.addItem(listWidgetItem)
         self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)
-        chatEntryWidget.mark_system.connect(self.markSystemOnMap)
         self.avatarFindThread.addChatEntry(chatEntryWidget)
         self.chatEntries.append(chatEntryWidget)
-        # self.connect(chatEntryWidget, PYQT_SIGNAL("mark_system"), self.markSystemOnMap)
-        # TODO: sort this
+        chatEntryWidget.mark_system.connect(self.markSystemOnMap)
+        chatEntryWidget.ship_detail.connect(self.openShip)
+        chatEntryWidget.enemy_detail.connect(self.openEnemy)
         self.chat_message_added.emit(chatEntryWidget)
-        # self.emit(PYQT_SIGNAL("chat_message_added"), chatEntryWidget)
         self.pruneMessages()
         if scrollToBottom:
             self.chatListWidget.scrollToBottom()
+
+    def openEnemy(self, playerName):
+        pass
+
+    def openShip(self, shipName):
+        pass
 
     def pruneMessages(self):
         try:

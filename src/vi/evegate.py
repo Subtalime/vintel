@@ -26,8 +26,8 @@ import json
 
 from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
-from vi.esi.EsiInterface import EsiInterface
-from vi.esi.EsiHelper import EsiHelper
+from vi.esi.esiinterface import EsiInterface
+from vi.esi.esihelper import EsiHelper
 
 # TODO: only used by KOS-Checker now... so obsolete?
 class EveGate:
