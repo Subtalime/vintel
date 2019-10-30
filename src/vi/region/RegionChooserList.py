@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QDialog, QMessageBox
 from PyQt5.QtCore import pyqtSignal
 from vi.cache.cache import Cache
 from vi.dotlan.regions import Regions
-from vi.resources import resourcePath
+from vi.resources import resourcePath, getVintelMap
 import logging
 from vi.ui.RegionChooserList import Ui_Dialog
 
@@ -35,8 +35,8 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
                 items[0].setSelected(True)
             else:
                 if len(self.txtRegions.text()) > 0:
-                    self.txtRegions.setText(self.txtRegions.text()+",")
-                self.txtRegions.setText(self.txtRegions.text()+region)
+                    self.txtRegions.setText(self.txtRegions.text() + ",")
+                self.txtRegions.setText(self.txtRegions.text() + region)
 
     def checkMapFiles(self) -> bool:
         if self.txtRegions.text():
@@ -46,14 +46,16 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
                 if not region.endswith(".svg"):
                     return False
                 from os.path import isfile
-                if not isfile(resourcePath("vi/ui/res/mapdata/"+region)):
+                if not isfile(getVintelMap(region)):
                     return False
         return True
 
     def saveClicked(self):
         if not self.checkMapFiles():
-            resPath = resourcePath("vi/ui/res/mapdata/")
-            QMessageBox.critical(self, "Region selection", "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(resPath, self.txtRegions.text()))
+            resPath = getVintelMap()
+            QMessageBox.critical(self, "Region selection",
+                                 "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(resPath,
+                                                                                                 self.txtRegions.text()))
             self.txtRegions.setFocus()
             return
 
@@ -64,7 +66,7 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
                 litems.append(item.text())
         saveCache = ",".join(litems)
         if len(litems) > 0 and self.txtRegions.text():
-            saveCache += ","+self.txtRegions.text()
+            saveCache += "," + self.txtRegions.text()
         Cache().putIntoCache("region_name_range", saveCache, 60 * 60 * 24 * 365)
         logging.info("New list of Regions selected: {}".format(saveCache))
         self.new_region_range_chosen.emit(saveCache)
@@ -75,6 +77,8 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
         try:
             with open(resourcePath("docs/regionselect.txt")) as f:
                 content = f.read()
+                content = content.replace("<mapdir>", getVintelMap())
                 QMessageBox.information(self, "Region-Help", content)
         except Exception:
-            QMessageBox.warning(self, "Help-File", "Unable to find Help-File \n{}".format(resourcePath("docs/regionselect.txt")))
+            QMessageBox.warning(self, "Help-File",
+                                "Unable to find Help-File \n{}".format(resourcePath("docs/regionselect.txt")))

@@ -101,10 +101,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 self.apiInfo = None
                 self.esiApp = None
                 tokenKey = None
+                refreshKey = None
                 if self.caching:
                     cacheToken = Cache().getFromCache("esi_token")
                     if cacheToken:
                         tokenKey = literal_eval(cacheToken)
+                        refreshKey = tokenKey['refresh_token']
                 while not self.apiInfo:
                     try:
                         if secretKey:
@@ -115,8 +117,18 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             # store the Token
                             if self.caching:
                                 Cache().putIntoCache("esi_token", str(self.tokens))
+                                Cache().putIntoCache("esi_token_refresh", str(self.tokens['refresh_token']))
+                        elif refreshKey:
+                            self.security.update_token({
+                                'access_token': '',
+                                'expires_in': -1,
+                                'refresh_token': refreshKey
+                            })
+                            refreshKey = None
+                            self.apiInfo = self.security.refresh()
                         elif tokenKey:
                             self.security.update_token(tokenKey)
+                            tokenKey = None
                             self.apiInfo = self.security.refresh()
                         else:
                             self.waitForSecretKey()

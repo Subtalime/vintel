@@ -21,12 +21,12 @@ import sys
 import time
 import six
 import requests
-
+import webbrowser
 import vi.version
 
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
+from PyQt5.QtCore import QPoint, pyqtSignal, QPointF, QUrl, QUrlQuery
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
@@ -41,7 +41,7 @@ from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
-from vi.esi import EsiInterface, EsiThread
+from vi.esi import EsiInterface, EsiThread, EsiHelper
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
@@ -56,17 +56,16 @@ from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
+
 try:
     import pickle
 except ImportError:  # pragma: no cover
     import cPickle as pickle
 
-
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
 CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
-
 
 
 class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
@@ -481,10 +480,11 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def notifyNewerVersion(self, newestVersion):
         self.trayIcon.showMessage("Newer Version",
-                              ("An update is available for {}. Current V{} to V{}\nVisit {}".format(vi.version.PROGNAME,
-                                                                                              vi.version.VERSION,
-                                                                                              newestVersion,
-                                                                                              vi.version.URL)))
+                                  ("An update is available for {}. Current V{} to V{}\n"
+                                   "Consider upgrading by visiting {}".format(vi.version.PROGNAME,
+                                                                              vi.version.VERSION,
+                                                                              newestVersion,
+                                                                              vi.version.URL)))
 
     def changeChatVisibility(self, newValue=None):
         if newValue is None:
@@ -673,7 +673,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def mapUpdate(self, newContent):
         if newContent:
-            self.refreshContent = newContent# triggered by mapUpdateThread
+            self.refreshContent = newContent  # triggered by mapUpdateThread
         if self.refreshContent:
             self.mapView.setHtml(self.refreshContent)
 
@@ -721,7 +721,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         regionName = self.cache.getFromCache("region_name")
         if regionName:
             scrollPosition = self.mapView.page().scrollPosition()
-            self.mapPositionsDict[regionName] = ((scrollPosition.x(), scrollPosition.y()), self.mapView.page().zoomFactor())
+            self.mapPositionsDict[regionName] = (
+            (scrollPosition.x(), scrollPosition.y()), self.mapView.page().zoomFactor())
 
     def showLoggingWindow(self):
         if self.logWindow.isHidden():
@@ -751,7 +752,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.jumpbridgesButton.setCheckable(False)
             self.jumpbridgesButton.setChecked(False)
 
-
     def setJumpbridges(self, url: str = None, clipdata: str = None):
         if url is None:
             url = ""
@@ -775,7 +775,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.dotlan.setJumpbridges(self, data)
             if url or (data and len(data) > 0):
                 if url:
-                    self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()), url, maxAge=Cache.FOREVER)
+                    self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()), url,
+                                            maxAge=Cache.FOREVER)
                 else:
                     self.cache.putJumpbridge(self.dotlan.region, data)
         except Exception as e:
@@ -817,8 +818,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def openEnemy(self, playerName):
         pass
 
+    @staticmethod
     def openShip(self, shipName):
-        pass
+        zKill = QUrl("https://zkillboard.com/ship/{}".format(EsiHelper().getShipId(shipName)))
+        webbrowser.open(zKill)
 
     def pruneMessages(self):
         try:
@@ -932,7 +935,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     messageLogged = True
             # Otherwise consider it a 'normal' chat message
             elif message.user not in (
-            "EVE-System", "EVE System") and message.status != states.IGNORE:
+                    "EVE-System", "EVE System") and message.status != states.IGNORE:
                 self.addMessageToIntelChat(message)
                 # For each system that was mentioned in the message, check for alarm distance to the current system
                 # and alarm if within alarm distance.
@@ -942,16 +945,17 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                     for system in message.systems:
                         systemname = system.name
                         systemList[systemname].setStatus(message.status)
+                        activePlayers = self.knownPlayers.getActiveNames()
                         if message.status in (states.REQUEST,
-                                              states.ALARM) and message.user not in self.knownPlayers.getActiveNames():
+                                              states.ALARM) and message.user not in activePlayers:
                             alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
                             for nSystem, data in system.getNeighbours(alarmDistance).items():
                                 distance = data["distance"]
                                 chars = nSystem.getLocatedCharacters()
-                                if len(chars) > 0 and message.user not in chars:
+                                if len(chars) > 0:
                                     self.trayIcon.showNotification(message, system.name,
                                                                    ", ".join(chars), distance)
 
         if messageLogged:  # stop the flickering
             self.updateMapView()
-                # self.setMapContent(self.dotlan.svg)
+            # self.setMapContent(self.dotlan.svg)

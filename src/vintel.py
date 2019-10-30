@@ -30,7 +30,7 @@ from PyQt5 import QtGui, QtWidgets
 from vi import version
 from vi.ui import viui, systemtray
 from vi.cache import cache
-from vi.resources import resourcePath, getEveChatlogDir, getVintelDir
+from vi.resources import resourcePath, getEveChatlogDir, getVintelDir, getVintelMap
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -61,7 +61,11 @@ class Application(QApplication):
             myApplicationID = str("{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT))
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myApplicationID)
 
-        # Set up paths
+        if sys.platform != "win32" and len(sys.argv) <= 2:
+            print("Usage: python vintel.py <chatlogsdir> <gamelogsdir>")
+            sys.exit(1)
+
+            # Set up paths
         chatLogDirectory = ""
         if len(sys.argv) > 1:
             chatLogDirectory = sys.argv[1]
@@ -77,15 +81,16 @@ class Application(QApplication):
         vintelDirectory = getVintelDir()
         if not os.path.exists(vintelDirectory):
             os.mkdir(vintelDirectory)
-        cache.Cache.PATH_TO_CACHE = os.path.join(vintelDirectory, "cache-2.sqlite3")
 
         vintelLogDirectory = os.path.join(vintelDirectory, "logs")
         if not os.path.exists(vintelLogDirectory):
             os.mkdir(vintelLogDirectory)
-
+        if not os.path.exists(getVintelMap()):
+            os.mkdir(getVintelMap())
         # splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/Dominix.png")))
         splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
 
+        cache.Cache.PATH_TO_CACHE = os.path.join(vintelDirectory, "cache-2.sqlite3")
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:

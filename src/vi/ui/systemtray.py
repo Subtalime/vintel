@@ -146,7 +146,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
             self.lastNotifications[states.REQUEST] = time.time()
             SoundManager().playSound("request", text)
-        if not title is None or text is None or icon:
-            text = "{}".format(locals())
-            self.showMessage(title, text)
+        if not (title is None or text is None or icon):
+            text = "{}".format(**locals())
+            self.showMessage(title, text, icon)
             # self.showMessage(title, text, icon)

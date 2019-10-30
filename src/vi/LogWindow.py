@@ -16,7 +16,8 @@ class LogWindow(QtWidgets.QWidget):
 
         self.logLevel = Cache().getFromCache("log_window_level")
         if not self.logLevel:
-            self.logLevel = logging.getLogger().getEffectiveLevel()
+            # by default, have warnings only shown there
+            self.logLevel = logging.WARNING
         self.logHandler = LogWindowHandler(self)
         self.logHandler.setLevel(self.logLevel)
         logging.getLogger().addHandler(self.logHandler)
@@ -56,8 +57,6 @@ class LogWindow(QtWidgets.QWidget):
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         super(LogWindow, self).changeEvent(event)
-        state = self.windowState()
-        eve = event.type()
         if event.type() == QEvent.WindowStateChange:
             if self.windowState() & Qt.WindowMinimized:
                 self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
@@ -72,9 +71,6 @@ class LogWindow(QtWidgets.QWidget):
 
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
-        # logLevel = Cache().getFromCache("logging_level_window")
-        # if not logLevel:
-        #     logLevel = logging.WARN
         currLevel = self.logLevel
         menu = QMenu(self)
         debug = QtWidgets.QAction("Debug", checkable=True)

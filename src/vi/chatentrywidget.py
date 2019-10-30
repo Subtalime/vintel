@@ -47,9 +47,6 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             # TODO: open Ship-Detail Window?
             self.ship_detail.emit(parameter)
 
-
-
-
     def updateText(self):
         time = datetime.datetime.strftime(self.message.timestamp, "%H:%M:%S")
         text = u"<small>{time} - <b>{user}</b> - <i>{room}</i></small><br>{text}".format(user=self.message.user,
@@ -57,7 +54,6 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
                                                                                          time=time,
                                                                                          text=self.message.message)
         self.textLabel.setText(text)
-
 
     def updateAvatar(self, avatarData):
         image = QImage.fromData(avatarData)
@@ -67,7 +63,6 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         scaledAvatar = pixmap.scaled(32, 32)
         self.avatarLabel.setPixmap(scaledAvatar)
         return True
-
 
     def changeFontSize(self, newSize):
         font = self.textLabel.font()

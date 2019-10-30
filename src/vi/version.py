@@ -1,5 +1,6 @@
-import requests, logging, re
+import requests, logging
 from PyQt5.QtCore import pyqtSignal, QThread
+from packaging.version import parse
 
 VERSION = "2.0.0"
 SNAPSHOT = True # set to false when releasing
@@ -16,12 +17,6 @@ def getNewestVersion():
         logging.error("Failed version-request: %s", e)
         return "0.0"
 
-def mycmp(version1, version2):
-    def normalize(v):
-        return [int(x) for x in re.sub(r'(\.0+)*$', '', v).split(".")]
-
-    return (normalize(version1) > normalize(version2)) - (normalize(version1) < normalize(version2))
-
 
 class NotifyNewVersionThread(QThread):
     newer_version = pyqtSignal(str)
@@ -37,7 +32,7 @@ class NotifyNewVersionThread(QThread):
             try:
                 # Is there a newer version available?
                 newestVersion = getNewestVersion()
-                if newestVersion and mycmp(newestVersion, VERSION) > 0:
+                if newestVersion and parse(newestVersion) > parse(VERSION):
                     self.newer_version.emit(newestVersion)
                     self.alerted = True
             except Exception as e:

@@ -206,5 +206,5 @@ class System(object):
             self.secondLine.string = string
 
     def __repr__(self):
-        return ",".join("{}.{}".format(key, val) for key, val in self.statistics.items())
+        return "{}:".format(self.name) + (",".join("{}.{}".format(key, val) for key, val in self.statistics.items()))
 

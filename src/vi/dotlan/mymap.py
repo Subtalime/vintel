@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup, CData
 from PyQt5 import QtGui, QtWidgets, QtCore
 from vi.dotlan.map import Map
-from vi.resources import resourcePath
+from vi.resources import resourcePath, getVintelMap
 import time, logging, os, datetime
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
@@ -162,7 +162,7 @@ class MyMap(Map):
         self.region = None
 
     def loadMap(self, regionName):
-        testFile = resourcePath("vi/ui/res/mapdata/{}.svg".format(regionName))
+        testFile = getVintelMap(regionName=regionName)
         self.region = regionName
         try:
             with open(testFile, "r") as f:

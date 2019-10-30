@@ -48,7 +48,18 @@ def getEveChatlogDir() -> str:
         chatLogDirectory = os.path.join(documentsPath, "EVE", "logs", "Chatlogs")
     return chatLogDirectory
 
-def getVintelDir() -> str:
+def getVintelDir(filePath: str=None) -> str:
     eveDir = getEveChatlogDir()
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel")
+    if filePath:
+        vintelDir = os.path.join(vintelDir, filePath)
+    return vintelDir
+
+def getVintelMap(regionName: str=None) -> str:
+    eveDir = getEveChatlogDir()
+    vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel", "mapdata")
+    if regionName:
+        if not regionName.endswith(".svg"):
+            regionName += ".svg"
+        vintelDir = os.path.join(vintelDir, regionName)
     return vintelDir
