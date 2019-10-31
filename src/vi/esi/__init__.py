@@ -13,4 +13,4 @@ except ImportError:  # pragma: no cover
 __all__ = [ "EsiHelper", "EsiCache", "EsiInterface", "EsiThread"]
 __version__ = "1.0.0"
 
-EsiHelper()
+# EsiHelper()

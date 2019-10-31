@@ -77,41 +77,50 @@ class Application(QApplication):
             QMessageBox.critical(None, "No path to Logs", "No logs found at: " + chatLogDirectory, QMessageBox.Ok)
             sys.exit(1)
 
-        # Setting local directory for cache and logging
+        # Setting local directory for cache, resources and logging
         vintelDirectory = getVintelDir()
         if not os.path.exists(vintelDirectory):
             os.mkdir(vintelDirectory)
-
         vintelLogDirectory = os.path.join(vintelDirectory, "logs")
         if not os.path.exists(vintelLogDirectory):
             os.mkdir(vintelLogDirectory)
         if not os.path.exists(getVintelMap()):
             os.mkdir(getVintelMap())
-        # splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/Dominix.png")))
         splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+
+        # check for Client-ID
+        from vi.esi.esicache import EsiCache
+        clientId = EsiCache().get("esi_clientid")
+        if not clientId:
+            # here we load the Popup to enter Esi credentials!
+            EsiCache().set("esi_clientid", '50de89684c374189a25ccf83aa1d928a')
+
 
         cache.Cache.PATH_TO_CACHE = os.path.join(vintelDirectory, "cache-2.sqlite3")
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:
-            logLevel = logging.DEBUG
+            logLevel = logging.INFO
         backColor = vintelCache.getFromCache("background_color")
         if backColor:
             backGroundColor = backColor
-            self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
+        self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
         # Setup logging for console and rotated log files
         formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
         rootLogger = logging.getLogger()
-        rootLogger.setLevel(level=logLevel)
+        # rootLogger.setLevel(level=logLevel)
 
-        logFilename = vintelLogDirectory + "/output.log"
+        logFilename = os.path.join(vintelLogDirectory, "output.log")
         fileHandler = RotatingFileHandler(maxBytes=(1048576*5), backupCount=7, filename=logFilename, mode='a')
         fileHandler.setFormatter(formatter)
+        # in the log file, ALWAYS debug
+        fileHandler.setLevel(logging.DEBUG)
         rootLogger.addHandler(fileHandler)
 
         consoleHandler = StreamHandler()
         consoleHandler.setFormatter(formatter)
+        consoleHandler.setLevel(logLevel)
         rootLogger.addHandler(consoleHandler)
         # output logging to a Window
         logging.debug("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
@@ -120,7 +129,9 @@ class Application(QApplication):
         logging.debug("Writing logs to: %s", vintelLogDirectory)
 
         splash.show()
+
         self.processEvents()
+
 
         trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()

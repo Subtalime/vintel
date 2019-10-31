@@ -22,6 +22,7 @@ import threading
 import time
 import six
 import ast
+import os
 
 if six.PY2:
     def to_blob(x):
@@ -62,8 +63,9 @@ class Cache(object):
         pathToSQLiteFile=path to sqlite-file to save the cache. will be ignored if you set Cache.PATH_TO_CACHE before init
         forceVersionCheck=bool to enforce a check. You will need True if you are using several Cache-Files
         """
-        if Cache.PATH_TO_CACHE:
+        if Cache.PATH_TO_CACHE and not os.path.dirname(pathToSQLiteFile):
             pathToSQLiteFile = Cache.PATH_TO_CACHE
+        self.pathFile = pathToSQLiteFile
         self.con = sqlite3.connect(pathToSQLiteFile)
         if not Cache.VERSION_CHECKED or forceVersionCheck:
             with Cache.SQLITE_WRITE_LOCK:

@@ -75,8 +75,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     pass
                 return
             esiLoading = True
-            self.logger = logging.getLogger(logrepr(__class__))
             self.caching = enablecache
+            self.logger = logging.getLogger(logrepr(__class__))
+            self.logger.setLevel(logging.DEBUG)
             self.logger.debug("Creating ESI access")
             self.authenticated = False
             self.esiConfig = EsiConfig()
@@ -84,6 +85,10 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.headers = {'User-Agent': "{} Intel Management Tool".format(vi.version.PROGNAME)}
             self.codeverifier = generate_code_verifier()
             try:
+                if self.caching:
+                    cacheToken = EsiCache().get("esi_clientid")
+                    if cacheToken:
+                        EsiConfig.ESI_CLIENT_ID = cacheToken
                 # this uses PKCE (pixie) authorisation with ESI
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
@@ -103,22 +108,25 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 tokenKey = None
                 refreshKey = None
                 if self.caching:
-                    cacheToken = Cache().getFromCache("esi_token")
-                    if cacheToken:
-                        tokenKey = literal_eval(cacheToken)
+                    tokenKey = EsiCache().get("esi_token")
+                    if tokenKey:
                         refreshKey = tokenKey['refresh_token']
                 while not self.apiInfo:
                     try:
                         if secretKey:
+                            self.logger.debug("Checking the Secretkey")
                             self.esiConfig.setSecretKey(secretKey)
                             secretKey = None
                             self.tokens = self.security.auth(self.esiConfig.getSecretKey())
                             self.apiInfo = self.security.verify()
                             # store the Token
                             if self.caching:
-                                Cache().putIntoCache("esi_token", str(self.tokens))
-                                Cache().putIntoCache("esi_token_refresh", str(self.tokens['refresh_token']))
+                                EsiCache().set("esi_token", self.tokens)
+                                # EsiCache().set("esi_clientid", EsiConfig.ESI_CLIENT_ID)
+                                EsiCache().set("esi_token_refresh", self.tokens['refresh_token'])
+                            self.logger.debug("Secretkey success")
                         elif refreshKey:
+                            self.logger.debug("Checking the Refresh-Token")
                             self.security.update_token({
                                 'access_token': '',
                                 'expires_in': -1,
@@ -126,11 +134,15 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             })
                             refreshKey = None
                             self.apiInfo = self.security.refresh()
+                            self.logger.debug("Refreshtoken success")
                         elif tokenKey:
+                            self.logger.debug("Checking the Tokenkey")
                             self.security.update_token(tokenKey)
                             tokenKey = None
                             self.apiInfo = self.security.refresh()
+                            self.logger.debug("Tokenkey success")
                         else:
+                            self.logger.debug("Waiting for Website response of Secretkey")
                             self.waitForSecretKey()
                     except APIException as e:
                         self.logger.error("EsiAPI Error", e)
@@ -144,8 +156,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
 
                 self.logger.debug("ESI loading Swagger...")
                 # outputs a load of data in Debug
-                oldSetting = logging.getLogger().getEffectiveLevel()
-                logging.getLogger().setLevel(logging.WARN)
+                oldSetting = self.logger.getEffectiveLevel()
+                self.logger.setLevel(logging.WARN)
                 while not self.esiApp:
                     try:
                         self.esiApp = EsiApp(cache=EsiCache(), cache_time=3 * 86400).get_latest_swagger
@@ -157,7 +169,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             exit(-1)
 
                 # Reset logging to old level
-                logging.getLogger().setLevel(oldSetting)
+                self.logger.setLevel(oldSetting)
                 self.logger.debug("ESI loading Swagger...complete")
                 self.authenticated = True
                 self.logger.debug("Finished authorizing with ESI")
@@ -226,10 +238,11 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def __init__(self, useCaching: bool = True):
         if not EsiInterface._instance:
             self.caching = useCaching
+
             self.logger = logging.getLogger(logrepr(__class__))
             self.logger.setLevel(logging.ERROR)
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
-            EsiInterface._instance = EsiInterface.__OnceOnly(useCaching)
+            EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
 
     def __getattr__(self, name):
         return getattr(self._instance, name)
@@ -243,14 +256,13 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def calcExpiryResponse(self, resp: Response) -> datetime.datetime:
         return self.calcExpiry(resp.header.get('Expires')[0])
 
+    @staticmethod
     def _copyModel(self, data) -> dict:
         retval = {}
         for key, val in data.items():
             retval[key] = val
         return retval
-    # def _cacheVar(self, function: str, **kwargs):
-    #     return "_".join(("esicache", function, for var in kwargs))
-    #
+
     def getCharacter(self, characterId: int) -> Response.data:
         # Character-Caching is based on EveTime... we want to reload after Eve is back up
         response = None
@@ -462,9 +474,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getshipgroups"))
-                result = Cache().getFromCache(cacheKey)
-                if result:
-                    response = literal_eval(result)
+                response = EsiCache().get(cacheKey)
             if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_categories_category_id'](category_id=6)
@@ -472,12 +482,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 if response:
                     response = response.data
                     if self.caching:
-                        Cache().putIntoCache(cacheKey, str(response))
+                        EsiCache().set(cacheKey, response)
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving Ship-Groups from ESI", e)
             if self.caching:
-                Cache().delFromCache(cacheKey)
+                EsiCache().invalidate(cacheKey)
         return response
 
     def getShipGroupTypes(self, groupid: int) -> Response.data:
@@ -485,9 +495,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getshipgrouptype", str(groupid)))
-                result = Cache().getFromCache(cacheKey)
-                if result:
-                    response = literal_eval(result)
+                response = EsiCache().get(cacheKey)
             if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_groups_group_id'](group_id=groupid)
@@ -495,12 +503,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 if response:
                     response = response.data
                     if self.caching:
-                        Cache().putIntoCache(cacheKey, str(response))
+                        EsiCache().set(cacheKey, response)
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving Ship-Group-Types from ESI", e)
             if self.caching:
-                Cache().delFromCache(cacheKey)
+                EsiCache().invalidate(cacheKey)
         return response
 
     def getShip(self, shipid: int) -> Response.data:
@@ -508,9 +516,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getship", str(shipid)))
-                result = Cache().getFromCache(cacheKey)
-                if result:
-                    response = literal_eval(result)
+                response = EsiCache().get(cacheKey)
             if not response:
                 # this will return Groups of type 6 (ship)
                 op = self.esiApp.op['get_universe_types_type_id'](type_id=shipid)
@@ -518,12 +524,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 if response:
                     response = response.data
                     if self.caching:
-                        Cache().putIntoCache(cacheKey, str(response))
+                        EsiCache().set(cacheKey, response)
                     # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.logger.error("Error retrieving Ship from ESI", e)
             if self.caching:
-                Cache().delFromCache(cacheKey)
+                EsiCache().invalidate(cacheKey)
         return response
 
     @property
@@ -532,21 +538,22 @@ class EsiInterface(metaclass=EsiInterfaceType):
         try:
             if self.caching:
                 cacheKey = "_".join(("esicache", "getshiplist"))
-                result = Cache().getFromCache(cacheKey)
-                if result:
-                    ships = literal_eval(result)
-            if len(ships) == 0:
+                ships = EsiCache().get(cacheKey)
+            if ships is None or len(ships) == 0:
+                self.logger.debug("Loading Ship-Data...")
+                ships = []
                 shipgroup = self.getShipGroups()
                 for group in shipgroup['groups']:
                     shiptypes = self.getShipGroupTypes(group)
                     for ship in shiptypes['types']:
                         shipitem = self.getShip(ship)
                         ships.append(shipitem)
-                Cache().putIntoCache(cacheKey, str(ships), 30 * 24 * 60 * 60)
+                EsiCache().set(cacheKey, ships)
+                self.logger.debug("Loading Ship-Data...complete")
         except Exception as e:
             self.logger.error("Error retrieving Ship-List from ESI", e)
             if self.caching:
-                Cache().delFromCache(cacheKey)
+                EsiCache().invalidate(cacheKey)
 
         return ships
 
@@ -570,7 +577,8 @@ from PyQt5.QtCore import QThread, QTimer
 import time
 import queue
 
-
+# This is purely to load ESI in the background, since it can take quite a while!
+# Once loaded, the thread can actually be stopped
 class EsiThread(QThread):
     POLL_RATE = 5000
 
@@ -593,12 +601,14 @@ class EsiThread(QThread):
             self.queue.get()
             if not self.active:
                 return
+            # this should stop any kind of future polling
             self.refreshTimer.stop()
             logging.debug("EsiThread creating Instance")
+            # this can take a while... loading Swagger and loading Ship-Data
             try:
+                # load the Interface
                 EsiInterface()
                 EsiInterface().getShipList
-
             except Exception as e:
                 logging.error("Error in EsiThread: %r", e)
                 exit(-1)
@@ -609,7 +619,6 @@ class EsiThread(QThread):
         self.active = False
         self.queue.put(None)
         QThread.quit(self)
-
 
 if __name__ == "__main__":
     def _cacheVar(function: str, *argv):

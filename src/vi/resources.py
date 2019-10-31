@@ -32,7 +32,7 @@ def resourcePath(relativePath):
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
 
-def getEveChatlogDir() -> str:
+def getEveChatlogDir(log: bool=False) -> str:
     if sys.platform.startswith("darwin"):
         chatLogDirectory = os.path.join(os.path.expanduser("~"), "Documents", "EVE", "logs", "Chatlogs")
         if not os.path.exists(chatLogDirectory):
@@ -46,29 +46,36 @@ def getEveChatlogDir() -> str:
         ctypes.windll.shell32.SHGetFolderPathW(0, 5, 0, 0, buf)
         documentsPath = buf.value
         chatLogDirectory = os.path.join(documentsPath, "EVE", "logs", "Chatlogs")
-    logging.debug("getEveChatlogDir: {}".format(chatLogDirectory))
+    if log:
+        logging.debug("getEveChatlogDir: {}".format(chatLogDirectory))
     return chatLogDirectory
 
-def getVintelDir(filePath: str=None) -> str:
-    eveDir = getEveChatlogDir()
+def getVintelDir(filePath: str=None, log: bool=False) -> str:
+    eveDir = getEveChatlogDir(log)
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel")
     if not os.path.exists(vintelDir):
         try:
             os.mkdir(vintelDir)
         except Exception as e:
-            logging.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
+            if not log:
+                print("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
+            else:
+                logging.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
     if filePath:
         vintelDir = os.path.join(vintelDir, filePath)
     return vintelDir
 
-def getVintelMap(regionName: str=None) -> str:
+def getVintelMap(regionName: str=None, log: bool=False) -> str:
     eveDir = getEveChatlogDir()
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel", "mapdata")
     if not os.path.exists(vintelDir):
         try:
             os.mkdir(vintelDir)
         except Exception as e:
-            logging.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
+            if not log:
+                print("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
+            else:
+                logging.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
     if regionName:
         if not regionName.endswith(".svg"):
             regionName += ".svg"

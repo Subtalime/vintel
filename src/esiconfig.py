@@ -11,6 +11,7 @@ class EsiConfig:
     PORT = 2020
     # where the Webserver will be running
     HOST = 'localhost'
+    URI = 'callback'
 
     # -----------------------------------------------------
     # ESI Configs
@@ -20,6 +21,7 @@ class EsiConfig:
     # Run the Application, then register on "https://developers.eveonline.com/applications"
     # You will then receive your Secret and Client keys
     ESI_SECRET_KEY = ''  # your secret key will be filled in by SSo-Authentication
-    ESI_CLIENT_ID = '50de89684c374189a25ccf83aa1d928a'  # your client ID
-    ESI_CALLBACK = 'http://%s:%d/callback' % (HOST, PORT)  # the callback URI you gave CCP
+    ESI_CLIENT_ID = ''  # your client ID
+    # ESI_CLIENT_ID = '50de89684c374189a25ccf83aa1d928a'  # your client ID
+    ESI_CALLBACK = 'http://%s:%d/%s' % (HOST, PORT, URI)  # the callback URI you gave CCP
     ESI_USER_AGENT = vi.version.PROGNAME
