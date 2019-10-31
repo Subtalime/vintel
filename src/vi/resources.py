@@ -19,7 +19,7 @@
 
 import os
 import sys
-
+import logging
 
 def resourcePath(relativePath):
     """ Get absolute path to resource, works for dev and for PyInstaller
@@ -46,11 +46,17 @@ def getEveChatlogDir() -> str:
         ctypes.windll.shell32.SHGetFolderPathW(0, 5, 0, 0, buf)
         documentsPath = buf.value
         chatLogDirectory = os.path.join(documentsPath, "EVE", "logs", "Chatlogs")
+    logging.debug("getEveChatlogDir: {}".format(chatLogDirectory))
     return chatLogDirectory
 
 def getVintelDir(filePath: str=None) -> str:
     eveDir = getEveChatlogDir()
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel")
+    if not os.path.exists(vintelDir):
+        try:
+            os.mkdir(vintelDir)
+        except Exception as e:
+            logging.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
     if filePath:
         vintelDir = os.path.join(vintelDir, filePath)
     return vintelDir
@@ -58,6 +64,11 @@ def getVintelDir(filePath: str=None) -> str:
 def getVintelMap(regionName: str=None) -> str:
     eveDir = getEveChatlogDir()
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel", "mapdata")
+    if not os.path.exists(vintelDir):
+        try:
+            os.mkdir(vintelDir)
+        except Exception as e:
+            logging.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
     if regionName:
         if not regionName.endswith(".svg"):
             regionName += ".svg"
