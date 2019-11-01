@@ -54,9 +54,14 @@ class EsiCache(BaseCache):
             founds = self.con.execute(query, (_hash(key),)).fetchall()
             if founds is None or len(founds) == 0:
                 return default
-            return literal_eval(founds[0][1])
-        except ValueError:
-            return pickle.loads(founds[0][1])
+            value = founds[0][1]
+            return literal_eval(value)
+        except ValueError as e:
+            if isinstance(value, bytes):
+                return pickle.loads(value)
+            return value
+        except SyntaxError as e:
+            return value
         except Exception as e:
             raise
 

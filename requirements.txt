@@ -88,7 +88,7 @@ pyswagger == 0.8.39
 requests == 2.22.0
 
 # src\setup.py: 1
-setuptools == 41.5.0
+setuptools
 
 # src\tools\addmessage.py: 2
 # src\vi\cache\cache.py: 23
@@ -143,4 +143,11 @@ six == 1.12.0
 # src\vi\ui\systemtray.py: 27,28,29
 # src\vi\ui\viui.py: 52,53,54,55,56,57,58
 # src\vintel.py: 33,34,92
-vi == 0.0.5.dev9
+# vi == 0.0.5.dev9
+
+PyQt5==5.12.1
+PyQt5-sip==12.7.0
+PyQt5-stubs==5.12.1.0
+pyqt5-tools==5.12.1.1.5rc4
+PyQt5Designer==5.10.1
+PyQtWebEngine==5.12.1

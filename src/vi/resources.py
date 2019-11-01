@@ -55,10 +55,10 @@ def getVintelDir(filePath: str=None, log: bool=False) -> str:
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel")
     if not os.path.exists(vintelDir):
         try:
-            os.mkdir(vintelDir)
+            os.makedirs(vintelDir)
         except Exception as e:
             if not log:
-                print("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
+                print("getVintelDir: Error creating \"%s\": %r" % (vintelDir, e))
             else:
                 logging.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
     if filePath:
@@ -67,10 +67,10 @@ def getVintelDir(filePath: str=None, log: bool=False) -> str:
 
 def getVintelMap(regionName: str=None, log: bool=False) -> str:
     eveDir = getEveChatlogDir()
-    vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel", "mapdata")
+    vintelDir = os.path.join(getVintelDir(), "mapdata")
     if not os.path.exists(vintelDir):
         try:
-            os.mkdir(vintelDir)
+            os.makedirs(vintelDir)
         except Exception as e:
             if not log:
                 print("getVintelMap: Error creating \"%s\": %r", vintelDir, e)

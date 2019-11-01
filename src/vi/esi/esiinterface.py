@@ -1,27 +1,26 @@
 import logging
-from esipy.utils import generate_code_verifier
-from esipy import EsiClient, EsiApp, EsiSecurity
-from esipy.security import APIException
-from esipy.events import AFTER_TOKEN_REFRESH
-from esiconfig import EsiConfig
-from pyswagger.io import Response
 import datetime
-from ast import literal_eval
-from urllib.parse import urlparse, parse_qs
+import webbrowser
+import functools
+import threading
+import pickle
 import vi.version
-import webbrowser, functools, threading
-from vi.cache.cache import Cache
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from http.client import HTTPException
-from vi.esi.esicache import  EsiCache
+from ast import literal_eval
+from pyswagger.io import Response
+from urllib.parse import urlparse, parse_qs
+from esipy import EsiClient, EsiApp, EsiSecurity
+from esipy.utils import generate_code_verifier
+from esipy.security import APIException
+from esipy.events import AFTER_TOKEN_REFRESH
+from .esicache import  EsiCache
+from .esiconfig import EsiConfig
+from .esiconfigdialog import EsiConfigDialog
+from vi.cache.cache import Cache
 
-try:
-    import pickle
-except ImportError:  # pragma: no cover
-    import cPickle as pickle
-
-secretKey = None
-esiLoading = False
+# secretKey = None
+# esiLoading = False
 
 lock = threading.Lock()
 
@@ -63,18 +62,20 @@ def logrepr(className: type) -> str:
 
 class EsiInterface(metaclass=EsiInterfaceType):
     _instance = None
+    secretKey = None
+    esiLoading = False
 
     # make it a Singleton
     class __OnceOnly:
         def __init__(self, enablecache: bool = True):
-            global secretKey
-            global esiLoading
-            if esiLoading:
-                while esiLoading is not "complete":
+            # global secretKey
+            # global esiLoading
+            if EsiInterface.esiLoading:
+                while EsiInterface.esiLoading is not "complete":
                     logging.error("Esi already currently being loaded...")
                     pass
                 return
-            esiLoading = True
+            EsiInterface.esiLoading = True
             self.caching = enablecache
             self.logger = logging.getLogger(logrepr(__class__))
             self.logger.setLevel(logging.DEBUG)
@@ -88,8 +89,28 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 if self.caching:
                     cacheToken = EsiCache().get("esi_clientid")
                     if cacheToken:
-                        EsiConfig.ESI_CLIENT_ID = cacheToken
+                        EsiConfig.ESI_CLIENT_ID = str(cacheToken)
+                    cacheToken = EsiCache().get("esi_callback")
+                    if cacheToken:
+                        EsiConfig.ESI_CALLBACK = str(cacheToken)
+                    cacheToken = EsiCache().get("esi_secretkey")
+                    if cacheToken:
+                        pass
+                        # EsiConfig.ESI_SECRET_KEY = str(cacheToken)
                 # this uses PKCE (pixie) authorisation with ESI
+                while not EsiConfig.ESI_CLIENT_ID:
+                    # TODO: look at PyFa to see how they do it...
+                    # TODO: until then, we should stop storing the SecretKey
+                    with EsiConfigDialog() as inputDia:
+                        inputDia.exec()
+                        if not inputDia.Accepted == 1:
+                            exit(-1)
+                        else:
+                            if self.caching:
+                                EsiCache().set("esi_clientid", EsiConfig.ESI_CLIENT_ID)
+                                EsiCache().set("esi_callback", EsiConfig.ESI_CALLBACK)
+                                EsiCache().set("esi_secretkey", EsiConfig.ESI_SECRET_KEY)
+
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
                     redirect_uri=self.esiConfig.ESI_CALLBACK,
@@ -113,17 +134,15 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         refreshKey = tokenKey['refresh_token']
                 while not self.apiInfo:
                     try:
-                        if secretKey:
+                        if EsiInterface.secretKey:
                             self.logger.debug("Checking the Secretkey")
-                            self.esiConfig.setSecretKey(secretKey)
-                            secretKey = None
+                            self.esiConfig.setSecretKey(EsiInterface.secretKey)
+                            EsiInterface.secretKey = None
                             self.tokens = self.security.auth(self.esiConfig.getSecretKey())
                             self.apiInfo = self.security.verify()
                             # store the Token
                             if self.caching:
                                 EsiCache().set("esi_token", self.tokens)
-                                # EsiCache().set("esi_clientid", EsiConfig.ESI_CLIENT_ID)
-                                EsiCache().set("esi_token_refresh", self.tokens['refresh_token'])
                             self.logger.debug("Secretkey success")
                         elif refreshKey:
                             self.logger.debug("Checking the Refresh-Token")
@@ -176,16 +195,24 @@ class EsiInterface(metaclass=EsiInterfaceType):
             except Exception as e:
                 self.logger.critical("Error authenticating with ESI", e)
                 exit(-1)
-            esiLoading = "complete"
+            EsiInterface.esiLoading = "complete"
 
         def waitForSecretKey(self):
-            global secretKey
+            # global secretKey
             redirected = False
-            while not secretKey:
+            while not EsiInterface.secretKey:
                 if not self.server:
                     self.server = self.EsiWebServer(self.esiConfig)
                     self.server.start()
                 if not redirected:
+                    # if SECRET_KEY is stored, call SSO directly
+                    if EsiConfig.ESI_SECRET_KEY:
+                        # this should be sent to ESI/verify
+                        self.security.verify(
+                            {
+                                'client_hash': EsiConfig.ESI_SECRET_KEY
+                            }
+                        )
                     ssoUri = self.security.get_auth_uri(
                         state="Authentication for {}".format(vi.version.PROGNAME),
                         scopes=None
@@ -224,8 +251,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         urlobjects = urlparse(self.requestline)
                         thisquery = parse_qs(urlobjects.query)
                         if thisquery['code']:
-                            global secretKey
-                            secretKey = thisquery['code'][0]
+                            # store temporary Secretkey
+                            EsiInterface.secretKey = thisquery['code'][0]
                             self.wfile.write(
                                 b"You have verified your account on ESI. You can now close this window")
                     except Exception as e:
@@ -620,86 +647,3 @@ class EsiThread(QThread):
         self.queue.put(None)
         QThread.quit(self)
 
-if __name__ == "__main__":
-    def _cacheVar(function: str, *argv):
-        args = argv.__repr__()
-        l = []
-        for a in argv:
-            l.append(str(a))
-        return "_".join(("esicache", function)) + "_".join((str(argv.__repr__())))
-
-
-    a = _cacheVar("test", 1, "me")
-
-    import requests, datetime
-
-    log_format = '%(asctime)s %(levelname)-8s: %(name)s/%(funcName)s %(message)s'
-    log_format_con = '%(levelname)-8s: %(name)s/%(funcName)s %(message)s'
-    log_date = '%m/%d/%Y %I:%M:%S %p'
-    log_date = '%H:%M:%S'
-    logging.basicConfig(level=logging.DEBUG,
-                        format=log_format,
-                        datefmt=log_date)
-    # console = logging.StreamHandler()
-    # console.setLevel(level=logging.DEBUG)
-    # console.setFormatter(logging.Formatter(log_format_con))
-    #
-    # logger = logging.getLogger(__name__)
-    # logger.addHandler(console)
-    # logging.getLogger().setLevel(logging.DEBUG)
-
-    thread = EsiThread()
-    thread.start(1)
-    thread.requestInstance()
-    time.sleep(2)
-    esi = EsiInterface()
-    thread.quit()
-    es2 = EsiInterface()
-    ships = esi.getShipList
-
-    shipgroup = esi.getShipGroups()
-    for group in shipgroup['groups']:
-        shiptypes = esi.getShipGroupTypes(group)
-        for ship in shiptypes['types']:
-            shipitem = esi.getShip(ship)
-            ships.append(shipitem)
-
-    res = esi.getSystemNames([95465449, 30000142])
-
-    chari = esi.getCharacterId("Tablot Manzari")
-    if chari:
-        print("getCharacterId: {}".format(chari))
-        charid = chari['character'][0]
-        chara = esi.getCharacter(charid)
-
-        character = chara  # Tablot Manzari
-        print("getCharacter: {}".format(character))
-
-        avatars = esi.getCharacterAvatar(charid)  # Tablot Manzari
-        print("getCharacterAvatar: {}".format(avatars))
-        imageurl = avatars["px64x64"]
-        avatar = requests.get(imageurl).content
-        corphist = esi.getCorporationHistory(charid)  # Bovril
-        print("getCorporationHistory: {}".format(corphist))
-        corp = esi.getCorporation(character['corporation_id'])  # Bovril
-        print("getCorporation: {}".format(corp))
-    li = ["B-7DFU", "Jita"]
-    ids = esi.getSystemIds(li)
-    if ids:
-        print("getSystemIds: {}".format(ids))
-        li = []
-        sys = ids['systems']
-        for a in sys:
-            li.append(a['id'])
-        names = esi.getSystemNames(li)
-        if names:
-            print("getSystemNames: {}".format(names))
-    jump_result, expiry = EsiInterface().getJumps()
-    if jump_result:
-        print("getJumps :{} {}".format(jump_result, expiry))
-        jumpData = {}
-        for data in jump_result:
-            jumpData[int(data['system_id'])] = int(data['ship_jumps'])
-    kill_result, expiry = EsiInterface().getKills()
-    if kill_result:
-        print("getKils :{} {}".format(kill_result, expiry))
