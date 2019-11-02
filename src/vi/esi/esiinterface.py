@@ -25,6 +25,8 @@ esiLoading = False
 
 lock = threading.Lock()
 
+def logrepr(className: type) -> str:
+    return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">", "")
 
 def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
     logging.info("TOKEN We got new token: %s" % access_token)
@@ -55,10 +57,6 @@ class EsiInterfaceType(type):
             cls._instances[cls] = super(EsiInterfaceType, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
 
-
-def logrepr(className: type) -> str:
-    return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
-                                                                                             "")
 
 
 class EsiInterface(metaclass=EsiInterfaceType):
@@ -240,7 +238,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.caching = useCaching
 
             self.logger = logging.getLogger(logrepr(__class__))
-            self.logger.setLevel(logging.ERROR)
+            # self.logger.setLevel(logging.ERROR)
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
             EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
 

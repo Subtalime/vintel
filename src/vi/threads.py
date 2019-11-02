@@ -34,7 +34,7 @@ from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.chatentrywidget import ChatEntryWidget
 from vi.esi.esihelper import EsiHelper
-
+from vi.resources import getVintelDir
 
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 24
@@ -61,7 +61,7 @@ class MapUpdateThread(QThread):
             js.string = scroll
             soup.svg.append(js)
             return str(soup)
-
+        loadMapAttempt =0
         while True:
             try:
                 timeout = False
@@ -70,9 +70,15 @@ class MapUpdateThread(QThread):
                 timeout  = True
                 pass
             if not self.activeData: # we don't have initial Map-Data yet
+                loadMapAttempt += 1
                 logging.debug("Map-Content update attempt, but not active")
+                if loadMapAttempt > 10:
+                    logging.critical("Something is stopping the program of progressing. (Map-Attempts > 10\n"
+                                     "If this continues to happen, delete the Cache-File in \"{}\"" % getVintelDir())
+                    exit(-1)
                 continue
             try:
+                loadMapAttempt = 0
                 if not timeout:  # not based on Timeout
                     logging.debug("Setting Map-Content start")
                     zoomfactor = zoomFactor if zoomFactor else 1.

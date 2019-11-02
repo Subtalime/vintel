@@ -100,7 +100,8 @@ class Application(QApplication):
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:
-            logLevel = logging.INFO
+            logLevel = logging.DEBUG
+            vintelCache.putIntoCache("logging_level", logLevel)
         backColor = vintelCache.getFromCache("background_color")
         if backColor:
             backGroundColor = backColor
@@ -109,7 +110,8 @@ class Application(QApplication):
         # Setup logging for console and rotated log files
         formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
         rootLogger = logging.getLogger()
-        # rootLogger.setLevel(level=logLevel)
+        # Base Log-Level
+        rootLogger.setLevel(level=logLevel)
 
         logFilename = os.path.join(vintelLogDirectory, "output.log")
         fileHandler = RotatingFileHandler(maxBytes=(1048576*5), backupCount=7, filename=logFilename, mode='a')
@@ -131,7 +133,6 @@ class Application(QApplication):
         splash.show()
 
         self.processEvents()
-
 
         trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()

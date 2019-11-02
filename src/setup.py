@@ -18,7 +18,7 @@ executables = [Executable("vintel.py", base=base, icon="icon.ico")]
 
 packages = ["idna", "appdirs", "packaging.version", "packaging.specifiers", "packaging", "pyglet", "pyqt5", "pyttsx3"]
 
-package_data = {'ui': ['vi/ui/*']}
+package_data = {'ui': ['vi/ui/*'], "sound": ["sound"]}
 
 options = {
     'build_exe': {

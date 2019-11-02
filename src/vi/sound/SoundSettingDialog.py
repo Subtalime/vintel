@@ -1,6 +1,4 @@
 from PyQt5.QtWidgets import QDialog
-from PyQt5.uic import loadUi
-from vi.resources import resourcePath
 from vi.ui.SoundSetup import Ui_Dialog
 from vi.sound.soundmanager import SoundManager
 
