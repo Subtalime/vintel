@@ -3,4 +3,4 @@
 *.pyproj
 /.idea/
 /env/
-/.idea/
+/src/vi/ui/res/mapdata/

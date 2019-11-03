@@ -58,6 +58,7 @@ class EsiCache(BaseCache):
         except ValueError:
             return pickle.loads(founds[0][1])
         except Exception as e:
+            return str(founds[0][1])
             raise
 
 

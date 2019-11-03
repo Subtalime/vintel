@@ -3,7 +3,7 @@ from esipy.utils import generate_code_verifier
 from esipy import EsiClient, EsiApp, EsiSecurity
 from esipy.security import APIException
 from esipy.events import AFTER_TOKEN_REFRESH
-from esiconfig import EsiConfig
+from vi.esi.esiconfig import EsiConfig
 from pyswagger.io import Response
 import datetime
 from ast import literal_eval
