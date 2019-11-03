@@ -77,25 +77,33 @@ class EsiCache(BaseCache):
             if founds is None or len(founds) == 0:
                 return default
             value = founds[0][1]
-            return literal_eval(value)
-        except ValueError as e:
-            if isinstance(value, bytes):
-                return pickle.loads(value)
-            return value
-        except SyntaxError as e:
-            return value
+            return pickle.loads(value)
+            # return literal_eval(value)
+        except (ValueError, TypeError):
+            try:
+                return literal_eval(value)
+            except Exception:
+                return value
+        except SyntaxError:
+            try:
+                return literal_eval(value)
+            except Exception:
+                return value
         except Exception as e:
             raise
 
 
     def set(self, key, value):
+        try:
+            storeValue = pickle.dumps(value)
+        except KeyError:
+            storeValue = str(value)
         with EsiCache.SQLITE_WRITE_LOCK:
             try:
                 query = "DELETE FROM cache WHERE key = ?"
                 self.con.execute(query, (_hash(key),))
                 query = "INSERT INTO cache (key, data) VALUES (?, ?)"
-                v = str(value)
-                self.con.execute(query, (_hash(key), v))
+                self.con.execute(query, (_hash(key), storeValue))
                 self.con.commit()
             except Exception as e:
                 raise

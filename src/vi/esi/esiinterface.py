@@ -23,12 +23,13 @@ import webbrowser
 import functools
 import threading
 import pickle
+from urllib import parse
+
 import vi.version
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from http.client import HTTPException
 from ast import literal_eval
 from pyswagger.io import Response
-from urllib.parse import urlparse, parse_qs
 from esipy import EsiClient, EsiApp, EsiSecurity
 from esipy.utils import generate_code_verifier
 from esipy.security import APIException
@@ -37,14 +38,10 @@ from .esicache import  EsiCache
 from .esiconfig import EsiConfig
 from .esiconfigdialog import EsiConfigDialog
 from PyQt5.QtWidgets import QProgressDialog
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import QUrl, QRunnable, QThreadPool
 from vi.cache.cache import Cache
 
-# secretKey = None
-# esiLoading = False
-
 lock = threading.Lock()
-
 
 def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
     logging.info("TOKEN We got new token: %s" % access_token)
@@ -98,6 +95,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 return
             EsiInterface.esiLoading = True
             self.caching = enablecache
+            self.progress = None
             self.logger = logging.getLogger(logrepr(__class__))
             self.logger.setLevel(logging.DEBUG)
             self.logger.debug("Creating ESI access")
@@ -108,24 +106,27 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.codeverifier = generate_code_verifier()
             try:
                 if self.caching:
-                    cacheToken = EsiCache().get("esi_clientid")
-                    if cacheToken:
-                        EsiConfig.ESI_CLIENT_ID = str(cacheToken)
+                    if not self.esiConfig.ESI_CLIENT_ID or self.esiConfig.ESI_CLIENT_ID == "":
+                        cacheToken = EsiCache().get("esi_clientid")
+                        if cacheToken:
+                            self.esiConfig.ESI_CLIENT_ID = str(cacheToken)
+                        else:
+                            self.esiConfig.ESI_CLIENT_ID = None
                     cacheToken = EsiCache().get("esi_callback")
                     if cacheToken:
-                        EsiConfig.ESI_CALLBACK = str(cacheToken)
+                        self.esiConfig.ESI_CALLBACK = str(cacheToken)
                 # this uses PKCE (pixie) authorisation with ESI
-                if not EsiConfig.ESI_CLIENT_ID:
+                if not self.esiConfig.ESI_CLIENT_ID:
                     # TODO: look at PyFa to see how they do it...
                     # TODO: until then, we should stop storing the SecretKey
-                    with EsiConfigDialog() as inputDia:
+                    with EsiConfigDialog(self.esiConfig) as inputDia:
                         res = inputDia.exec_()
                         if not res == inputDia.Accepted:
                             exit(-1)
+                        self.esiConfig = inputDia.esiConfig
+
                     if self.caching:
-                        # only Temp, until confirmed
-                        EsiCache().set("esi_clientid_temp", EsiConfig.ESI_CLIENT_ID)
-                        EsiCache().set("esi_callback", EsiConfig.ESI_CALLBACK)
+                        EsiCache().set("esi_callback", self.esiConfig.ESI_CALLBACK)
 
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
@@ -209,7 +210,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 self.authenticated = True
                 self.logger.debug("Finished authorizing with ESI")
                 # now we can store the Client-ID
-                EsiCache().set("esi_clientid", EsiConfig.ESI_CLIENT_ID)
+                EsiCache().set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
 
             except Exception as e:
                 self.logger.critical("Error authenticating with ESI", e)
@@ -220,15 +221,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
             # global secretKey
             redirected = False
             self.server = self.EsiWebServer(self.esiConfig)
-            self.server.start()
             # progress Dialog here... with Cancel to exit Application
-            progress = QProgressDialog("Process the Web-Browser request...", "Cancel...", 0, 1)
-            progress.setModal(False)
-            # progress.setMinimumDuration(0)
-            progress.canceled.connect(self.server.stop)
-            # progress.reset()
-            progress.show()
+            # self.startProgress()
+            # start the Web-Server
+            self.server.start()
             while not EsiInterface.secretKey and self.server.server_thread.is_alive():
+            # while not EsiInterface.secretKey and not self.progress.wasCanceled():
                 if not redirected:
                     ssoUri = self.security.get_auth_uri(
                         state="Authentication for {}".format(vi.version.PROGNAME),
@@ -236,14 +234,42 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     )
                     webbrowser.open(ssoUri)
                     redirected = True
-                time.sleep(0.5)
-                progress.update()
-                if progress.wasCanceled():
-                    break
-            progress.setValue(1)
+                # time.sleep(0.5)
+                # progress.update()
+            #     if self.progress.wasCanceled():
+            #         exit(-1)
+            # if self.progress.wasCanceled:
+            #     print("Was canceled")
+            #     exit(-1)
+            self.stopProgress()
             if self.server:
                 self.server.stop()
                 self.server = None
+
+        def startProgress(self):
+            self.progress = QProgressDialog("Process the Web-Browser request...", "Cancel...", 0, 0)
+            self.progress.setModal(False)
+            # stop the Web-Server on Cancel Event
+            self.progress.canceled.connect(self.server.stop)
+            self.progress.finished.connect(self.server.stop)
+            self.progress.show()
+
+        def stopProgress(self):
+            if self.progress:
+                self.progress.setValue(1)
+                self.progress.accept()
+                self.progress = None
+
+        from PyQt5.QtCore import QRunnable
+        class WaitForSecret(QRunnable):
+            def __init__(self, progress, stopFunc):
+                QRunnable.__init__(self)
+                self.window = progress
+
+            def run(self):
+                while not self.window.wasCanceled() and not EsiInterface.secretKey:
+                    self.window.update()
+                    QThread.msleep(10)
 
         class EsiWebServer(object):
             def __init__(self, esiConfigInstance: EsiConfig):
@@ -258,7 +284,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 self.server_thread.start()
 
             def stop(self):
-                self.httpd.shutdown()
+                if self.server_thread.isAlive():
+                    self.httpd.shutdown()
                 self.httpd.server_close()
 
             class EsiHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -271,8 +298,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.send_response(200)
                     self.end_headers()
                     try:
-                        urlobjects = urlparse(self.requestline)
-                        thisquery = parse_qs(urlobjects.query)
+                        thisquery = parse.parse_qs(parse.urlsplit(self.requestline).query)
                         if thisquery['code']:
                             # store temporary Secretkey
                             EsiInterface.secretKey = thisquery['code'][0]
@@ -310,7 +336,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         return self.calcExpiry(resp.header.get('Expires')[0])
 
     @staticmethod
-    def _copyModel(self, data) -> dict:
+    def _copyModel(data) -> dict:
         retval = {}
         for key, val in data.items():
             retval[key] = val
@@ -375,10 +401,11 @@ class EsiInterface(metaclass=EsiInterfaceType):
         response = None
         try:
             if self.caching:
+                # this wont store and retrieve correctly, but nevermind
                 cacheKey = "_".join(("esicache", "getcorporationhist", str(characterId)))
                 result = Cache().getFromCache(cacheKey)
                 if result:
-                    response = literal_eval(result)
+                    response = pickle.loads(result)
             if not response:
                 op = self.esiApp.op['get_characters_character_id_corporationhistory'](
                     character_id=characterId)
@@ -386,7 +413,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 if response:
                     response = response.data
                     if self.caching:
-                        Cache().putIntoCache(cacheKey, str(response))
+                        store = pickle.dumps(response)
+                        Cache().putIntoCache(cacheKey, store)
                     # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
         except Exception as e:
             self.logger.error(

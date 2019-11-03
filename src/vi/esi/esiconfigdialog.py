@@ -64,8 +64,9 @@ configuration file.</p>
 
 
 class EsiConfigDialog(QDialog, Ui_EsiDialog):
-    def __init__(self, parent = None):
-        QDialog.__init__(self, parent)
+    def __init__(self, esiConfig: EsiConfig, parent = None):
+        QDialog.__init__(self, parent, )
+        self.esiConfig = esiConfig
         self.setupUi(self)
         self.setModal(True)
         self.textIntro.setText(PROMPT)
@@ -73,20 +74,20 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
         self.checkBox.setEnabled(False)
         self.checkBox.stateChanged.connect(self.checkBoxState)
         self.txtClientId.setEnabled(True)
-        self.txtClientId.setText(EsiConfig.ESI_CLIENT_ID)
-        if EsiConfig.ESI_CLIENT_ID is not None:
+        self.txtClientId.setText(self.esiConfig.ESI_CLIENT_ID)
+        if self.esiConfig.ESI_CLIENT_ID is not None:
             self.checkBox.setEnabled(True)
         self.txtClientId.textChanged.connect(self.txtClientIdState)
         self.txtCallback.setEnabled(True)
-        self.txtCallback.setText(EsiConfig.ESI_CALLBACK)
+        self.txtCallback.setText(self.esiConfig.ESI_CALLBACK)
         self.txtCallback.textChanged.connect(self.txtCallbackState)
         self.txtCallback.setStyleSheet("QLineEdit{color: grey;}")
         self.txtSecretKey.setEnabled(False)
-        if EsiConfig.ESI_SECRET_KEY is not None:
+        if self.esiConfig.ESI_SECRET_KEY is not None:
             self.checkBox.setEnabled(True)
             self.checkBox.setChecked(True)
             self.txtSecretKey.setEnabled(True)
-            self.txtSecretKey.setText(EsiConfig.ESI_SECRET_KEY)
+            self.txtSecretKey.setText(self.esiConfig.ESI_SECRET_KEY)
         self.cancelButton.clicked.connect(self.reject)
         self.okButton.setEnabled(False)
         self.okButton.clicked.connect(self.btnOk)
@@ -95,7 +96,7 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
         self.txtSecretKey.setEnabled(state == Qt.Checked)
 
     def txtCallbackState(self):
-        pass
+        self.txtCallback.setStyleSheet("QLineEdit{color: black;}")
 
     def txtClientIdState(self):
         if len(self.txtClientId.text().strip()) >= 32:
@@ -105,21 +106,17 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
             self.checkBox.setEnabled(False)
             self.okButton.setEnabled(False)
 
-    def _checkUrl(self, uri: QUrl):
-        if not uri.isValid() and url.hasFragmen:
-            return False
-        return True
     def btnOk(self):
         callback = QUrl(self.txtCallback.text().strip())
         if callback.host() == "" or callback.port() == -1 or callback.path() == "":
             self.txtCallback.setFocus()
             return False
-        EsiConfig.ESI_CLIENT_ID = self.txtClientId.text().strip()
-        EsiConfig.ESI_CALLBACK = self.txtCallback.text().strip()
+        self.esiConfig.ESI_CALLBACK = self.txtCallback.text().strip()
+        self.esiConfig.ESI_CLIENT_ID = self.txtClientId.text().strip()
         if self.checkBox.isChecked():
-            EsiConfig.ESI_SECRET_KEY = self.txtSecretKey.text().strip()
+            self.esiConfig.ESI_SECRET_KEY = self.txtSecretKey.text().strip()
         else:
-            EsiConfig.ESI_SECRET_KEY = None
+            self.esiConfig.ESI_SECRET_KEY = None
         self.accept()
 
 
