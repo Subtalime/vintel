@@ -1,3 +1,22 @@
+#   Vintel - Visual Intel Chat Analyzer
+#   Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#  #
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#  #
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#   GNU General Public License for more details.
+#  #
+#   You should have received a copy of the GNU General Public License
+#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#  #
+#  #
+#
+
 from ..cache.dbstructure import updateDatabase
 from ..resources import getVintelDir
 from esipy.cache import BaseCache
@@ -19,12 +38,15 @@ class EsiCache(BaseCache):
     # one time/runtime we will change this classvariable after the
     # check. Following inits of Cache will now, that we allready checked.
     VERSION_CHECKED = False
-
+    BASE_DIR = None
     # Cache-Instances in various threads: must handle concurrent writings
     SQLITE_WRITE_LOCK = threading.Lock()
 
     def __init__(self):
-        self.dbPath = os.path.join(getVintelDir(), "esi_cache.sqlite3")
+        if self.BASE_DIR:
+            self.dbPath = os.path.join(self.BASE_DIR, "esi_cache.sqlite3")
+        else:
+            self.dbPath = os.path.join(getVintelDir(), "esi_cache.sqlite3")
         self.con = sqlite3.connect(self.dbPath)
         with EsiCache.SQLITE_WRITE_LOCK:
             self.checkVersion()

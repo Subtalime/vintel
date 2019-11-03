@@ -1,5 +1,21 @@
-#  Vintel - Visual Intel Chat Analyzer
-#  Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#   Vintel - Visual Intel Chat Analyzer
+#   Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#  #
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#  #
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#   GNU General Public License for more details.
+#  #
+#   You should have received a copy of the GNU General Public License
+#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#  #
+#  #
+#
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -16,7 +32,7 @@
 #
 #
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox
 from .esiconfig import EsiConfig
 from .esidialog import  Ui_EsiDialog
@@ -71,9 +87,9 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
             self.checkBox.setChecked(True)
             self.txtSecretKey.setEnabled(True)
             self.txtSecretKey.setText(EsiConfig.ESI_SECRET_KEY)
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
-        self.buttonBox.accepted.connect(self.btnOk)
-        self.buttonBox.rejected.connect(self.btnCancel)
+        self.cancelButton.clicked.connect(self.reject)
+        self.okButton.setEnabled(False)
+        self.okButton.clicked.connect(self.btnOk)
 
     def checkBoxState(self, state):
         self.txtSecretKey.setEnabled(state == Qt.Checked)
@@ -83,13 +99,21 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
 
     def txtClientIdState(self):
         if len(self.txtClientId.text().strip()) >= 32:
-            self.checkBox.setEnabled(True)
-            self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(True)
+            # self.checkBox.setEnabled(True)
+            self.okButton.setEnabled(True)
         else:
             self.checkBox.setEnabled(False)
-            self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
+            self.okButton.setEnabled(False)
 
+    def _checkUrl(self, uri: QUrl):
+        if not uri.isValid() and url.hasFragmen:
+            return False
+        return True
     def btnOk(self):
+        callback = QUrl(self.txtCallback.text().strip())
+        if callback.host() == "" or callback.port() == -1 or callback.path() == "":
+            self.txtCallback.setFocus()
+            return False
         EsiConfig.ESI_CLIENT_ID = self.txtClientId.text().strip()
         EsiConfig.ESI_CALLBACK = self.txtCallback.text().strip()
         if self.checkBox.isChecked():
@@ -98,6 +122,9 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
             EsiConfig.ESI_SECRET_KEY = None
         self.accept()
 
-    def btnCancel(self):
-        self.reject()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

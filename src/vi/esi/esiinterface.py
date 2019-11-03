@@ -1,3 +1,22 @@
+#   Vintel - Visual Intel Chat Analyzer
+#   Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#  #
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#  #
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#   GNU General Public License for more details.
+#  #
+#   You should have received a copy of the GNU General Public License
+#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#  #
+#  #
+#
+
 import logging
 import datetime
 import webbrowser
@@ -17,6 +36,8 @@ from esipy.events import AFTER_TOKEN_REFRESH
 from .esicache import  EsiCache
 from .esiconfig import EsiConfig
 from .esiconfigdialog import EsiConfigDialog
+from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtCore import QUrl
 from vi.cache.cache import Cache
 
 # secretKey = None
@@ -93,23 +114,18 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     cacheToken = EsiCache().get("esi_callback")
                     if cacheToken:
                         EsiConfig.ESI_CALLBACK = str(cacheToken)
-                    cacheToken = EsiCache().get("esi_secretkey")
-                    if cacheToken:
-                        pass
-                        # EsiConfig.ESI_SECRET_KEY = str(cacheToken)
                 # this uses PKCE (pixie) authorisation with ESI
-                while not EsiConfig.ESI_CLIENT_ID:
+                if not EsiConfig.ESI_CLIENT_ID:
                     # TODO: look at PyFa to see how they do it...
                     # TODO: until then, we should stop storing the SecretKey
                     with EsiConfigDialog() as inputDia:
-                        inputDia.exec()
-                        if not inputDia.Accepted == 1:
+                        res = inputDia.exec_()
+                        if not res == inputDia.Accepted:
                             exit(-1)
-                        else:
-                            if self.caching:
-                                EsiCache().set("esi_clientid", EsiConfig.ESI_CLIENT_ID)
-                                EsiCache().set("esi_callback", EsiConfig.ESI_CALLBACK)
-                                EsiCache().set("esi_secretkey", EsiConfig.ESI_SECRET_KEY)
+                    if self.caching:
+                        # only Temp, until confirmed
+                        EsiCache().set("esi_clientid_temp", EsiConfig.ESI_CLIENT_ID)
+                        EsiCache().set("esi_callback", EsiConfig.ESI_CALLBACK)
 
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
@@ -192,6 +208,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 self.logger.debug("ESI loading Swagger...complete")
                 self.authenticated = True
                 self.logger.debug("Finished authorizing with ESI")
+                # now we can store the Client-ID
+                EsiCache().set("esi_clientid", EsiConfig.ESI_CLIENT_ID)
+
             except Exception as e:
                 self.logger.critical("Error authenticating with ESI", e)
                 exit(-1)
@@ -200,25 +219,28 @@ class EsiInterface(metaclass=EsiInterfaceType):
         def waitForSecretKey(self):
             # global secretKey
             redirected = False
-            while not EsiInterface.secretKey:
-                if not self.server:
-                    self.server = self.EsiWebServer(self.esiConfig)
-                    self.server.start()
+            self.server = self.EsiWebServer(self.esiConfig)
+            self.server.start()
+            # progress Dialog here... with Cancel to exit Application
+            progress = QProgressDialog("Process the Web-Browser request...", "Cancel...", 0, 1)
+            progress.setModal(False)
+            # progress.setMinimumDuration(0)
+            progress.canceled.connect(self.server.stop)
+            # progress.reset()
+            progress.show()
+            while not EsiInterface.secretKey and self.server.server_thread.is_alive():
                 if not redirected:
-                    # if SECRET_KEY is stored, call SSO directly
-                    if EsiConfig.ESI_SECRET_KEY:
-                        # this should be sent to ESI/verify
-                        self.security.verify(
-                            {
-                                'client_hash': EsiConfig.ESI_SECRET_KEY
-                            }
-                        )
                     ssoUri = self.security.get_auth_uri(
                         state="Authentication for {}".format(vi.version.PROGNAME),
                         scopes=None
                     )
                     webbrowser.open(ssoUri)
                     redirected = True
+                time.sleep(0.5)
+                progress.update()
+                if progress.wasCanceled():
+                    break
+            progress.setValue(1)
             if self.server:
                 self.server.stop()
                 self.server = None
@@ -226,7 +248,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
         class EsiWebServer(object):
             def __init__(self, esiConfigInstance: EsiConfig):
                 self.esiConfig = esiConfigInstance
-                self.httpd = HTTPServer((self.esiConfig.HOST, self.esiConfig.PORT),
+                hostString = QUrl(self.esiConfig.ESI_CALLBACK)
+                self.httpd = HTTPServer((hostString.host(), hostString.port()),
                                         self.EsiHTTPRequestHandler)
                 self.server_thread = threading.Thread(target=self.httpd.serve_forever)
                 self.server_thread.daemon = True
@@ -255,6 +278,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             EsiInterface.secretKey = thisquery['code'][0]
                             self.wfile.write(
                                 b"You have verified your account on ESI. You can now close this window")
+
                     except Exception as e:
                         self.logger.error("Unexpected response: %s: %r", self.requestline, e)
                         self.wfile.write(b"I don't know what you are on about")
@@ -262,12 +286,14 @@ class EsiInterface(metaclass=EsiInterfaceType):
         def __str__(self):
             return repr(self)
 
-    def __init__(self, useCaching: bool = True):
+    def __init__(self, useCaching: bool = True, cacheDir: str=None):
         if not EsiInterface._instance:
             self.caching = useCaching
 
             self.logger = logging.getLogger(logrepr(__class__))
             self.logger.setLevel(logging.ERROR)
+            if cacheDir:
+                EsiCache.BASE_DIR = cacheDir
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
             EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
 
