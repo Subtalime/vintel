@@ -1,5 +1,5 @@
 import requests, json, logging
-from .esiinterface import EsiInterface
+from esiinterface import  EsiInterface
 from vi.cache.cache import Cache
 
 class EsiHelper:
@@ -101,13 +101,3 @@ class EsiHelper:
         return None
 
 
-if __name__ == "__main__":
-    esi = EsiHelper()
-
-    shipgroup = esi.getShipGroups()
-    for group in shipgroup['groups']:
-        shiptypes = esi.getShipGroupTypes(group)
-        for ship in shiptypes['types']:
-            shipitem = esi.getShip(ship)
-
-    res = esi.getSystemNames([95465449, 30000142])

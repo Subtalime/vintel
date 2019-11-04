@@ -17,19 +17,21 @@
 #
 #
 
+# __all__ =["EsiInterface"]
+
 # from __future__ import absolute_import
 
-try:
-    from .esihelper import EsiHelper
-    from .esiinterface import EsiInterface, EsiThread
-    from .esicache import EsiCache
-    from .esiconfig import EsiConfig
-    from .esiwebwait import EsiWebWait
-    from .esiconfigdialog import EsiConfigDialog, Ui_EsiDialog
-    from ..cache import Cache
-    from esipy.cache import BaseCache
-except ImportError:  # pragma: no cover
-    print("Error")
+# try:
+#     from .esihelper import EsiHelper
+#     from .esiinterface import EsiInterface, EsiThread
+#     from .esicache import EsiCache
+#     from .esiconfig import EsiConfig
+#     from .esiwebwait import EsiWebWait
+#     from .esiconfigdialog import EsiConfigDialog, Ui_EsiDialog
+#     from ..cache import Cache
+#     from esipy.cache import BaseCache
+# except ImportError as e:  # pragma: no cover
+#     print("Import Error in esi.__init__: %r", e)
     # from vi.esi.esihelper import EsiHelper
     # from vi.esi.esiinterface import EsiInterface, EsiThread
     # from vi.esi.esicache import EsiCache
@@ -41,8 +43,4 @@ except ImportError:  # pragma: no cover
     # Not installed or in install (not yet installed) so ignore
     # pass
 
-__all__ = [ "EsiHelper", "EsiCache", "EsiInterface", "EsiThread", "EsiConfig", "EsiConfigDialog", "Ui_EsiDialog",
-            "EsiWebWait" ]
-__version__ = "1.0.0"
-
-# EsiHelper()
+# __all__ = [ "EsiHelper", "EsiCache", "EsiInterface", "EsiThread", "EsiConfig", "EsiConfigDialog", "Ui_EsiDialog" ]

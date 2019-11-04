@@ -17,16 +17,9 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
-import datetime
-import time
-import six
-import requests
 import logging
-import json
 
-from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
-from vi.esi.esiinterface import EsiInterface
 from vi.esi.esihelper import EsiHelper
 
 # TODO: only used by KOS-Checker now... so obsolete?
@@ -53,17 +46,6 @@ class EveGate:
             logging.error("Exception turning charname to id via API: %r", e)
 
         return None
-        # except Exception as e:
-        #     logging.error("Exception turning charname to id via API: %s", e)
-        #     # fallback! if there is a problem with the API, we use evegate
-        #     baseUrl = "https://gate.eveonline.com/Profile/"
-        #
-        #     content = requests.get("{}{}".format(baseUrl, requests.utils.quote(name))).text
-        #     soup = BeautifulSoup(content, 'html.parser')
-        #     img = soup.select("#imgActiveCharacter")
-        #     imageUrl = soup.select("#imgActiveCharacter")[0]["src"]
-        #     return imageUrl[imageUrl.rfind("/") + 1:imageUrl.rfind("_")]
-
 
     def namesToIds(self, names):
         """ Uses the EVE API to convert a list of names to ids_to_names
@@ -96,34 +78,10 @@ class EveGate:
         data = {}
         if len(ids) == 0:
             return data
-        apiCheckIds = set()
-        cache = Cache()
 
         # something allready in the cache?
         for id in ids:
             data[id] = self.idToName(id)
-        #     cacheKey = u"_".join(("name", "id", six.text_type(id)))
-        #     name = cache.getFromCache(cacheKey)
-        #     if name:
-        #         data[id] = name
-        #     else:
-        #         apiCheckIds.add(six.text_type(id))
-        #
-        # try:
-        #     # call the EVE-Api for those entries we didn't have in the cache
-        #     url = "https://api.eveonline.com/eve/CharacterName.xml.aspx"
-        #     if len(apiCheckIds) > 0:
-        #         content = requests.get(url, params={'ids': ','.join(apiCheckIds)}).text
-        #         soup = BeautifulSoup(content, 'html.parser')
-        #         rowSet = soup.select("rowset")[0]
-        #         for row in rowSet.select("row"):
-        #             data[row["characterid"]] = row["name"]
-        #         # and writing into cache
-        #         for id in apiCheckIds:
-        #             cacheKey = u"_".join(("name", "id", six.text_type(id)))
-        #             cache.putIntoCache(cacheKey, data[id], 60 * 60 * 24 * 365)
-        # except Exception as e:
-        #     logging.error("Exception during idsToNames: %s", e)
 
         return data
 
