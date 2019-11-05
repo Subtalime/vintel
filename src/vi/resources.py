@@ -32,7 +32,14 @@ def resourcePath(relativePath):
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
 
-def getEveChatlogDir(log: bool=False) -> str:
+eveChatLogDir = None
+def getEveChatlogDir(passedDir: str=None, log: bool=False) -> str:
+    global eveChatLogDir
+    if passedDir:
+        eveChatLogDir = passedDir
+    if eveChatLogDir:
+        return passedDir
+
     if sys.platform.startswith("darwin"):
         chatLogDirectory = os.path.join(os.path.expanduser("~"), "Documents", "EVE", "logs", "Chatlogs")
         if not os.path.exists(chatLogDirectory):
@@ -50,6 +57,19 @@ def getEveChatlogDir(log: bool=False) -> str:
         logging.debug("getEveChatlogDir: {}".format(chatLogDirectory))
     return chatLogDirectory
 
+def getVintelLogDir(log: bool=False) -> str:
+    vintelDir = getVintelDir()
+    vintelDir = os.path.join(vintelDir, "logs")
+    if not os.path.exists(vintelDir):
+        try:
+            os.makedirs(vintelDir)
+        except Exception as e:
+            if not log:
+                print("getVintelLogDir: Error creating \"%s\": %r" % (vintelDir, e))
+            else:
+                logging.error("getVintelLogDir: Error creating \"%s\": %r", vintelDir, e)
+    return vintelDir
+
 def getVintelDir(filePath: str=None, log: bool=False) -> str:
     eveDir = getEveChatlogDir(log)
     vintelDir = os.path.join(os.path.dirname(os.path.dirname(eveDir)), "vintel")
@@ -66,7 +86,7 @@ def getVintelDir(filePath: str=None, log: bool=False) -> str:
     return vintelDir
 
 def getVintelMap(regionName: str=None, log: bool=False) -> str:
-    eveDir = getEveChatlogDir()
+    getEveChatlogDir()
     vintelDir = os.path.join(getVintelDir(), "mapdata")
     if not os.path.exists(vintelDir):
         try:
@@ -81,3 +101,26 @@ def getVintelMap(regionName: str=None, log: bool=False) -> str:
             regionName += ".svg"
         vintelDir = os.path.join(vintelDir, regionName)
     return vintelDir
+
+def getVintelSound(soundFile: str=None, log: bool=False) -> str:
+    getEveChatlogDir()
+    vintelDir = os.path.join(getVintelDir(), "sound")
+    if not os.path.exists(vintelDir):
+        try:
+            os.makedirs(vintelDir)
+        except Exception as e:
+            if not log:
+                print("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
+            else:
+                logging.error("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
+    if soundFile:
+        if not soundFile.endswith(".wav"):
+            soundFile += ".wav"
+        vintelDir = os.path.join(vintelDir, soundFile)
+    return vintelDir
+
+def createResourceDirs(log: bool=False):
+    getVintelDir(log=log)
+    getVintelMap(log=log)
+    getVintelSound(log=log)
+    getVintelLogDir(log=log)

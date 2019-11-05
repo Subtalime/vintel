@@ -26,7 +26,7 @@ import vi.version
 
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.QtCore import QPoint, pyqtSignal, QPointF, QUrl, QUrlQuery
+from PyQt5.QtCore import QPoint, pyqtSignal, QPointF, QUrl
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
@@ -908,7 +908,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         logging.debug("Log file changed: {}".format(path))
         # wait for Map to be completly loaded
         while not self.chatparser:
-            continue
+            return
         messages = self.chatparser.fileModified(path)
         if self.knownPlayers.addNames(self.chatparser.getListeners()):
             logging.debug("Found new Player")
