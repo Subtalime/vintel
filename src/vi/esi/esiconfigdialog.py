@@ -1,22 +1,4 @@
-#   Vintel - Visual Intel Chat Analyzer
 #   Copyright (c) 2019. Steven Tschache (github@tschache.com)
-#  #
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#  #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
-#   GNU General Public License for more details.
-#  #
-#   You should have received a copy of the GNU General Public License
-#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
-#  #
-#  #
-#
-#
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
@@ -33,9 +15,9 @@
 #
 
 from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox
+from PyQt5.QtWidgets import QDialog
 from .esiconfig import EsiConfig
-from .esidialog import  Ui_EsiDialog
+from .esidialog import Ui_EsiDialog
 
 PROMPT = """
 <center><h3>This seems to be the first time you have started Vintel on this machine.</h3></center>
@@ -64,8 +46,8 @@ configuration file.</p>
 
 
 class EsiConfigDialog(QDialog, Ui_EsiDialog):
-    def __init__(self, esiConfig: EsiConfig, parent = None):
-        QDialog.__init__(self, parent, )
+    def __init__(self, esiConfig: EsiConfig, parent=None):
+        QDialog.__init__(self, parent)
         self.esiConfig = esiConfig
         self.setupUi(self)
         self.setModal(True)
@@ -118,7 +100,6 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
         else:
             self.esiConfig.ESI_SECRET_KEY = None
         self.accept()
-
 
     def __enter__(self):
         return self

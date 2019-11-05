@@ -1,5 +1,24 @@
-import requests, json, logging
-from .esiinterface import EsiInterface
+#  Vintel - Visual Intel Chat Analyzer
+#  Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
+
+import requests
+import json
+from vi.esi.esiinterface import EsiInterface
 from vi.cache.cache import Cache
 
 class EsiHelper:
@@ -62,8 +81,8 @@ class EsiHelper:
                     self.cache.putIntoCache(cacheKey, json.dumps(systemData), expiry.seconds)
             else:
                 systemData = json.loads(systemData)
-        except Exception as e:
-            logging.error("Exception during getSystemStatistics: : %r", e)
+        except Exception:
+            raise
 
         data = {}
         # We collected all data (or loaded them from cache) - now zip it together
@@ -100,14 +119,3 @@ class EsiHelper:
                 return ship["id"]
         return None
 
-
-if __name__ == "__main__":
-    esi = EsiHelper()
-
-    shipgroup = esi.getShipGroups()
-    for group in shipgroup['groups']:
-        shiptypes = esi.getShipGroupTypes(group)
-        for ship in shiptypes['types']:
-            shipitem = esi.getShip(ship)
-
-    res = esi.getSystemNames([95465449, 30000142])

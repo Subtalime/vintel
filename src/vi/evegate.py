@@ -17,17 +17,10 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
-import datetime
-import time
-import six
-import requests
 import logging
-import json
 
-from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
-from vi.esi.esiinterface import EsiInterface
-from vi.esi.esihelper import EsiHelper
+from vi.esihelper import EsiHelper
 
 # TODO: only used by KOS-Checker now... so obsolete?
 class EveGate:

@@ -2,3 +2,4 @@ esipy
 PyQt5
 pyswagger
 urllib3
+requests

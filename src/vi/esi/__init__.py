@@ -1,4 +1,3 @@
-#   Vintel - Visual Intel Chat Analyzer
 #   Copyright (c) 2019. Steven Tschache (github@tschache.com)
 #
 #   This program is free software: you can redistribute it and/or modify
@@ -15,34 +14,20 @@
 #   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
-#
 
-# from __future__ import absolute_import
+
 
 try:
-    from .esihelper import EsiHelper
-    from .esiinterface import EsiInterface, EsiThread
-    from .esicache import EsiCache
-    from .esiconfig import EsiConfig
-    from .esiwebwait import EsiWebWait
-    from .esiconfigdialog import EsiConfigDialog, Ui_EsiDialog
-    from ..cache import Cache
-    from esipy.cache import BaseCache
-except ImportError:  # pragma: no cover
-    print("Error")
-    # from vi.esi.esihelper import EsiHelper
-    # from vi.esi.esiinterface import EsiInterface, EsiThread
-    # from vi.esi.esicache import EsiCache
-    # from vi.esi.esiconfig import EsiConfig
-    # from vi.esi.esidialog import Ui_EsiDialog
-    # from vi.esi.esiconfigdialog import EsiConfigDialog, Ui_EsiDialog
-    # from vi.cache.cache import Cache
+    import PyQt5
+    from .esiinterface import EsiConfig, EsiInterface, EsiCache
+    from .esithread import EsiThread
+except ImportError as e:  # pragma: no cover
+    print("Error: %r", e)
 
     # Not installed or in install (not yet installed) so ignore
     # pass
+dir()
 
-__all__ = [ "EsiHelper", "EsiCache", "EsiInterface", "EsiThread", "EsiConfig", "EsiConfigDialog", "Ui_EsiDialog",
-            "EsiWebWait" ]
+__all__ = [ "EsiInterface", "EsiThread" ]
 __version__ = "1.0.0"
 
-# EsiHelper()

@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget
 import vi.ship.ShipDialog
-from vi.esi.esihelper import EsiHelper
+from vi.esihelper import EsiHelper
 import logging
 
 # TODO: show some information about the Ship...

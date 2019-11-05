@@ -33,7 +33,7 @@ from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.chatentrywidget import ChatEntryWidget
-from vi.esi.esihelper import EsiHelper
+from vi.esihelper import EsiHelper
 
 
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000

@@ -17,48 +17,53 @@
 #
 
 import time, logging, sys
-from vi.esi.esiinterface import EsiInterface, EsiThread
+from  vi.esi import *
+# from vi.esi.esithread import EsiThread, EsiInterface
 from PyQt5.Qt import QApplication
 
+LOGGER = logging.getLogger(__name__)
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     # import requests
 
-    log_format = '%(asctime)s %(levelname)-8s: %(name)s/%(funcName)s %(message)s'
-    log_format_con = '%(levelname)-8s: %(name)s/%(funcName)s %(message)s'
-    log_date = '%m/%d/%Y %I:%M:%S %p'
-    log_date = '%H:%M:%S'
-    logging.basicConfig(level=logging.INFO,
-                        format=log_format,
-                        datefmt=log_date)
-    console = logging.StreamHandler()
-    console.setLevel(level=logging.INFO)
-    console.setFormatter(logging.Formatter(log_format_con))
-    logging.getLogger().addHandler(console)
-    # console.setLevel(level=logging.DEBUG)
-    # console.setFormatter(logging.Formatter(log_format_con))
-    #
-    # logger = logging.getLogger(__name__)
-    # logger.addHandler(console)
-    # logging.getLogger().setLevel(logging.DEBUG)
-    logging.info("Instance of EsiInterface")
-    es2 = EsiInterface(cacheDir=".")
+    loghandler=None
+    logger=False
 
+    if logger:
+        log_format = '%(asctime)s %(levelname)-8s: %(name)s/%(funcName)s %(message)s'
+        log_format_con = '%(levelname)-8s: %(name)s/%(funcName)s %(message)s'
+        log_date = '%m/%d/%Y %I:%M:%S %p'
+        log_date = '%H:%M:%S'
+        logging.basicConfig(level=logging.INFO,
+                            format=log_format,
+                            datefmt=log_date)
+        console = logging.StreamHandler()
+        console.setLevel(level=logging.INFO)
+        console.setFormatter(logging.Formatter(log_format_con))
+        logging.getLogger().addHandler(console)
+        # console.setLevel(level=logging.DEBUG)
+        # console.setFormatter(logging.Formatter(log_format_con))
+        #
+        # logger = logging.getLogger(__name__)
+        # logger.addHandler(console)
+        # logging.getLogger().setLevel(logging.DEBUG)
+        logging.info("Instance of EsiInterface")
+        logging.info("Starting Thread")
+        loghandler = logging.getLogger(__name__)
 
-    logging.info("Starting Thread")
-    thread = EsiThread()
+    thread = EsiThread(logger=LOGGER, cache_directory="Q:\\aa")
     thread.start(1)
     logging.info("Thread started")
     thread.requestInstance()
-    logging.info("Waiting 2 secs")
-    time.sleep(2)
+    # logging.info("Waiting 2 secs")
+    # time.sleep(2)
     logging.info("Requesting EsiInterface()")
     esi = EsiInterface()
     logging.info("Closing Thread")
-    thread.quit()
-    logging.info("Requesting EsiInterface()")
-    es2 = EsiInterface()
+    # thread.quit()
+    # logging.info("Requesting EsiInterface()")
+    # es2 = EsiInterface()
     logging.info("Requesting Ship-List")
     ships = esi.getShipList
     logging.info("Ship-List complete")
@@ -69,8 +74,8 @@ if __name__ == "__main__":
         for ship in shiptypes['types']:
             shipitem = esi.getShip(ship)
             ships.append(shipitem)
-    logging.info("Requesting Ship-List")
 
+    logging.info("Requesting Systems")
     res = esi.getSystemNames([95465449, 30000142])
 
     chari = esi.getCharacterId("Tablot Manzari")

@@ -8,6 +8,9 @@
     <orderEntry type="jdk" jdkName="Python 3.7 (vintel)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
+  <component name="PackageRequirementsSettings">
+    <option name="requirementsPath" value="C:\Users\stschach\PycharmProjects\vintel\requirements.txt" />
+  </component>
   <component name="TestRunnerService">
     <option name="PROJECT_TEST_RUNNER" value="Unittests" />
   </component>
