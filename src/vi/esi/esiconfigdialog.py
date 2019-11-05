@@ -50,7 +50,7 @@ class EsiConfigDialog(QDialog, Ui_EsiDialog):
         QDialog.__init__(self, parent)
         self.esiConfig = esiConfig
         self.setupUi(self)
-        self.setModal(True)
+        self.setModal(False)
         self.textIntro.setText(PROMPT)
         self.checkBox.setChecked(False)
         self.checkBox.setEnabled(False)

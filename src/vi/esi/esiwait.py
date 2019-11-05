@@ -48,10 +48,12 @@ class EsiWait(QDialog, Ui_EsiWaitDialog):
     def cancel_request(self):
         self.server.stop()
         self.reject()
+        self.hide()
 
     def received(self, secret):
         self.server.stop()
         self.accept()
+        self.hide()
 
 
 class WaitThread(QObject):

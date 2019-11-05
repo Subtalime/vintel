@@ -173,10 +173,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     except APIException as e:
                         if self.logger:
                             self.logger.error("EsiAPI Error", e)
+                        APIException("Problem with the API?", e)
                         self.waitForSecretKey()
                     except AttributeError as e:
                         if self.logger:
                             self.logger.error("EsiAttribute Error", e)
+                        APIException("Attribute problem?", e)
                         self.waitForSecretKey()
                     except Exception as e:
                         if self.logger:

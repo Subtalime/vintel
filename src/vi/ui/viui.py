@@ -36,12 +36,13 @@ from vi import states
 from vi.LogWindow import LogWindow
 from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
-from vi.resources import resourcePath
+from vi.resources import resourcePath, getVintelDir
 from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
 from vi.ui.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
-from vi.esi import EsiInterface, EsiThread, EsiHelper
+from vi.esi import EsiInterface, EsiThread
+from vi.esihelper import EsiHelper
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
@@ -75,8 +76,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     avatar_loaded = pyqtSignal(str, bytes)
 
     def __init__(self, pathToLogs, trayIcon, backGroundColor):
-
         super(self.__class__, self).__init__()
+        self.setupUi(self)
         self.avatarFindThread = None
         self.esiThread = None
         self.filewatcherThread = None
@@ -85,9 +86,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.mapUpdateThread = None
         self.chatparser = None
         self.cache = Cache()
-        self.setupUi(self)
+
         self.setWindowTitle(vi.version.DISPLAY)
-        # let's try this differently
         self.setColor(backGroundColor)
         self.message_expiry = MESSAGE_EXPIRY_SECS
         self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
@@ -100,8 +100,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
         self.pathToLogs = pathToLogs
-        # self.mapTimer = QtCore.QTimer(self)
-        # self.mapTimer.timeout.connect(self.updateMapView)
         self.clipboardTimer = QtCore.QTimer(self)
         self.oldClipboardContent = ""
         self.trayIcon = trayIcon
@@ -299,10 +297,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def setupThreads(self):
         logging.debug("Creating threads")
 
-        # let's hope, this will speed up start-up
-        self.esiThread = EsiThread()
-        self.esiThread.start()
+        self.esiThread = EsiThread(cache_directory=getVintelDir(), logger=logging.getLogger("ESI"))
         self.esiThread.requestInstance()
+        self.esiThread.start()
 
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()

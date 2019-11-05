@@ -19,6 +19,7 @@
 
 try:
     import PyQt5
+    import esipy
     from .esiinterface import EsiConfig, EsiInterface, EsiCache
     from .esithread import EsiThread
 except ImportError as e:  # pragma: no cover

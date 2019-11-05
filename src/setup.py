@@ -39,4 +39,5 @@ setup(
     executables=executables,
     include_package_data=True,
     package_data={'': ['*.ui', '*.png', '*.svg', '*.wav']},
+    install_requires=['esipy', 'PyQt5', "pyglet", "bs4", "clipboard", "urllib3", "pyswagger", "six"]
 )

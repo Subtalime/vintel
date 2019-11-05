@@ -39,10 +39,14 @@ class EsiThread(QThread):
         self.lastStatisticsUpdate = time.time()
         self.pollRate = self.POLL_RATE
         self.refreshTimer = None
+        self.__esiComplete = False
         self.active = True
 
     def requestInstance(self):
         self.queue.put(1)
+
+    def hasEsi(self):
+        return self.__esiComplete
 
     def run(self):
         self.refreshTimer = QTimer()
@@ -59,6 +63,7 @@ class EsiThread(QThread):
                 # load the Interface
                 EsiInterface(logger=self.__logger, use_caching=self.__use_cache,
                              cache_dir=self.__cache_dir)
+                self.__esiComplete = True
                 # used frequently, so pre-load
                 EsiInterface().getShipList
             except Exception as e:

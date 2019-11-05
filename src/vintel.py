@@ -20,6 +20,7 @@
 
 import sys
 import os
+import time
 import logging
 import traceback
 
@@ -34,7 +35,7 @@ from vi.cache import cache
 from vi.resources import resourcePath, getEveChatlogDir, getVintelDir, getVintelLogDir, createResourceDirs
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
-
+from vi.esi import EsiInterface
 
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
@@ -79,11 +80,11 @@ class Application(QApplication):
         splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
 
         # check for Client-ID
-        from vi.esi.esicache import EsiCache
-        clientId = EsiCache().get("esi_clientid")
-        if not clientId:
-            # here we load the Popup to enter Esi credentials!
-            EsiCache().set("esi_clientid", '50de89684c374189a25ccf83aa1d928a')
+        # from vi.esi.esicache import EsiCache
+        # clientId = EsiCache().get("esi_clientid")
+        # if not clientId:
+        #     # here we load the Popup to enter Esi credentials!
+        #     EsiCache().set("esi_clientid", '50de89684c374189a25ccf83aa1d928a')
 
 
         cache.Cache.PATH_TO_CACHE = os.path.join(getVintelDir(), "cache-2.sqlite3")
@@ -120,7 +121,8 @@ class Application(QApplication):
         logging.info("Looking for chat logs at: %s", getEveChatlogDir())
         logging.info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
         logging.info("Writing logs to: %s", getVintelLogDir())
-
+        # let's hope, this will speed up start-up
+        EsiInterface(cache_dir=getVintelDir())
         splash.show()
         self.processEvents()
         trayIcon = systemtray.TrayIcon(self)
