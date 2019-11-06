@@ -3,10 +3,11 @@
 block_cipher = None
 
 
-a = Analysis(['vintel.py'],
+a = Analysis(['vintel.py', 'vi/esi/esiinterface.py', 'vi/cache/cache.py', 'vi/character/Characters.py', 'vi/chatparser/chatparser.py',
+ 'vi/jumpbridge/Import.py', 'vi/region/RegionMenu.py', 'vi/sound/soundmanager.py'],
              pathex=['D:\\Develop\\vintel\\src'],
              binaries=[],
-             datas=[],
+             datas=[(HOMEPATH + '\\PyQt5\\Qt\\bin\*', 'PyQt5\\Qt\\bin'), ('vi/ui/res/logo.png', 'img/logo.png')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

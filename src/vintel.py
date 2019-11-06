@@ -20,9 +20,7 @@
 
 import sys
 import os
-import time
 import logging
-import traceback
 
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
@@ -36,20 +34,6 @@ from vi.resources import resourcePath, getEveChatlogDir, getVintelDir, getVintel
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
-
-def exceptHook(exceptionType, exceptionValue, tracebackObject):
-    """
-        Global function to catch unhandled exceptions.
-    """
-    try:
-        logging.critical("-- Unhandled Exception --")
-        logging.critical(''.join(traceback.format_tb(tracebackObject)))
-        logging.critical('{0}: {1}'.format(exceptionType, exceptionValue))
-        logging.critical("-- ------------------- --")
-    except Exception:
-        pass
-
-sys.excepthook = exceptHook
 
 class Application(QApplication):
     def __init__(self, args):
@@ -79,14 +63,6 @@ class Application(QApplication):
         createResourceDirs()
         splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
 
-        # check for Client-ID
-        # from vi.esi.esicache import EsiCache
-        # clientId = EsiCache().get("esi_clientid")
-        # if not clientId:
-        #     # here we load the Popup to enter Esi credentials!
-        #     EsiCache().set("esi_clientid", '50de89684c374189a25ccf83aa1d928a')
-
-
         cache.Cache.PATH_TO_CACHE = os.path.join(getVintelDir(), "cache-2.sqlite3")
         vintelCache = Cache()
         logLevel = vintelCache.getFromCache("logging_level")
@@ -102,7 +78,6 @@ class Application(QApplication):
         formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
         rootLogger = logging.getLogger()
         # rootLogger.setLevel(level=logLevel)
-
 
         logFilename = os.path.join(getVintelLogDir(), "output.log")
         fileHandler = RotatingFileHandler(maxBytes=(1048576*5), backupCount=7, filename=logFilename, mode='a')
@@ -132,8 +107,29 @@ class Application(QApplication):
         self.mainWindow.raise_()
         splash.finish(self.mainWindow)
 
-# The main application
-if __name__ == "__main__":
+import sys
+import logging
+import traceback
 
-    app = Application(sys.argv)
-    sys.exit(app.exec_())
+__name__ = "Vintel"
+__author__ = "Steven Tschache (github@tschache.com)"
+__version__ = "0.0.1"
+
+logger = logging.getLogger(__name__)
+
+def exceptHook(exceptionType, exceptionValue, tracebackObject):
+    """
+        Global function to catch unhandled exceptions.
+    """
+    try:
+        logger.critical("-- Unhandled Exception --")
+        logger.critical(''.join(traceback.format_tb(tracebackObject)))
+        logger.critical('{0}: {1}'.format(exceptionType, exceptionValue))
+        logger.critical("-- ------------------- --")
+    except Exception:
+        pass
+
+sys.excepthook = exceptHook
+
+app = Application(sys.argv)
+sys.exit(app.exec_())
