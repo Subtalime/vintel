@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import pyqtSignal, QEvent, Qt
 from .cache.cache import Cache
 import logging
+from logging import LogRecord
 from vi.version import DISPLAY
 
 # TODO: default to Logging.DEBUG, but filter output here to what is wanted
@@ -10,7 +11,7 @@ from vi.version import DISPLAY
 # TODO: prun Text-Size... may grow beyond X MB
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
-
+    log_records = []
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
@@ -50,6 +51,18 @@ class LogWindow(QtWidgets.QWidget):
     def write(self, text):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
         self.textEdit.append(text)
+
+    def store(self, record: LogRecord):
+        self.log_records.append(record)
+        if record.levelno >= self.logLevel:
+            self.write(self.logHandler.format(record))
+
+    def refresh(self):
+        self.textEdit.clear()
+        for record in self.log_records:
+            if record.levelno >= self.logLevel:
+                self.write(self.logHandler.format(record))
+        self.textEdit.verticalScrollBar().setValue(self.textEdit.verticalScrollBar().maximum())
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super(LogWindow, self).resizeEvent(event)
@@ -109,8 +122,12 @@ class LogWindow(QtWidgets.QWidget):
             currLevel = logging.CRITICAL
         elif setting == clear:
             self.textEdit.clear()
-        self.logLevel = currLevel
-        self.logHandler.setLevel(self.logLevel)
+        if self.logLevel != currLevel:
+            self.logLevel = currLevel
+            self.refresh()
+
+        #self maybe not... so we can hold ALL data and filter the output based on Level?
+        # self.logHandler.setLevel(self.logLevel)
         Cache().putIntoCache("log_window_level", self.logLevel)
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
@@ -123,5 +140,6 @@ class LogWindowHandler(logging.Handler):
         self.setFormatter(formatter)
 
     def emit(self, record):
-        self.parent.write(self.format(record))
+        self.parent.store(record)
+        # self.parent.write(self.format(record))
         self.parent.update()

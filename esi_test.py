@@ -21,25 +21,25 @@ from  vi.esi import *
 # from vi.esi.esithread import EsiThread, EsiInterface
 from PyQt5.Qt import QApplication
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     # import requests
 
     loghandler=None
-    logger=False
+    logger_enabled=True
 
-    if logger:
+    if logger_enabled:
         log_format = '%(asctime)s %(levelname)-8s: %(name)s/%(funcName)s %(message)s'
         log_format_con = '%(levelname)-8s: %(name)s/%(funcName)s %(message)s'
         log_date = '%m/%d/%Y %I:%M:%S %p'
         log_date = '%H:%M:%S'
-        logging.basicConfig(level=logging.INFO,
+        logging.basicConfig(level=logging.DEBUG,
                             format=log_format,
                             datefmt=log_date)
         console = logging.StreamHandler()
-        console.setLevel(level=logging.INFO)
+        console.setLevel(level=logging.DEBUG)
         console.setFormatter(logging.Formatter(log_format_con))
         logging.getLogger().addHandler(console)
         # console.setLevel(level=logging.DEBUG)
@@ -48,19 +48,19 @@ if __name__ == "__main__":
         # logger = logging.getLogger(__name__)
         # logger.addHandler(console)
         # logging.getLogger().setLevel(logging.DEBUG)
-        logging.info("Instance of EsiInterface")
-        logging.info("Starting Thread")
         loghandler = logging.getLogger(__name__)
 
-    thread = EsiThread(logger=LOGGER, cache_directory="Q:\\aa")
-    thread.start(1)
-    logging.info("Thread started")
+    logging.info("Instance of EsiInterface")
+    logging.info("Starting Thread")
+    thread = EsiThread(cache_directory=".")
+    thread.start()
     thread.requestInstance()
+    logging.info("Thread started")
     # logging.info("Waiting 2 secs")
-    # time.sleep(2)
-    logging.info("Requesting EsiInterface()")
-    esi = EsiInterface()
+    time.sleep(2)
     logging.info("Closing Thread")
+    logging.info("Requesting EsiInterface()")
+    esi = EsiInterface(cache_dir=".")
     # thread.quit()
     # logging.info("Requesting EsiInterface()")
     # es2 = EsiInterface()

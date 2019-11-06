@@ -85,11 +85,13 @@ class EsiCache(BaseCache):
             if getattr(sys, 'frozen', False):
                 base_path = sys._MEIPASS
             self.dbPath = os.path.join(base_path, "esi_cache.sqlite3")
-
-        self.con = sqlite3.connect(self.dbPath, check_same_thread=False)
-        with EsiCache.SQLITE_WRITE_LOCK:
-            self.checkVersion()
-        EsiCache.VERSION_CHECKED = True
+        try:
+            self.con = sqlite3.connect(self.dbPath, check_same_thread=False)
+            with EsiCache.SQLITE_WRITE_LOCK:
+                self.checkVersion()
+            EsiCache.VERSION_CHECKED = True
+        except Exception as e:
+            raise FileNotFoundError("Unable to access DB at \"%s\"" % self.dbPath, e)
 
     def checkVersion(self):
         if not self.__cache_enabled:

@@ -33,13 +33,16 @@ from .esiwait import EsiWait
 
 lock = threading.Lock()
 
+logger = logging.getLogger(__name__)
 
 def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
-    logging.info("TOKEN We got new token: %s" % access_token)
-    logging.info("TOKEN refresh token used: %s" % refresh_token)
-    logging.info("TOKEN Expires in %d" % expires_in)
+    logger.info("TOKEN We got new token: %s" % access_token)
+    logger.info("TOKEN refresh token used: %s" % refresh_token)
+    logger.info("TOKEN Expires in %d" % expires_in)
 
-
+def logrepr(className: type) -> str:
+    return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
+                                                                                             "")
 def synchronized(lock):
     """ Synchronisation decorator """
 
@@ -48,9 +51,7 @@ def synchronized(lock):
         def inner_wrapper(*args, **kwargs):
             with lock:
                 return f(*args, **kwargs)
-
         return inner_wrapper
-
     return wrapper
 
 
@@ -64,32 +65,25 @@ class EsiInterfaceType(type):
         return cls._instances[cls]
 
 
-def logrepr(className: type) -> str:
-    return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
-                                                                                             "")
-
-
 class EsiInterface(metaclass=EsiInterfaceType):
     _instance = None
     secretKey = None
-    esiLoading = False
+    _esiLoading = False
 
     # make it a Singleton
     class __OnceOnly:
-        def __init__(self, logger: logging = None, enablecache: bool = True):
-            if EsiInterface.esiLoading:
-                if logger:
-                    logging.error("Esi already currently being loaded...")
+        def __init__(self, enablecache: bool = True):
+            if EsiInterface._esiLoading:
+                logger.error("Esi already currently being loaded...")
                 while EsiInterface.esiLoading is not "complete":
                     pass
                 return
-            EsiInterface.esiLoading = True
+            EsiInterface._esiLoading = True
             self.caching = enablecache
+            self.esicache = EsiCache(self.caching)
             self.progress = None
             self.logger = logger
-            if logger:
-                self.logger.setLevel(logging.DEBUG)
-                self.logger.debug("Creating ESI access")
+            self.logger.info("Creating ESI access")
             self.authenticated = False
             self.esiConfig = EsiConfig()
             self.server = None
@@ -98,12 +92,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.codeverifier = generate_code_verifier()
             try:
                 if not self.esiConfig.ESI_CLIENT_ID or self.esiConfig.ESI_CLIENT_ID == "":
-                    cacheToken = EsiCache(self.caching).get("esi_clientid")
+                    cacheToken = self.esicache.get("esi_clientid")
                     if cacheToken:
                         self.esiConfig.ESI_CLIENT_ID = str(cacheToken)
                     else:
                         self.esiConfig.ESI_CLIENT_ID = None
-                cacheToken = EsiCache(self.caching).get("esi_callback")
+                cacheToken = self.esicache.get("esi_callback")
                 if cacheToken:
                     self.esiConfig.ESI_CALLBACK = str(cacheToken)
                 # this uses PKCE (pixie) authorisation with ESI
@@ -113,9 +107,10 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     with EsiConfigDialog(self.esiConfig) as inputDia:
                         res = inputDia.exec_()
                         if not res == inputDia.Accepted:
-                            exit(-1)
+                            logger.info("User canceled Client-ID Input-Dialog")
+                            exit(0)
                         self.esiConfig = inputDia.esiConfig
-                    EsiCache(self.caching).set("esi_callback", self.esiConfig.ESI_CALLBACK)
+                    self.esicache.set("esi_callback", self.esiConfig.ESI_CALLBACK)
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
                     redirect_uri=self.esiConfig.ESI_CALLBACK,
@@ -131,24 +126,21 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 self.apiInfo = None
                 self.esiApp = None
                 refreshKey = None
-                tokenKey = EsiCache(self.caching).get("esi_token")
+                tokenKey = self.esicache.get("esi_token")
                 if tokenKey:
                     refreshKey = tokenKey['refresh_token']
                 while not self.apiInfo:
                     try:
                         if EsiConfig.ESI_SECRET_KEY:
-                            if self.logger:
-                                self.logger.debug("Checking the Secretkey")
+                            self.logger.debug("Checking the Secretkey")
                             self.tokens = self.security.auth(EsiConfig.ESI_SECRET_KEY)
                             EsiConfig.ESI_SECRET_KEY = None
                             self.apiInfo = self.security.verify()
                             # store the Token
-                            EsiCache(self.caching).set("esi_token", self.tokens)
-                            if self.logger:
-                                self.logger.debug("Secretkey success")
+                            self.esicache.set("esi_token", self.tokens)
+                            self.logger.debug("Secretkey success")
                         elif refreshKey:
-                            if self.logger:
-                                self.logger.debug("Checking the Refresh-Token")
+                            self.logger.debug("Checking the Refresh-Token")
                             self.security.update_token({
                                 'access_token': '',
                                 'expires_in': -1,
@@ -156,33 +148,26 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             })
                             refreshKey = None
                             self.apiInfo = self.security.refresh()
-                            if self.logger:
-                                self.logger.debug("Refreshtoken success")
+                            self.logger.debug("Refreshtoken success")
                         elif tokenKey:
-                            if self.logger:
-                                self.logger.debug("Checking the Tokenkey")
+                            self.logger.debug("Checking the Tokenkey")
                             self.security.update_token(tokenKey)
                             tokenKey = None
                             self.apiInfo = self.security.refresh()
-                            if self.logger:
-                                self.logger.debug("Tokenkey success")
+                            self.logger.debug("Tokenkey success")
                         else:
-                            if self.logger:
-                                self.logger.debug("Waiting for Website response of Secretkey")
+                            self.logger.debug("Waiting for Website response of Secretkey")
                             self.waitForSecretKey()
                     except APIException as e:
-                        if self.logger:
-                            self.logger.error("EsiAPI Error", e)
+                        self.logger.error("EsiAPI Error", e)
                         APIException("Problem with the API?", e)
                         self.waitForSecretKey()
                     except AttributeError as e:
-                        if self.logger:
-                            self.logger.error("EsiAttribute Error", e)
+                        self.logger.error("EsiAttribute Error", e)
                         APIException("Attribute problem?", e)
                         self.waitForSecretKey()
                     except Exception as e:
-                        if self.logger:
-                            self.logger.error("Some unexpected error in Esi", e)
+                        self.logger.error("Some unexpected error in Esi", e)
                         raise
 
                 if self.logger:
@@ -195,26 +180,22 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         self.esiApp = EsiApp(cache=EsiCache(self.caching),
                                              cache_time=3 * 86400).get_latest_swagger
                     except (Exception, HTTPException) as e:
-                        if self.logger:
-                            self.logger.error("Error while retrieving latest Swagger", e)
+                        self.logger.error("Error while retrieving latest Swagger", e)
                         if e.code == 500:
-                            EsiCache(self.caching).invalidateAll()
-                            if self.logger:
-                                self.logger.exception("ESI-Interface not explicitly instantiated!")
+                            self.esicache.invalidateAll()
+                            self.logger.exception("ESI-Interface not explicitly instantiated!")
                             raise
 
                             # Reset logging to old level
-                if self.logger:
-                    self.logger.setLevel(oldSetting)
-                    self.logger.debug("ESI loading Swagger...complete")
-                    self.logger.debug("Finished authorizing with ESI")
+                self.logger.setLevel(oldSetting)
+                self.logger.debug("ESI loading Swagger...complete")
+                self.logger.debug("Finished authorizing with ESI")
                 self.authenticated = True
                 # now we can store the Client-ID
-                EsiCache(self.caching).set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
+                self.esicache.set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
 
             except Exception as e:
-                if self.logger:
-                    self.logger.critical("Error authenticating with ESI", e)
+                self.logger.critical("Error authenticating with ESI", e)
                 raise
             EsiInterface.esiLoading = "complete"
 
@@ -230,27 +211,23 @@ class EsiInterface(metaclass=EsiInterfaceType):
             wait_dialog.exec_()
             if not EsiConfig.ESI_SECRET_KEY:
                 # User decided to cancel the operation
+
                 exit(0)
 
         def __str__(self):
             return repr(self)
 
-    def __init__(self, logger: logging = None, use_caching: bool = True, cache_dir: str = None):
+    def __init__(self, use_caching: bool = True, cache_dir: str = None):
         if not EsiInterface._instance:
             self.caching = use_caching
-            if logger and not isinstance(logger, logging._loggerClass):
-                raise AttributeError("\"logger\" must be a \"logging\" handler")
             self.logger = logger
-            if self.logger:
-                self.logger.setLevel(logging.ERROR)
             if self.caching and cache_dir:
-                if not os.path.exists(cache_dir):
-                    raise AttributeError(
-                        "\"cache_dir\" (%s) does not exist!" % cache_dir)
                 EsiCache.BASE_DIR = cache_dir
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
-            EsiInterface._instance = EsiInterface.__OnceOnly(logger=self.logger,
-                                                             enablecache=self.caching)
+            try:
+                EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
+            except Exception as e:
+                exit(-1)
         self.cache = EsiCache(self.caching)
 
     def __getattr__(self, name):
@@ -288,9 +265,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.cache.putIntoCache(cacheKey, response, expiry.seconds)
             except Exception as e:
                 self.cache.delFromCache(cacheKey)
-                if self.logger:
-                    self.logger.error("Error retrieving Character \"%d\" from ESI: %r", characterId,
-                                      e)
+                self.logger.error("Error retrieving Character \"%d\" from ESI: %r", characterId, e)
                 raise
         return response
 
@@ -310,8 +285,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 #            "home_station_id": xx }
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving Corporation \"%d\" from ESI: %r", corpid, e)
+            self.logger.error("Error retrieving Corporation \"%d\" from ESI: %r", corpid, e)
             raise
         return response
 
@@ -331,8 +305,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error(
+            self.logger.error(
                     "Error retrieving Corporation-History for Character \"%d\" from ESI: %r",
                     characterId, e)
             raise
@@ -354,8 +327,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.cache.putIntoCache(cacheKey, response)
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving Character-ID by Name \"%s\" from ESI: %r",
+            self.logger.error("Error retrieving Character-ID by Name \"%s\" from ESI: %r",
                                   charname, e)
             raise
         return response
@@ -374,8 +346,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.cache.putIntoCache(cacheKey, response)
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error(
+            self.logger.error(
                     "Error retrieving Character Avatar for ID \"%d\" from ESI: %r", characterId, e)
             raise
         return response
@@ -400,8 +371,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     # format is [{"name": xx, "id": xx} ...]
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving System-IDs for \"%r\" from ESI: %r", namelist,
+            self.logger.error("Error retrieving System-IDs for \"%r\" from ESI: %r", namelist,
                                   e)
             raise
         return response
@@ -420,9 +390,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.cache.putIntoCache(cacheKey, response)
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving System-Names for \"%r\" from ESI: %r", idlist,
-                                  e)
+            self.logger.error("Error retrieving System-Names for \"%r\" from ESI: %r", idlist, e)
             raise
         return response
 
@@ -438,8 +406,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 response = response.data
                 # format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
         except Exception as e:
-            if self.logger:
-                self.logger.error("Error retrieving Kills from ESI", e)
+            self.logger.error("Error retrieving Kills from ESI", e)
             raise
         return response, expiry
 
@@ -455,8 +422,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 response = response.data
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
-            if self.logger:
-                self.logger.error("Error retrieving Jumps from ESI", e)
+            self.logger.error("Error retrieving Jumps from ESI", e)
             raise
         return response, expiry
 
@@ -475,8 +441,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving Ship-Groups from ESI", e)
+            self.logger.error("Error retrieving Ship-Groups from ESI", e)
             raise
         return response
 
@@ -495,8 +460,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving Ship-Group-Types from ESI", e)
+            self.logger.error("Error retrieving Ship-Group-Types from ESI", e)
             raise
         return response
 
@@ -515,8 +479,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     # format is [{"ship_jumps": xx, "system_id": xx} ...]
         except Exception as e:
             self.cache.delFromCache(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving Ship from ESI", e)
+            self.logger.error("Error retrieving Ship from ESI", e)
             raise
         return response
 
@@ -541,8 +504,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.logger.debug("Loading Ship-Data...complete")
         except Exception as e:
             self.cache.invalidate(cacheKey)
-            if self.logger:
-                self.logger.error("Error retrieving Ship-List from ESI", e)
+            self.logger.error("Error retrieving Ship-List from ESI", e)
             raise
         return ships
 

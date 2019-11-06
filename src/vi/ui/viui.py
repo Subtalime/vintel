@@ -297,7 +297,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def setupThreads(self):
         logging.debug("Creating threads")
 
-        self.esiThread = EsiThread(cache_directory=getVintelDir(), logger=logging.getLogger("ESI"))
+        self.esiThread = EsiThread(cache_directory=getVintelDir())
         self.esiThread.requestInstance()
         self.esiThread.start()
 

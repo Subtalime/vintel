@@ -26,14 +26,11 @@ from .esiinterface import EsiInterface
 class EsiThread(QThread):
     POLL_RATE = 5000
 
-    def __init__(self, logger: logging = None, use_cache: bool = True, cache_directory: str = None):
+    def __init__(self, use_cache: bool = True, cache_directory: str = None):
         QThread.__init__(self)
-        if logger is not None and not isinstance(logger, logging._loggerClass):
-            raise AttributeError("\"logger\" must be a \"logging\" handler")
-        self.__logger = logger
         self.__use_cache = use_cache
-        if use_cache and cache_directory and not os.path.exists(cache_directory):
-            raise AttributeError("\"cache_directory\" (%s) does not exist!" % cache_directory)
+        # if use_cache and cache_directory and not os.path.exists(cache_directory):
+        #     raise AttributeError("\"cache_directory\" (%s) does not exist!" % cache_directory)
         self.__cache_dir = cache_directory
         self.queue = queue.Queue(maxsize=1)
         self.lastStatisticsUpdate = time.time()
@@ -41,6 +38,7 @@ class EsiThread(QThread):
         self.refreshTimer = None
         self.__esiComplete = False
         self.active = True
+        # self.requestInstance()
 
     def requestInstance(self):
         self.queue.put(1)
@@ -61,7 +59,7 @@ class EsiThread(QThread):
             # this can take a while... loading Swagger and loading Ship-Data
             try:
                 # load the Interface
-                EsiInterface(logger=self.__logger, use_caching=self.__use_cache,
+                EsiInterface(use_caching=self.__use_cache,
                              cache_dir=self.__cache_dir)
                 self.__esiComplete = True
                 # used frequently, so pre-load
