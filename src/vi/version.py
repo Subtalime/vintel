@@ -2,7 +2,7 @@ import requests, logging
 from PyQt5.QtCore import pyqtSignal, QThread
 from packaging.version import parse
 
-VERSION = "2.0.0"
+VERSION = "1.2.0"
 SNAPSHOT = True # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 PROGNAME = "Vintel"

@@ -21,6 +21,7 @@ import os
 import sys
 import logging
 
+logger = logging.getLogger(__name__)
 def resourcePath(relativePath):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
@@ -46,7 +47,6 @@ def soundPath(relativePath = None):
         returnpath = basePath
     return returnpath
 
-def getEveChatlogDir(log: bool=False) -> str:
 eveChatLogDir = None
 def getEveChatlogDir(passedDir: str=None, log: bool=False) -> str:
     global eveChatLogDir
@@ -69,7 +69,7 @@ def getEveChatlogDir(passedDir: str=None, log: bool=False) -> str:
         documentsPath = buf.value
         chatLogDirectory = os.path.join(documentsPath, "EVE", "logs", "Chatlogs")
     if log:
-        logging.debug("getEveChatlogDir: {}".format(chatLogDirectory))
+        logger.debug("getEveChatlogDir: {}".format(chatLogDirectory))
     return chatLogDirectory
 
 def getVintelLogDir(log: bool=False) -> str:
@@ -82,7 +82,7 @@ def getVintelLogDir(log: bool=False) -> str:
             if not log:
                 print("getVintelLogDir: Error creating \"%s\": %r" % (vintelDir, e))
             else:
-                logging.error("getVintelLogDir: Error creating \"%s\": %r", vintelDir, e)
+                logger.error("getVintelLogDir: Error creating \"%s\": %r", vintelDir, e)
     return vintelDir
 
 def getVintelDir(filePath: str=None, log: bool=False) -> str:
@@ -95,7 +95,7 @@ def getVintelDir(filePath: str=None, log: bool=False) -> str:
             if not log:
                 print("getVintelDir: Error creating \"%s\": %r" % (vintelDir, e))
             else:
-                logging.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
+                logger.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
     if filePath:
         vintelDir = os.path.join(vintelDir, filePath)
     return vintelDir
@@ -110,7 +110,7 @@ def getVintelMap(regionName: str=None, log: bool=False) -> str:
             if not log:
                 print("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
             else:
-                logging.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
+                logger.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
     if regionName:
         if not regionName.endswith(".svg"):
             regionName += ".svg"
@@ -127,7 +127,7 @@ def getVintelSound(soundFile: str=None, log: bool=False) -> str:
             if not log:
                 print("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
             else:
-                logging.error("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
+                logger.error("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
     if soundFile:
         if not soundFile.endswith(".wav"):
             soundFile += ".wav"

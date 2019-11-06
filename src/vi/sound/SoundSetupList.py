@@ -1,3 +1,4 @@
+import os
 from ast import literal_eval
 from PyQt5.QtCore import QAbstractTableModel, QVariant
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -6,7 +7,7 @@ from vi.ui.SoundSetupList import Ui_Dialog
 
 from vi.sound.soundmanager import SoundManager
 from vi.cache.cache import Cache
-from vi.resources import soundPath
+from vi.resources import soundPath, resourcePath
 
 class SoundSettingDialog(QDialog, Ui_Dialog):
 
@@ -43,7 +44,6 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
                 return False
             if role != Qt.EditRole:
                 return False
-            row = index.row()
             self.arraydata[index.row()][index.column()] = value
             self.dataChanged.emit(index, index)
             return True
@@ -84,10 +84,10 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
         if not self.soundset:
             self.soundset = []
             for dist in range(0, 6):
-                entry = ["{} Jumps".format(dist), "178032__zimbot__redalert-klaxon-sttos-recreated.wav", 25]
+                entry = ["{} Jumps".format(dist), os.path.join(resourcePath("vi/ui/res/"), "178032__zimbot__redalert-klaxon-sttos-recreated.wav"), 25]
                 self.soundset.append(entry)
-            self.soundset.append(['KOS', "178031__zimbot__transporterstartbeep0-sttos-recreated.wav", 25])
-            self.soundset.append(['Request', "178028__zimbot__bosun-whistle-sttos-recreated.wav", 25])
+            self.soundset.append(['KOS', os.path.join(resourcePath("vi/ui/res"), "178031__zimbot__transporterstartbeep0-sttos-recreated.wav"), 25])
+            self.soundset.append(['Request', os.path.join(resourcePath("vi/ui/res"), "178028__zimbot__bosun-whistle-sttos-recreated.wav"), 25])
         header = ["Trigger", "Sound-File", "Volume"]
         tblModel = self.MyTableModel(self.soundset, header, self)
         self.lstSound.setModel(tblModel)

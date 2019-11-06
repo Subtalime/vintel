@@ -90,13 +90,8 @@ class Application(QApplication):
         consoleHandler = StreamHandler()
         consoleHandler.setFormatter(formatter)
         consoleHandler.setLevel(logLevel)
-        rootLogger.addHandler(consoleHandler)
         # output logging to a Window
-        logging.debug("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
-        logging.debug("Looking for chat logs at: %s", chatLogDirectory)
-        logging.debug("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
-        logging.debug("Writing logs to: %s", vintelLogDirectory)
-
+        rootLogger.addHandler(consoleHandler)
         logging.info("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
         logging.info("Looking for chat logs at: %s", getEveChatlogDir())
         logging.info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
@@ -115,10 +110,10 @@ class Application(QApplication):
 import sys
 import logging
 import traceback
-
-__name__ = "Vintel"
+from vi.version import VERSION, PROGNAME
+__name__ = PROGNAME
 __author__ = "Steven Tschache (github@tschache.com)"
-__version__ = "0.0.1"
+__version__ = VERSION
 
 logger = logging.getLogger(__name__)
 

@@ -17,6 +17,8 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
+# TODO: consider "pyaudiotools"
+
 import os
 import subprocess
 import sys
@@ -34,6 +36,7 @@ import logging
 from vi.singleton import Singleton
 from pyglet import media
 
+logger = logging.getLogger(__name__)
 
 class SoundManager(six.with_metaclass(Singleton)):
     SOUNDS = {"alarm": "178032__zimbot__redalert-klaxon-sttos-recreated.wav",
@@ -139,7 +142,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                         message = abbreviatedMessage
                     if not self.speak(message):
                         self.playAudioFile(audioFile, False)
-                        logging.error("SoundThread: sorry, speech not yet implemented on this platform")
+                        logger.error("SoundThread: sorry, speech not yet implemented on this platform")
                 # elif audioFile is not None:
                 else:
                     self.playAudioFile(audioFile, False)
@@ -177,7 +180,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 volume = float(self.volume) / 100.0
                 if self.player:
                     with wave.open(filename, "r") as f:
-                        duration = f.getnframes() / float(f.getnchannels() * f.getframerate())
+                        duration = (f.getnframes() / float(f.getnchannels() * f.getframerate()) / 2)
                     src = media.load(filename, streaming=stream)
                     self.player.queue(src)
                     self.player.volume = volume
@@ -187,13 +190,16 @@ class SoundManager(six.with_metaclass(Singleton)):
                 elif self.isDarwin:
                     subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
             except Exception as e:
-                logging.error("SoundThread.playAudioFile exception: %r", e)
+                # wave.open throws weird errors, hence the logging like thi
+                logger.error("SoundThread.playAudioFile exception on {0}: {1}".format(filename, str(e)))
+                # self.player = media.Player()
+                # self.player.loop = False
 
         def darwinSpeak(self, message):
             try:
                 os.system("say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message))
             except Exception as e:
-                logging.error("SoundThread.darwinSpeak exception: %r", e)
+                logger.error("SoundThread.darwinSpeak exception: %s" % message, e)
 
         #
         #  Experimental text-to-speech stuff below
@@ -208,7 +214,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 self.playAudioFile(requests.get(mp3url, stream=True).raw)
                 time.sleep(.5)
             except requests.exceptions.RequestException as e:
-                logging.error('playTTS error: %s', str(e))
+                logger.error('playTTS error: %s' % mp3url, e)
 
         # google_tts
 
@@ -239,7 +245,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                         args.timeout.write(requests.get(mp3url, headers=headers).content)
                         time.sleep(.5)
                     except requests.exceptions.RequestException as e:
-                        logging.error('audioExtractToMp3 error: %r', e)
+                        logger.error('audioExtractToMp3 error: %s' % mp3url, e)
             args.output.close()
             return args.output.name
 

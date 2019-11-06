@@ -6,6 +6,8 @@ from vi.chatentrywidget import ChatEntryWidget
 from vi import states
 import vi.ui.SystemChat
 
+logger = logging.getLogger(__name__)
+
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
@@ -14,7 +16,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
         if not isinstance(knownPlayers, list):
-            logging.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
+            logger.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
             exit(-1)
         self.setupUi(self)
         self.parent = parent
