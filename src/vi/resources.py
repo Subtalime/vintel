@@ -32,6 +32,21 @@ def resourcePath(relativePath):
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
 
+def soundPath(relativePath = None):
+    """ Get absolute path to resource, works for dev and for PyInstaller
+    """
+    if getattr(sys, 'frozen', False):
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        basePath = os.path.join(sys._MEIPASS, "sound")
+    else:
+        basePath = os.path.abspath("./sound")
+    if relativePath:
+        returnpath = os.path.join(basePath, relativePath)
+    else:
+        returnpath = basePath
+    return returnpath
+
+def getEveChatlogDir(log: bool=False) -> str:
 eveChatLogDir = None
 def getEveChatlogDir(passedDir: str=None, log: bool=False) -> str:
     global eveChatLogDir

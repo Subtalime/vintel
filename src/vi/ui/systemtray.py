@@ -142,7 +142,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             cm.requestCheck.setChecked(newValue)
         self.showRequest = newValue
 
-    def showNotification(self, message, system, char, distance):
+    def showNotification(self, message, system, char, distance, soundlist: list=None):
         if message is None:
             return
         room = message.room
@@ -150,19 +150,40 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         text = None
         icon = None
         text = ""
+        soundFile = None
+        orgSoundVolume = None
+        if soundlist:
+            # set the sound which has been preconfigured
+            orgSoundVolume = SoundManager().soundVolume
+            if message.status == states.ALARM:
+                row = soundlist[distance]
+                SoundManager().setSoundVolume(row[2])
+                soundFile = row[1]
+            elif message.status == states.REQUEST:
+                SoundManager().setSoundVolume(soundlist["Request"][2])
+                soundFile = soundlist["Request"][1]
         if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "ALARM!"
             icon = 2
             speechText = (u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
             text = speechText + (u"\nText: %s" % message.plainText)
-            SoundManager().playSound("alarm", text, speechText)
+            if soundFile:
+                SoundManager().playSoundFile(soundFile, text, speechText)
+                SoundManager().setSoundVolume(orgSoundVolume)
+            else:
+                SoundManager().playSound("alarm", text, speechText)
             self.lastNotifications[states.ALARM] = time.time()
         elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "Status request"
             icon = 1
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
             self.lastNotifications[states.REQUEST] = time.time()
-            SoundManager().playSound("request", text)
-        if not (title is None or text is None or icon):
-            text = "{}".format(**locals())
+            if soundFile:
+                SoundManager().playSoundFile(soundFile, text)
+                SoundManager().setSoundVolume(orgSoundVolume)
+            else:
+                SoundManager().playSound("request", text)
+        if not (title is None or text is None) or icon:
+            if text == "":
+                text = "{}".format(**locals())
             self.showMessage(title, text, icon)

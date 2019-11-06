@@ -28,7 +28,7 @@ import wave
 
 from collections import namedtuple
 from PyQt5.QtCore import QThread
-from vi.resources import resourcePath
+from vi.resources import resourcePath, soundPath
 from six.moves import queue
 import logging
 from vi.singleton import Singleton
@@ -74,6 +74,20 @@ class SoundManager(six.with_metaclass(Singleton)):
         """
         self.soundVolume = max(0, min(100, newValue))
         self.soundThread.setVolume(self.soundVolume)
+
+    def playSoundFile(self, path, message="", abbreviatedMessage=""):
+        if self.soundAvailable and self.soundActive:
+            if self.useSpokenNotifications:
+                path = None
+            if path and not os.path.exists(path):
+                import glob
+                hits = glob.glob(os.path.join(soundPath()
+                                        , os.path.basename(path)), recursive=True)
+                if hits:
+                    path = hits[0]
+                else:
+                    path = None
+            self.soundThread.queue.put((path, message, abbreviatedMessage))
 
     def playSound(self, name="alarm", message="", abbreviatedMessage="", loop=False):
         """ Schedules the work, which is picked up by SoundThread.run()

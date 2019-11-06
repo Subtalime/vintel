@@ -91,6 +91,11 @@ class Application(QApplication):
         consoleHandler.setFormatter(formatter)
         consoleHandler.setLevel(logLevel)
         rootLogger.addHandler(consoleHandler)
+        # output logging to a Window
+        logging.debug("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
+        logging.debug("Looking for chat logs at: %s", chatLogDirectory)
+        logging.debug("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
+        logging.debug("Writing logs to: %s", vintelLogDirectory)
 
         logging.info("------------------- %s %s starting up -------------------", version.PROGNAME, version.VERSION)
         logging.info("Looking for chat logs at: %s", getEveChatlogDir())
@@ -133,3 +138,4 @@ sys.excepthook = exceptHook
 
 app = Application(sys.argv)
 sys.exit(app.exec_())
+

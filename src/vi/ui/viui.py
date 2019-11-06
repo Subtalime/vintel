@@ -53,7 +53,8 @@ from vi.region.RegionMenu import RegionMenu
 from vi.dotlan.regions import Regions, convertRegionName
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
-from vi.sound.SoundSettingDialog import SoundSettingDialog
+# from vi.sound.SoundSettingDialog import SoundSettingDialog
+from vi.sound.SoundSetupList import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
