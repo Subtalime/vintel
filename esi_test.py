@@ -51,15 +51,15 @@ if __name__ == "__main__":
         loghandler = logging.getLogger(__name__)
 
     logging.info("Instance of EsiInterface")
-    logging.info("Starting Thread")
-    thread = EsiThread(cache_directory=".")
-    thread.start()
-    thread.requestInstance()
-    logging.info("Thread started")
-    # logging.info("Waiting 2 secs")
-    time.sleep(2)
-    logging.info("Closing Thread")
-    logging.info("Requesting EsiInterface()")
+    # logging.info("Starting Thread")
+    # thread = EsiThread(cache_directory=".")
+    # thread.start()
+    # thread.requestInstance()
+    # logging.info("Thread started")
+    # # logging.info("Waiting 2 secs")
+    # time.sleep(2)
+    # logging.info("Closing Thread")
+    # logging.info("Requesting EsiInterface()")
     esi = EsiInterface(cache_dir=".")
     # thread.quit()
     # logging.info("Requesting EsiInterface()")
@@ -74,6 +74,12 @@ if __name__ == "__main__":
         for ship in shiptypes['types']:
             shipitem = esi.getShip(ship)
             ships.append(shipitem)
+
+    rr = dict(character_id=27378234)
+    oper = "get_characters_character_id"
+    resp = esi.esiApp.op[oper](**rr)
+
+
 
     logging.info("Requesting Systems")
     res = esi.getSystemNames([95465449, 30000142])
@@ -92,8 +98,11 @@ if __name__ == "__main__":
         imageurl = avatars["px64x64"]
         corphist = esi.getCorporationHistory(charid)  # Bovril
         print("getCorporationHistory: {}".format(corphist))
-        corp = esi.getCorporation(character['corporation_id'])  # Bovril
-        print("getCorporation: {}".format(corp))
+        if isinstance(character, str):
+            esi.cache.delFromCache("get_characters_character_id_%s".format(charid))
+        else:
+            corp = esi.getCorporation(int(character['corporation_id']))  # Bovril
+            print("getCorporation: {}".format(corp))
     li = ["B-7DFU", "Jita"]
     ids = esi.getSystemIds(li)
     if ids:
@@ -105,13 +114,13 @@ if __name__ == "__main__":
         names = esi.getSystemNames(li)
         if names:
             print("getSystemNames: {}".format(names))
-    jump_result, expiry = EsiInterface().getJumps()
+    jump_result = EsiInterface().getJumps()
     if jump_result:
-        print("getJumps :{} {}".format(jump_result, expiry))
+        print("getJumps :{}".format(jump_result))
         jumpData = {}
         for data in jump_result:
             jumpData[int(data['system_id'])] = int(data['ship_jumps'])
-    kill_result, expiry = EsiInterface().getKills()
+    kill_result = EsiInterface().getKills()
     if kill_result:
-        print("getKills :{} {}".format(kill_result, expiry))
+        print("getKills :{}".format(kill_result))
 

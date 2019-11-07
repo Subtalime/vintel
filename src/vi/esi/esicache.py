@@ -73,6 +73,8 @@ class EsiCache(BaseCache):
     BASE_DIR = None
     # Cache-Instances in various threads: must handle concurrent writings
     SQLITE_WRITE_LOCK = threading.Lock()
+    # default 3 days for ESI values
+    MAX_AGE = 60 * 60 * 24 * 3
 
     def __init__(self, enable_cache: bool = True):
         self.__cache_enabled = enable_cache
@@ -121,11 +123,11 @@ class EsiCache(BaseCache):
         if not self.__cache_enabled:
             return default
         try:
-            query = "SELECT key, data, maxage FROM cache WHERE key = ?"
+            query = "SELECT key, data, modified, maxage FROM cache WHERE key = ?"
             founds = self.con.execute(query, (_hash(key),)).fetchall()
             if founds is None or len(founds) == 0:
                 return default
-            elif founds[0][2] and founds[0][2] + founds[0][2] < time.time() and not outdated:
+            elif founds[0][3] and founds[0][2] + founds[0][3] < time.time() and not outdated:
                 return default
             value = founds[0][1]
             return pickle.loads(value)
@@ -142,10 +144,10 @@ class EsiCache(BaseCache):
         except Exception as e:
             raise e
 
-    def putIntoCache(self, key, value, max_age=60 * 60 * 24 * 3):
+    def putIntoCache(self, key, value, max_age=None):
         self.set(key, value, max_age)
 
-    def set(self, key, value, max_age=60 * 60 * 24 * 3):
+    def set(self, key, value, max_age=None):
         if not self.__cache_enabled:
             return
         # some of the Esi-Data don't have  __getattr__ (which pickle requires)
@@ -158,6 +160,8 @@ class EsiCache(BaseCache):
             try:
                 query = "DELETE FROM cache WHERE key = ?"
                 self.con.execute(query, (_hash(key),))
+                if not max_age:
+                    max_age = EsiCache.MAX_AGE
                 query = "INSERT INTO cache (key, data, modified, maxage) VALUES (?, ?, ?, ?)"
                 self.con.execute(query, (_hash(key), store_value, time.time(), max_age))
                 self.con.commit()

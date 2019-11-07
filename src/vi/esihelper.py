@@ -56,31 +56,17 @@ class EsiHelper:
 
     def getSystemStatistics(self) -> dict:
         try:
-            cacheKey = "_".join(("esihelper", "jumpstatistics"))
-            jumpData = self.cache.getFromCache(cacheKey)
-            if not jumpData:
-                jumpData = {}
-                jump_result, expiry = self.esi.getJumps()
-                for data in jump_result:
-                    jumpData[int(data['system_id'])] = int(data['ship_jumps'])
-                if len(jumpData):
-                    self.cache.putIntoCache(cacheKey, json.dumps(jumpData), expiry.seconds)
-            else:
-                jumpData = json.loads(jumpData)
+            jumpData = {}
+            jump_result = self.esi.getJumps()
+            for data in jump_result:
+                jumpData[int(data['system_id'])] = int(data['ship_jumps'])
 
-            cacheKey = "_".join(("esihelper", "systemstatistic"))
-            systemData = self.cache.getFromCache(cacheKey)
-            if not systemData:
-                systemData = {}
-                kill_result, expiry = self.esi.getKills()
-                for data in kill_result:
-                    systemData[int(data['system_id'])] = {'ship': int(data['ship_kills']),
-                                                          'faction': int(data['npc_kills']),
-                                                          'pod': int(data['pod_kills'])}
-                if len(systemData):
-                    self.cache.putIntoCache(cacheKey, json.dumps(systemData), expiry.seconds)
-            else:
-                systemData = json.loads(systemData)
+            systemData = {}
+            kill_result = self.esi.getKills()
+            for data in kill_result:
+                systemData[int(data['system_id'])] = {'ship': int(data['ship_kills']),
+                                                      'faction': int(data['npc_kills']),
+                                                      'pod': int(data['pod_kills'])}
         except Exception:
             raise
 

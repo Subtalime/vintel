@@ -233,265 +233,215 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def __getattr__(self, name):
         return getattr(self._instance, name)
 
-    def calcExpiry(self, expireDate: str) -> datetime.datetime:
+    def calcExpiry(self, expireDate: str) -> int:
+        """
+        convert the Expiry String and deduct the Eve-Uptime to figure out the
+        remaining time in seconds
+        :param expireDate: datetime string
+        :return: seconds: int
+        """
         cache_until = datetime.datetime.strptime(expireDate, "%a, %d %b %Y %H:%M:%S %Z")
-        diff = cache_until - self.currentEveTime()
+        diff = (cache_until - self.currentEveTime()).total_seconds()
         return diff
 
-    def calcExpiryResponse(self, resp: Response) -> datetime.datetime:
+    def calcExpiryResponse(self, resp: Response) -> int:
+        """
+        get the Expiry time we received from ESI
+        :param resp: Response
+        :return: seconds: int
+        """
         return self.calcExpiry(resp.header.get('Expires')[0])
 
     @staticmethod
     def _copyModel(data) -> dict:
+        """
+        some items in ESI don't have a "__getattr__", so pickle wont work
+        here we make a new dictionary, which copies the __repr__ value, which is storable
+        :param data: Response.data
+        :return: dict
+        """
         retval = {}
+        # if it's not a Dictionary, we don't have to worry
+        if not isinstance(data, dict):
+            return data
+        # get the __repr__ values
         for key, val in data.items():
             retval[key] = val
         return retval
 
-    def getCharacter(self, characterId: int) -> Response.data:
-        # Character-Caching is based on EveTime... we want to reload after Eve is back up
-        cacheKey = "_".join(("esicache", "getcharacter", str(characterId)))
-        response = self.cache.getFromCache(cacheKey)
+    def _getResponse(self, operation, cache_expiry_secs, **kwargs):
+        """
+        Do a Swagger-Call to ESI-Api if we can't find the information in Cache
+        if we found some data, store it in Cache for a given expiry, or until downtime
+        :param operation: str
+        :param cache_expiry_secs: int
+        :param kwargs: dict
+        :return: Response
+        """
+        cache_key = "_".join(("esicache", operation))
+        for key in kwargs.keys():
+            cache_key = "_".join((cache_key, str(kwargs[key])))
+        # check if we have it in Cache
+        response = self.cache.getFromCache(cache_key)
         if not response:
             try:
-                op = self.esiApp.op['get_characters_character_id'](character_id=characterId)
-                response = self.esiClient.request(op)
-                # format is {"alliance_id": xx, "ancestry_id": xx, "birthday": xx, "bloodline_id": xx,
-                # "corporation_id": xx, "description": xx, "gender": xx, "name": xx, "race_id": xx,
-                # "security_status": xx, "title": xx}
+                # call the Swagger interface
+                operation_call = self.esiApp.op[operation](**kwargs)
+                response = self.esiClient.request(operation_call)
                 if response:
-                    expiry = self.calcExpiry(response.header.get('Expires')[0])
+                    # use default expiry handed back by ESI
+                    if not cache_expiry_secs:
+                        try:
+                            cache_expiry_secs = self.calcExpiryResponse(response)
+                        except:
+                            pass
+                    # some items in the response may not be storable... so make a storable copy
                     response = self._copyModel(response.data)
-                    self.cache.putIntoCache(cacheKey, response, expiry.seconds)
+                    # save data in Cache
+                    self.cache.putIntoCache(cache_key, response, cache_expiry_secs)
             except Exception as e:
-                self.cache.delFromCache(cacheKey)
-                self.logger.error("Error retrieving Character \"%d\" from ESI: %r", characterId, e)
+                self.cache.delFromCache(cache_key)
+                self.logger.error("Error executing Operation [%s] %r" % (operation, kwargs), e)
                 raise
         return response
 
+    def getCharacter(self, characterId: int) -> Response.data:
+        """
+        for a give Character-ID return all public details
+        :param characterId: int
+        :return: Response.data
+                 format is {"alliance_id": xx, "ancestry_id": xx, "birthday": xx, "bloodline_id": xx, "corporation_id": xx,
+                            "description": xx, "gender": xx, "name": xx, "race_id": xx, "security_status": xx, "title": xx}
+        """
+        return self._getResponse("get_characters_character_id", None, character_id=characterId)
+
     def getCorporation(self, corpid: int) -> Response.data:
-        try:
-            cacheKey = "_".join(("esicache", "getcorporation", str(corpid)))
-            response = self.cache.getFromCache(cacheKey)
-            if not response:
-                op = self.esiApp.op['get_corporations_corporation_id'](corporation_id=corpid)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.putIntoCache(cacheKey, response)
-                # format is {"alliance_id": xx, "ceo_id": xx, "creator_id": xx, "data_founded": xx,
-                #           "description": xx, "war_elligible": xx, "url": xx, "ticker": xx,
-                #           "shares": xx, "name": xx, "member_count": xx,
-                #            "home_station_id": xx }
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving Corporation \"%d\" from ESI: %r", corpid, e)
-            raise
-        return response
+        """
+        for a given Corporation-ID return the details
+        :param corpid: int
+        :return: Response.data
+                 format is {"alliance_id": xx, "ceo_id": xx, "creator_id": xx, "data_founded": xx, "description": xx,
+                            "war_elligible": xx, "url": xx, "ticker": xx, "shares": xx, "name": xx, "member_count": xx,
+                            "home_station_id": xx }
+        """
+        return self._getResponse("get_corporations_corporation_id", None, corporation_id=corpid)
 
     def getCorporationHistory(self, characterId: int) -> Response.data:
-        response = None
-        try:
-            # this wont store and retrieve correctly, but nevermind
-            cacheKey = "_".join(("esicache", "getcorporationhist", str(characterId)))
-            response = self.cache.getFromCache(cacheKey)
-            if not response:
-                op = self.esiApp.op['get_characters_character_id_corporationhistory'](
-                    character_id=characterId)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.putIntoCache(cacheKey, response)
-                    # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error(
-                    "Error retrieving Corporation-History for Character \"%d\" from ESI: %r",
-                    characterId, e)
-            raise
-        return response
+        """
+        for a given Character-ID return his Corporation-History
+        :param characterId: int
+        :return: Response.data
+                 # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
+        """
+        return self._getResponse("get_characters_character_id_corporationhistory", None, character_id=characterId)
 
     def getCharacterId(self, charname: str, strict: bool = True) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(
-                ("esicache", "getcharacterid", "0" if not strict else "1", charname))
-            response = self.cache.getFromCache(cacheKey)
-            if not response:
-                op = self.esiApp.op['get_search'](categories='character', search=charname,
-                                                  strict=strict)
-                response = self.esiClient.request(op)
-                # format is {"character": [xxx,...]}
-                if response:
-                    response = response.data
-                    self.cache.putIntoCache(cacheKey, response)
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving Character-ID by Name \"%s\" from ESI: %r",
-                                  charname, e)
-            raise
-        return response
+        """
+        for a given Character-Name return a list of matching Characters.
+        if "strict", then don't do a "close match"
+        :param charname: str
+        :param strict: bool
+        :return: Response.data
+                 format is {"character": [xxx,...]}
+        """
+        return self._getResponse("get_search", None, categories='character', search=charname,
+                                 strict=strict)
 
     def getCharacterAvatar(self, characterId: int) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(("esicache", "getcharavatar", str(characterId)))
-            response = self.cache.getFromCache(cacheKey)
-            if not response:
-                op = self.esiApp.op['get_characters_character_id_portrait'](
-                    character_id=characterId)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.putIntoCache(cacheKey, response)
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error(
-                    "Error retrieving Character Avatar for ID \"%d\" from ESI: %r", characterId, e)
-            raise
-        return response
+        """
+        for a given Character-ID return the Avatar-List
+        :param characterId: int
+        :return: Response.data
+        """
+        return self._getResponse("get_characters_character_id_portrait", None,
+                                 character_id=characterId)
 
     def getCharacterAvatarByName(self, characterName: str) -> Response.data:
+        """
+        for a given Character-Name return the Avatar-List
+        :param characterName: str
+        :return: Response.data
+                 format is [{"name": xx, "id": xx} ...]
+        """
         resp = self.getCharacterId(characterName, True)
         if resp:
             return self.getCharacterAvatar(resp["character"][0])
         return resp
 
     def getSystemIds(self, namelist: list) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(("esicache", "getsystemids", str(namelist)))
-            response = self.cache.getFromCache(cacheKey)
-            if not response:
-                op = self.esiApp.op['post_universe_ids'](names=namelist)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.putIntoCache(cacheKey, response)
-                    # format is [{"name": xx, "id": xx} ...]
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving System-IDs for \"%r\" from ESI: %r", namelist,
-                                  e)
-            raise
-        return response
+        """
+        get the System-IDs for given Names
+        :param namelist: str
+        :return: Response.data
+        """
+        return self._getResponse("post_universe_ids", None, names=namelist)
 
     def getSystemNames(self, idlist: list) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(("esicache", "getsystemnames", str(idlist)))
-            response = self.cache.getFromCache(cacheKey)
-            if not response:
-                op = self.esiApp.op['post_universe_names'](ids=idlist)
-                response = self.esiClient.request(op)
-                # format is [{"category": xx, "name": xx, "id": xx} ...]
-                if response:
-                    response = response.data
-                    self.cache.putIntoCache(cacheKey, response)
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving System-Names for \"%r\" from ESI: %r", idlist, e)
-            raise
-        return response
+        """
+        get the System-Names based on System-IDs
+        :param idlist: int
+        :return: Response.data
+                 format is [{"category": xx, "name": xx, "id": xx} ...]
+        """
+        return self._getResponse("post_universe_names", None, ids=idlist)
 
-    # not caching this
-    def getKills(self) -> (Response.data, datetime.datetime):
-        response = None
-        expiry = None
-        try:
-            op = self.esiApp.op['get_universe_system_kills']()
-            response = self.esiClient.request(op)
-            if response:
-                expiry = self.calcExpiryResponse(response)
-                response = response.data
-                # format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
-        except Exception as e:
-            self.logger.error("Error retrieving Kills from ESI", e)
-            raise
-        return response, expiry
+    def getKills(self) -> Response.data:
+        """
+        retrieve the number of Kills per system since downtime
+        :return: Response.data
+                 format is [{"npc_kills": xx, "pod_kills": xx, "ship_kills": xx, ""system_id": xx} ...]
+        """
+        return self._getResponse("get_universe_system_kills", None)
 
-    # not caching this
-    def getJumps(self) -> (Response.data, datetime.datetime):
-        response = None
-        expiry = None
-        try:
-            op = self.esiApp.op['get_universe_system_jumps']()
-            response = self.esiClient.request(op)
-            if response:
-                expiry = self.calcExpiryResponse(response)
-                response = response.data
-                # format is [{"ship_jumps": xx, "system_id": xx} ...]
-        except Exception as e:
-            self.logger.error("Error retrieving Jumps from ESI", e)
-            raise
-        return response, expiry
+    def getJumps(self) -> Response.data:
+        """
+        retrieve the Number of jumps in the Universe since downtime
+        :return: Response.data
+                 format is [{"ship_jumps": xx, "system_id": xx} ...]
+        """
+        return self._getResponse("get_universe_system_jumps", None)
 
     def getShipGroups(self) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(("esicache", "getshipgroups"))
-            response = self.cache.get(cacheKey)
-            if not response:
-                # this will return Groups of type 6 (ship)
-                op = self.esiApp.op['get_universe_categories_category_id'](category_id=6)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.set(cacheKey, response)
-                # format is [{"ship_jumps": xx, "system_id": xx} ...]
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving Ship-Groups from ESI", e)
-            raise
-        return response
+        """
+        retrieve a list of Ship-Groups based on Universe-Category 6
+        :return: Response.data
+                 format is [{"ship_jumps": xx, "system_id": xx} ...]
+         """
+        return self._getResponse("get_universe_categories_category_id", None,
+                                 category_id=6)
 
     def getShipGroupTypes(self, groupid: int) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(("esicache", "getshipgrouptype", str(groupid)))
-            response = self.cache.get(cacheKey)
-            if not response:
-                # this will return Groups of type 6 (ship)
-                op = self.esiApp.op['get_universe_groups_group_id'](group_id=groupid)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.set(cacheKey, response)
-                # format is [{"ship_jumps": xx, "system_id": xx} ...]
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving Ship-Group-Types from ESI", e)
-            raise
-        return response
+        """
+        retrieve a list of Ship-Items in a given group
+        :param groupid:
+        :return: Response.data
+                 format is [{"ship_jumps": xx, "system_id": xx} ...]
+        """
+        return self._getResponse("get_universe_groups_group_id", None,
+                                 group_id=groupid)
 
     def getShip(self, shipid: int) -> Response.data:
-        response = None
-        try:
-            cacheKey = "_".join(("esicache", "getship", str(shipid)))
-            response = self.cache.get(cacheKey)
-            if not response:
-                # this will return Groups of type 6 (ship)
-                op = self.esiApp.op['get_universe_types_type_id'](type_id=shipid)
-                response = self.esiClient.request(op)
-                if response:
-                    response = response.data
-                    self.cache.set(cacheKey, response)
-                    # format is [{"ship_jumps": xx, "system_id": xx} ...]
-        except Exception as e:
-            self.cache.delFromCache(cacheKey)
-            self.logger.error("Error retrieving Ship from ESI", e)
-            raise
-        return response
+        """
+        retrieve a Ship-Item
+        :param shipid:
+        :return: Response.data
+                 format is [{"ship_jumps": xx, "system_id": xx} ...]
+         """
+        return self._getResponse("get_universe_types_type_id", None,
+                                 type_id=shipid)
 
     @property
     def getShipList(self) -> list:
+        """
+        Property to return a valid list of ships
+        :return: List
+        """
         ships = []
         try:
             cacheKey = "_".join(("esicache", "getshiplist"))
             ships = self.cache.get(cacheKey)
             if ships is None or len(ships) == 0:
-                if self.logger:
-                    self.logger.debug("Loading Ship-Data...")
+                self.logger.debug("Loading Ship-Data...")
                 ships = []
                 shipgroup = self.getShipGroups()
                 for group in shipgroup['groups']:
@@ -500,8 +450,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         shipitem = self.getShip(ship)
                         ships.append(shipitem)
                 self.cache.set(cacheKey, ships)
-                if self.logger:
-                    self.logger.debug("Loading Ship-Data...complete")
+                self.logger.debug("Loading Ship-Data...complete")
         except Exception as e:
             self.cache.invalidate(cacheKey)
             self.logger.error("Error retrieving Ship-List from ESI", e)
@@ -509,16 +458,19 @@ class EsiInterface(metaclass=EsiInterfaceType):
         return ships
 
     def currentEveTime(self) -> datetime.datetime:
-        """ Returns the current eve-time as a datetime.datetime
+        """
+        Returns the current eve-time as a datetime.datetime
         """
         return datetime.datetime.utcnow()
 
     def secondsTillDowntime(self) -> int:
-        """ Return the seconds till the next downtime"""
+        """
+        Return the seconds till the next downtime
+        """
         now = self.currentEveTime()
         target = now
         if now.hour > 11:
             target = target + datetime.timedelta(1)
         target = datetime.datetime(target.year, target.month, target.day, 11, 0, 0, 0)
-        delta = target - now
-        return delta.seconds
+        delta = (target - now).total_seconds()
+        return delta
