@@ -17,14 +17,14 @@
 #
 
 import requests
-import json
+import logging
 from vi.esi.esiinterface import EsiInterface
 from vi.cache.cache import Cache
 
+logger = logging.getLogger(__name__)
 class EsiHelper:
-    _ShipNames = []
-    _ShipNamesUpper = []
-
+    _ShipsUpper = {}
+    _Ships = {}
     def __init__(self):
         self.esi = EsiInterface()
         self.cache = Cache()
@@ -87,21 +87,22 @@ class EsiHelper:
         return data
 
     @property
-    def ShipNames(self) -> list:
-        if len(self._ShipNames) == 0:
+    def ShipsUpper(self) -> dict:
+        if len(self._ShipsUpper) == 0:
             for ship in self.esi.getShipList:
-                self._ShipNames.append(str(ship['name']))
-        return self._ShipNames
+                self._ShipsUpper[str(ship['name']).upper()] = ship
+        return self._ShipsUpper
     @property
-    def ShipNamesUpper(self) -> list:
-        if len(self._ShipNamesUpper) == 0:
+    def Ships(self):
+        if len(self._Ships) == 0:
             for ship in self.esi.getShipList:
-                self._ShipNamesUpper.append(str(ship['name']).upper())
-        return self._ShipNamesUpper
+                self._Ships[str(ship['name'])] = ship
+        return self._Ships
 
     def getShipId(self, shipName: str) -> int:
-        for ship in self.esi.getShipList:
-            if ship["name"] == shipName:
-                return ship["id"]
+        try:
+            ship = self.ShipsUpper[shipName.upper()]
+            return ship['type_id']
+        except:
+            logger.error("Unable to find Ship {}".format(shipName))
         return None
-

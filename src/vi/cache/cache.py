@@ -20,20 +20,13 @@
 import sqlite3
 import threading
 import time
-import six
 import ast
 import os
 
-if six.PY2:
-    def to_blob(x):
-        return buffer(str(x))
-    def from_blob(x):
-        return str(x[0][0])
-else:
-    def to_blob(x):
-        return x
-    def from_blob(x):
-        return x
+def to_blob(x):
+    return x
+def from_blob(x):
+    return x
 
 try:
     import pickle

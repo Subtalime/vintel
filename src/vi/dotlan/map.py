@@ -4,7 +4,6 @@ from vi.dotlan.mysystem import MySystem as System
 from vi.dotlan.exception import DotlanException
 from vi.cache.cache import Cache
 from vi.version import URL
-from vi import states
 
 import time, logging, requests, six
 

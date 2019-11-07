@@ -26,7 +26,7 @@ import vi.version
 
 import logging
 from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.QtCore import QPoint, pyqtSignal, QPointF, QUrl
+from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
@@ -36,7 +36,7 @@ from vi import states
 from vi.LogWindow import LogWindow
 from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
-from vi.resources import resourcePath, getVintelDir
+from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
 from vi.ui.systemtray import TrayContextMenu
@@ -818,8 +818,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     @staticmethod
     def openShip(shipName):
-        zKill = QUrl("https://zkillboard.com/ship/{}".format(EsiHelper().getShipId(shipName)))
-        webbrowser.open(zKill)
+        shipId = EsiHelper().getShipId(shipName)
+        if shipId:
+            zKill = "https://zkillboard.com/ship/{}".format(shipId)
+            webbrowser.open(zKill)
 
     def pruneMessages(self):
         try:

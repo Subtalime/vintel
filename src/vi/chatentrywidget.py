@@ -18,6 +18,7 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     ship_detail = pyqtSignal(str)
     enemy_detail = pyqtSignal(str)
 
+    # TODO: Hover over Ship-Bookmark gives Description?
     def __init__(self, message):
         QWidget.__init__(self)
         if not self.questionMarkPixmap:

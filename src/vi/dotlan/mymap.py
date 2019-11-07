@@ -1,8 +1,30 @@
-from bs4 import BeautifulSoup, CData
-from PyQt5 import QtGui, QtWidgets, QtCore
+#   Vintel - Visual Intel Chat Analyzer
+#   Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
+#
+
+from bs4.element import  CData
+from PyQt5 import  QtWidgets
 from vi.dotlan.map import Map
-from vi.resources import resourcePath, getVintelMap
-import time, logging, os, datetime
+from vi.resources import getVintelMap
+import time
+import logging
+import os
+import datetime
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",

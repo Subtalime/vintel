@@ -19,7 +19,6 @@ import datetime
 import webbrowser
 import functools
 import threading
-import os
 from http.client import HTTPException
 from pyswagger.io import Response
 from esipy import EsiClient, EsiApp, EsiSecurity

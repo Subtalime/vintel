@@ -22,13 +22,10 @@ import os
 import time
 import logging
 import six
-if six.PY2:
-    from io import open
-
 from bs4 import BeautifulSoup
 from vi import states
 
-from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, parseSystems, parseCharnames
+from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, parseSystems
 
 # Names the local chatlogs could start with (depends on l10n of the client)
 LOCAL_NAMES = ("Local", "Lokal", six.text_type("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439"))

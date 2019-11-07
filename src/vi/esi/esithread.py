@@ -17,8 +17,6 @@
 from PyQt5.QtCore import QThread, QTimer
 import time
 import queue
-import logging
-import os
 from .esiinterface import EsiInterface
 
 # This is purely to load ESI in the background, since it can take quite a while!

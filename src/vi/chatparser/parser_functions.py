@@ -35,7 +35,9 @@
 		the tree and so the original generator is not longer stable.
 """
 
-import six, re, logging
+import six
+import re
+import logging
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from vi import states
