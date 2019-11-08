@@ -7,6 +7,11 @@ SNAPSHOT = True # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 PROGNAME = "Vintel"
 DISPLAY = PROGNAME + " " + VERSION + "{dev}".format(dev="-SNAPSHOT" if SNAPSHOT else "")
+AUTHOR = "S. Tschache"
+AUTHOR_EMAIL = "github@tschache.com"
+MAINTAINER = AUTHOR
+MAINTAINER_EMAIL = AUTHOR_EMAIL
+
 
 def getNewestVersion():
     try:

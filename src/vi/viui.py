@@ -39,9 +39,9 @@ from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
-from vi.ui.systemtray import TrayContextMenu
+from vi.systemtray import TrayContextMenu
 from vi.chatparser import ChatParser
-from vi.esi import EsiInterface, EsiThread
+from vi.esi import EsiInterface
 from vi.esihelper import EsiHelper
 from vi.chatentrywidget import ChatEntryWidget
 from vi.chatroomschooser import ChatroomChooser
@@ -50,7 +50,7 @@ from vi.region.RegionChooserList import RegionChooserList
 from vi.systemchat import SystemChat
 from vi.character.CharacterMenu import CharacterMenu, Characters
 from vi.region.RegionMenu import RegionMenu
-from vi.dotlan.regions import Regions, convertRegionName
+from vi.dotlan.regions import Regions
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
 # from vi.sound.SoundSettingDialog import SoundSettingDialog

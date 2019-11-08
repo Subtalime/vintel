@@ -36,22 +36,32 @@
 from cx_Freeze import setup, Executable
 import os
 import sys
+from vi.version import VERSION, DISPLAY, AUTHOR, AUTHOR_EMAIL, URL, PROGNAME
 
 if sys.platform == "win32":
     base = "Win32GUI"
 executables = [Executable("vintel.py", base=base, icon="icon.ico")]
-include_files = [os.path.join(sys.base_prefix, 'DLLs', 'sqlite3.dll'), "vi/dotlan"]
-packages = []
+include_files = [
+    # os.path.join(sys.base_prefix, 'DLLs', 'sqlite3.dll'),
+    os.path.join(sys.base_prefix, 'DLLs', "tcl86t.dll"),
+    os.path.join(sys.base_prefix, 'DLLs', "tk86t.dll"),
+    ]
+requires = ['requests', "pyqt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy', 'pyswagger']
+packages = ["PyQt5", "EsiPy", "pyswagger", "beautifulsoup4", "pyglet", "six", "clipboard", "pyqtwebengine"]
 setup(
-    name="Vintel",
-    version = "1.0",
-    description = "Description",
+    name=PROGNAME,
+    version = VERSION,
+    description = DISPLAY,
     executables = executables,
     options = {
         'build_exe': {
+            'build_exe': "../build",
             'packages': packages,
             'include_files': include_files
         }
     },
-    requires=['requests', "pyqt5", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy', 'pyswagger']
+    requires=requires,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    url=URL,
 )

@@ -24,9 +24,7 @@ from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
 
 from PyQt5 import QtGui, QtWidgets
-from vi import version
-from vi.ui import viui
-from vi.ui import systemtray
+from vi import version, systemtray, viui
 from vi.cache import cache
 from vi.resources import resourcePath, getEveChatlogDir, getVintelDir, getVintelLogDir, createResourceDirs
 from vi.cache.cache import Cache
@@ -51,18 +49,37 @@ class Application(QApplication):
             # Set up paths
         chatLogDirectory = getEveChatlogDir(passedDir=sys.argv[1] if len(sys.argv) > 1 else None)
         if not os.path.exists(chatLogDirectory):
-            os.makedirs(chatLogDirectory)
+            try:
+                os.makedirs(chatLogDirectory)
+            except Exception as e:
+                print("Error while creating %s" % chatLogDirectory, e)
+                raise e
         if not os.path.exists(chatLogDirectory):
             # None of the paths for logs exist, bailing out
+            print("no path to logs! %s" % chatLogDirectory)
             QMessageBox.critical(None, "No path to Logs", "No logs found at: " + chatLogDirectory, QMessageBox.Ok)
             sys.exit(1)
 
+        logLevel = logging.DEBUG
+        logging.getLogger().setLevel(logLevel)
+
         # Setting local directory for cache, resources and logging
         createResourceDirs()
-        splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+        if not os.path.exists(resourcePath("vi/ui/res/logo.png")):
+            print("Could not find Logo")
+        try:
+            splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+        except Exception as e:
+            print("Failed to load Splash", e)
+            raise e
 
-        cache.Cache.PATH_TO_CACHE = os.path.join(getVintelDir(), "cache-2.sqlite3")
-        vintelCache = Cache()
+        cache.Cache.PATH_TO_CACHE = getVintelDir()
+        try:
+            vintelCache = Cache(forceVersionCheck=True)
+        except Exception as e:
+            print("Failed to load Cache", e)
+            raise e
+
         logLevel = vintelCache.getFromCache("logging_level")
         if not logLevel:
             logLevel = logging.DEBUG

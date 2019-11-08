@@ -22,6 +22,9 @@ import threading
 import time
 import ast
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def to_blob(x):
     return x
@@ -33,8 +36,6 @@ try:
 except ImportError:  # pragma: no cover
     import cPickle as pickle
 
-
-import logging
 from .dbstructure import updateDatabase
 
 class Cache(object):
@@ -57,13 +58,19 @@ class Cache(object):
         forceVersionCheck=bool to enforce a check. You will need True if you are using several Cache-Files
         """
         if Cache.PATH_TO_CACHE and not os.path.dirname(pathToSQLiteFile):
-            pathToSQLiteFile = Cache.PATH_TO_CACHE
-        self.pathFile = pathToSQLiteFile
-        self.con = sqlite3.connect(pathToSQLiteFile)
-        if not Cache.VERSION_CHECKED or forceVersionCheck:
-            with Cache.SQLITE_WRITE_LOCK:
-                self.checkVersion()
-        Cache.VERSION_CHECKED = True
+            if os.path.basename(Cache.PATH_TO_CACHE).endswith("sqlite3"):
+                pathToSQLiteFile = Cache.PATH_TO_CACHE
+            else:
+                pathToSQLiteFile = os.path.join(Cache.PATH_TO_CACHE, pathToSQLiteFile)
+        try:
+            self.con = sqlite3.connect(pathToSQLiteFile, check_same_thread=False)
+            if not Cache.VERSION_CHECKED or forceVersionCheck:
+                with Cache.SQLITE_WRITE_LOCK:
+                    self.checkVersion()
+            Cache.VERSION_CHECKED = True
+        except Exception as e:
+            logger.critical("Error create Cache-File %s" % pathToSQLiteFile, e)
+            raise e
 
     def checkVersion(self):
         query = "SELECT version FROM version;"
@@ -90,8 +97,8 @@ class Cache(object):
                 self.con.execute(query, (key, value, time.time(), maxAge))
                 self.con.commit()
             except Exception as e:
-                logging.error("Cache-Error putIntoCache:  %r", e)
-                raise
+                logger.error("Cache-Error putIntoCache:  %r", e)
+                raise e
 
     def delFromCache(self, key):
         with Cache.SQLITE_WRITE_LOCK:
@@ -100,8 +107,8 @@ class Cache(object):
                 self.con.execute(query, (key,))
                 self.con.commit()
             except Exception as e:
-                logging.error("Cache-Error delFromCache: %r", e)
-                raise
+                logger.error("Cache-Error delFromCache: %r", e)
+                raise e
 
     def getFromCache(self, key, outdated=False, default=None):
         """ Getting a value from cache
@@ -118,8 +125,8 @@ class Cache(object):
             else:
                 return founds[0][1]
         except Exception as e:
-            logging.error("Cache-Error getFromCache: %r", e)
-            raise
+            logger.error("Cache-Error getFromCache: %r", e)
+            raise e
 
     def putPlayerName(self, name, status):
         """ Putting a playername into the cache
@@ -132,8 +139,8 @@ class Cache(object):
                 self.con.execute(query, (name, status, time.time()))
                 self.con.commit()
             except Exception as e:
-                logging.error("Cache-Error putPlayerName: %r", e)
-                raise
+                logger.error("Cache-Error putPlayerName: %r", e)
+                raise e
 
     def getPlayerName(self, name):
         """ Getting back infos about playername from Cache. Returns None if the name was not found, else it returns the status
@@ -159,8 +166,8 @@ class Cache(object):
                 self.con.execute(query, (name, data, time.time()))
                 self.con.commit()
             except Exception as e:
-                logging.error("Cache-Error putAvatar: %r", e)
-                raise
+                logger.error("Cache-Error putAvatar: %r", e)
+                raise e
 
     def getAvatar(self, name):
         """ Getting the avatars_pictures data from the Cache. Returns None if there is no entry in the cache
@@ -175,8 +182,8 @@ class Cache(object):
                 data = from_blob(founds[0][0])
                 return data
         except Exception as e:
-            logging.error("Cache-Error getAvatar: %r", e)
-            raise
+            logger.error("Cache-Error getAvatar: %r", e)
+            raise e
 
     def removeAvatar(self, name):
         """ Removing an avatar from the cache
@@ -187,8 +194,8 @@ class Cache(object):
                 self.con.execute(query, (name,))
                 self.con.commit()
         except Exception as e:
-            logging.error("Cache-Error removeAvatar: %r", e)
-            raise
+            logger.error("Cache-Error removeAvatar: %r", e)
+            raise e
 
     def putJumpbridge(self, regionName: str, data: list):
         with Cache.SQLITE_WRITE_LOCK:
@@ -200,8 +207,8 @@ class Cache(object):
                 self.con.execute(query, (cacheKey, pickle.dumps(data), time.time(), Cache.FOREVER))
                 self.con.commit()
             except Exception as e:
-                logging.error("Cache-Error putJumpbridg \"%s\": %r", regionName, e)
-                raise
+                logger.error("Cache-Error putJumpbridg \"%s\": %r", regionName, e)
+                raise e
 
     def getJumpbridge(self, regionName: str) -> list:
         try:
@@ -211,8 +218,8 @@ class Cache(object):
             if len(founds) > 0:
                 return pickle.loads(founds[0][0])
         except Exception as e:
-            logging.error("Cache-Error getJumpbridge \"%s\": %r", regionName, e)
-            raise
+            logger.error("Cache-Error getJumpbridge \"%s\": %r", regionName, e)
+            raise e
         return None
 
 
@@ -224,8 +231,8 @@ class Cache(object):
                 self.con.execute(query, (cacheKey,))
                 self.con.commit()
         except Exception as e:
-            logging.error("Cache-Error delJumpbridge \"%s\": %r", regionName, e)
-            raise
+            logger.error("Cache-Error delJumpbridge \"%s\": %r", regionName, e)
+            raise e
 
     def recallAndApplySettings(self, responder, settingsIdentifier):
         settings = self.getFromCache(settingsIdentifier)
@@ -242,5 +249,5 @@ class Cache(object):
                         self.delFromCache(settingsIdentifier)
                         raise
             except Exception as e:
-                logging.error("Invalid settings \"%s\": %r", str(eval(settings)), e)
-                raise
+                logger.error("Invalid settings \"%s\": %r", str(eval(settings)), e)
+                raise e
