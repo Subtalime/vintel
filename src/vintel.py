@@ -147,8 +147,10 @@ def uploadLog():
         session.storlines("STOR "+dest, file_hdl)
         file_hdl.close()
         session.quit()
-    except:
+    except Exception as e:
+        logger.error("Problem uploading Log-File", e)
         pass
+
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
         Global function to catch unhandled exceptions.
