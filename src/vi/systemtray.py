@@ -105,8 +105,9 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     change_frameless = pyqtSignal()
     quit_me = pyqtSignal()
 
-    def __init__(self, app):
-        self.icon = QIcon(resourcePath("vi/ui/res/logo_small.png"))
+    def __init__(self, app, resourcepath):
+        self.resource_path = resourcepath
+        self.icon = QIcon(self.resource_path+"logo_small.png")
         QSystemTrayIcon.__init__(self, self.icon, app)
         self.setToolTip("Your Vintel-Information-Service! :)")
         self.lastNotifications = {}

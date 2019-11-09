@@ -30,7 +30,7 @@ def resourcePath(relativePath = None):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         basePath = os.path.dirname(sys.executable)
     else:
-        basePath = os.path.abspath(".")
+        basePath = os.path.join(os.path.abspath("."), "vi/ui/res")
     if not relativePath:
         return basePath
     returnpath = os.path.join(basePath, relativePath)
@@ -40,6 +40,15 @@ def soundPath(relativePath = None):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
     basePath = resourcePath("sound")
+    if not relativePath:
+        return basePath
+    returnpath = os.path.join(basePath, relativePath)
+    return returnpath
+
+def mapPath(relativePath=None):
+    """ Get absolute path to resource, works for dev and for PyInstaller
+    """
+    basePath = resourcePath("mapdata")
     if not relativePath:
         return basePath
     returnpath = os.path.join(basePath, relativePath)
@@ -104,7 +113,7 @@ def getVintelLogDir(log: bool=False) -> str:
 
 
 def getVintelMap(regionName: str=None, log: bool=False) -> str:
-    vintelDir = os.path.join(getVintelDir(), "mapdata")
+    vintelDir = mapPath()
     if not os.path.exists(vintelDir):
         try:
             os.makedirs(vintelDir)
@@ -120,7 +129,7 @@ def getVintelMap(regionName: str=None, log: bool=False) -> str:
     return vintelDir
 
 def getVintelSound(soundFile: str=None, log: bool=False) -> str:
-    vintelDir = os.path.join(getVintelDir(), "sound")
+    vintelDir = soundPath()
     if not os.path.exists(vintelDir):
         try:
             os.makedirs(vintelDir)

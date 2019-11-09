@@ -103,10 +103,10 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
         if not self.soundset:
             self.soundset = []
             for dist in range(0, 6):
-                entry = ["{} Jumps".format(dist), os.path.join(resourcePath("vi/ui/res/"), "178032__zimbot__redalert-klaxon-sttos-recreated.wav"), 25]
+                entry = ["{} Jumps".format(dist), os.path.join(soundPath(), "sound/alert.wav"), 25]
                 self.soundset.append(entry)
-            self.soundset.append(['KOS', os.path.join(resourcePath("vi/ui/res"), "178031__zimbot__transporterstartbeep0-sttos-recreated.wav"), 25])
-            self.soundset.append(['Request', os.path.join(resourcePath("vi/ui/res"), "178028__zimbot__bosun-whistle-sttos-recreated.wav"), 25])
+            self.soundset.append(['KOS', os.path.join(soundPath(), "warning.wav"), 25])
+            self.soundset.append(['Request', os.path.join(soundPath(), "request.wav"), 25])
         header = ["Trigger", "Sound-File", "Volume"]
         tblModel = self.MyTableModel(self.soundset, header, self)
         self.lstSound.setModel(tblModel)

@@ -94,8 +94,13 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
         self.setConstants()
         self.myMap = MyMap(self)
-        self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("vi/ui/res/logo_small.png"))
-        self.taskbarIconWorking = QtGui.QIcon(resourcePath("vi/ui/res/logo_small_green.png"))
+        if getattr(sys, 'frozen', False):
+            respath = "./"
+        else:
+            respath = "vi/ui/res/"
+        respath = resourcePath(respath)
+        self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("logo_small.png"))
+        self.taskbarIconWorking = QtGui.QIcon(resourcePath("logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
@@ -257,6 +262,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
         self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
         self.actionSettings.triggered.connect(self.settings)
+        self.actionSettings.setEnabled(False)
 
         # if Log-Window is disabled for any reason
         if not self.logWindow:

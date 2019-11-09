@@ -34,7 +34,9 @@ from vi.resources import resourcePath, soundPath
 from six.moves import queue
 import logging
 from vi.singleton import Singleton
-from pyglet import media
+import pyglet
+import pyglet.clock
+import pyglet.resource
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +125,7 @@ class SoundManager(six.with_metaclass(Singleton)):
         def __init__(self):
             QThread.__init__(self)
             self.queue = queue.Queue()
-            self.player = media.Player()
+            self.player = pyglet.media.Player()
             self.player.loop = False
             self.active = True
 
@@ -181,7 +183,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 if self.player:
                     with wave.open(filename, "r") as f:
                         duration = (f.getnframes() / float(f.getnchannels() * f.getframerate()) / 2)
-                    src = media.load(filename, streaming=stream)
+                    src = pyglet.media.load(filename, streaming=stream)
                     self.player.queue(src)
                     self.player.volume = volume
                     self.player.play()

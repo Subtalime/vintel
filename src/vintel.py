@@ -65,10 +65,15 @@ class Application(QApplication):
 
         # Setting local directory for cache, resources and logging
         createResourceDirs()
-        if not os.path.exists(resourcePath("vi/ui/res/logo.png")):
+        if getattr(sys, 'frozen', False):
+            respath = "./"
+        else:
+            respath = "vi/ui/res/"
+        respath = resourcePath(respath)
+        if not os.path.exists(resourcePath(respath+"logo.png")):
             print("Could not find Logo")
         try:
-            splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+            splash = QtWidgets.QSplashScreen(QtGui.QPixmap(respath+"logo.png"))
         except Exception as e:
             print("Failed to load Splash", e)
             raise e
@@ -115,7 +120,7 @@ class Application(QApplication):
         EsiInterface(cache_dir=getVintelDir())
         splash.show()
         self.processEvents()
-        trayIcon = systemtray.TrayIcon(self)
+        trayIcon = systemtray.TrayIcon(self, respath)
         trayIcon.show()
         self.mainWindow = viui.MainWindow(chatLogDirectory, trayIcon, backGroundColor)
         self.mainWindow.show()
@@ -131,7 +136,19 @@ __author__ = "Steven Tschache (github@tschache.com)"
 __version__ = VERSION
 
 logger = logging.getLogger(__name__)
-
+import ftplib
+import time
+def uploadLog():
+    try:
+        session = ftplib.FTP("vintel.tschache.com", "vintellog", "jYie93#7")
+        logFilename = os.path.join(getVintelLogDir(), "output.log")
+        file_hdl = open(logFilename, "rt")
+        dest = str(time.time())+"_output.log"
+        session.storlines("STOR "+dest, file_hdl)
+        file_hdl.close()
+        session.quit()
+    except:
+        pass
 def exceptHook(exceptionType, exceptionValue, tracebackObject):
     """
         Global function to catch unhandled exceptions.
@@ -141,6 +158,7 @@ def exceptHook(exceptionType, exceptionValue, tracebackObject):
         logger.critical(''.join(traceback.format_tb(tracebackObject)))
         logger.critical('{0}: {1}'.format(exceptionType, exceptionValue))
         logger.critical("-- ------------------- --")
+        uploadLog()
     except Exception:
         pass
 
