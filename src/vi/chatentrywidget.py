@@ -22,7 +22,7 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     def __init__(self, message):
         QWidget.__init__(self)
         if not self.questionMarkPixmap:
-            self.questionMarkPixmap = QPixmap(resourcePath("vi/ui/res/qmark.png")).scaledToHeight(32)
+            self.questionMarkPixmap = QPixmap(resourcePath("qmark.png")).scaledToHeight(32)
         self.setupUi(self)
         self.avatarLabel.setPixmap(self.questionMarkPixmap)
         self.message = message

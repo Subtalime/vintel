@@ -94,11 +94,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
         self.setConstants()
         self.myMap = MyMap(self)
-        if getattr(sys, 'frozen', False):
-            respath = "./"
-        else:
-            respath = "vi/ui/res/"
-        respath = resourcePath(respath)
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -881,10 +876,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
     def showInfo(self):
         logger.debug("Opening About-Dialog")
         infoDialog = QDialog(self)
-        loadUi(resourcePath("vi/ui/Info.ui"), infoDialog)
+        loadUi("vi/ui/Info.ui", infoDialog)
         infoDialog.setModal(True)
         infoDialog.versionLabel.setText(u"Version: {0}".format(vi.version.DISPLAY))
-        infoDialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("vi/ui/res/logo.png")))
+        infoDialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("logo.png")))
         infoDialog.closeButton.clicked.connect(infoDialog.accept)
         infoDialog.exec()
         logger.debug("Closed About-Dialog")

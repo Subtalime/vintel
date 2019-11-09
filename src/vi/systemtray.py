@@ -35,6 +35,7 @@
 ###########################################################################
 
 import time
+import logging
 
 from six.moves import range
 from PyQt5 import QtWidgets
@@ -44,6 +45,8 @@ from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QActionGroup, QMenu
 from vi.resources import resourcePath
 from vi import states
 from vi.sound.soundmanager import SoundManager
+
+logger = logging.getLogger(__name__)
 
 class TrayContextMenu(QtWidgets.QMenu):
     instances = set()
@@ -105,9 +108,10 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     change_frameless = pyqtSignal()
     quit_me = pyqtSignal()
 
-    def __init__(self, app, resourcepath):
-        self.resource_path = resourcepath
-        self.icon = QIcon(self.resource_path+"logo_small.png")
+    def __init__(self, app):
+        self.resource_path = resourcePath()
+        logger.debug("TrayIcon looking for %s" % resourcePath("logo_small.png"))
+        self.icon = QIcon(resourcePath("logo_small.png"))
         QSystemTrayIcon.__init__(self, self.icon, app)
         self.setToolTip("Your Vintel-Information-Service! :)")
         self.lastNotifications = {}
@@ -187,4 +191,5 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         if not (title is None or text is None) or icon:
             if text == "":
                 text = "{}".format(**locals())
+            logger.debug("Trayicon-Message: \"%s\"" % text)
             self.showMessage(title, text, icon)
