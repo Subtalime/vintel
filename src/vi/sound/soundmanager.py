@@ -101,7 +101,7 @@ class SoundManager(six.with_metaclass(Singleton)):
             if self.useSpokenNotifications:
                 audioFile = None
             else:
-                audioFile = resourcePath("vi/ui/res/{0}".format(self.SOUNDS[name]))
+                audioFile = soundPath("{0}".format(self.SOUNDS[name]))
             self.soundThread.queue.put((audioFile, message, abbreviatedMessage))
 
     def quit(self):

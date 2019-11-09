@@ -43,6 +43,8 @@ from bs4.element import NavigableString, Tag
 from vi import states
 from vi.esihelper import EsiHelper
 
+logger = logging.getLogger(__name__)
+
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
 
 
@@ -247,19 +249,23 @@ def parseCharnames(rtext: Tag) -> bool:
         names = {}
         if len(text.strip()) == 0:
             return names
-        logging.debug("Analysing Names: {}".format(text))
-        words = text.split("  ")
-        for checkname in words:
-            for char in CHARS_TO_IGNORE:
-                checkname = checkname.replace(char, "")
-            if len(checkname) >= 3:
-                found = False
-                for a in names.items():
-                    if re.search(checkname, a[0], re.IGNORECASE):
-                        found = True
-                        break
-                if not found and EsiHelper().checkPlayerName(checkname):
-                    names[checkname] = checkname
+        words = text.split(" ")
+        logger.debug("Analysing Names in: {}".format(words))
+        try:
+            for checkname in words:
+                for char in CHARS_TO_IGNORE:
+                    checkname = checkname.replace(char, "")
+                if len(checkname) >= 3:
+                    found = False
+                    for a in names.items():
+                        if re.search(checkname, a[0], re.IGNORECASE):
+                            found = True
+                            break
+                    if not found and EsiHelper().checkPlayerName(checkname):
+                        names[checkname] = checkname
+            logger.debug("Found names: {}".format(names))
+        except Exception as e:
+            logger.error("Error parsing Namse", e)
         return names
 
         # words = text.strip(" ").split()
@@ -294,16 +300,24 @@ def parseCharnames(rtext: Tag) -> bool:
         for name in names.items():
             newText = formatCharname(text, name[0], name[1])
             textReplace(text, newText)
-            replaced = True
+            return True
     return replaced
 
 if __name__ == "__main__":
-    chat_text = "Zedan Chent-Shi in B-7DFU in a Merlin together " + " with Tablot Manzari and Sephora Dunn in Dominix AntsintheEyeJohnsen +4  4K-TRB"
+    chat_text = "Zedan Chent-Shi  in B-7DFU in a Merlin together " + " with  Tablot Manzari  and  Sephora Dunn  in Dominix  AntsintheEyeJohnsen  +4  4K-TRB"
     charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
 
-    rtext = Tag(name="ChatMessage")
-    rtext.contents.append(chat_text)
+    formatedText = u"<rtext>{0}</rtext>".format(chat_text)
+    soup = BeautifulSoup(formatedText, 'html.parser')
+    rtext = soup.select("rtext")[0]
+    from vi.esi.esiinterface import EsiInterface
+    from vi.resources import getVintelDir
+    EsiInterface(cache_dir=getVintelDir())
 
+    while parseCharnames(rtext):
+        continue
+    logger.debug("Names found: %r", rtext)
+    exit(0)
     parts = chat_text.strip(" ").split(" ")
     checkwords = ""
     while len(parts) > 0:

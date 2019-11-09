@@ -39,7 +39,6 @@ class LogWindow(QtWidgets.QWidget):
             # by default, have warnings only shown there
             self.logLevel = logging.WARNING
         self.logHandler = LogWindowHandler(self)
-        self.logHandler.setLevel(self.logLevel)
         logging.getLogger().addHandler(self.logHandler)
 
         self.setBaseSize(400, 300)
@@ -156,6 +155,8 @@ class LogWindowHandler(logging.Handler):
         logging.Handler.__init__(self)
         self.parent = parent
         formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
+        # always log all messages ! The Window-Output is managed by self.logLevel
+        self.setLevel(logging.DEBUG)
         self.setFormatter(formatter)
 
     def emit(self, record):

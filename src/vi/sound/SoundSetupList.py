@@ -103,7 +103,7 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
         if not self.soundset:
             self.soundset = []
             for dist in range(0, 6):
-                entry = ["{} Jumps".format(dist), os.path.join(soundPath(), "sound/alert.wav"), 25]
+                entry = ["{} Jumps".format(dist), os.path.join(soundPath(), "alert.wav"), 25]
                 self.soundset.append(entry)
             self.soundset.append(['KOS', os.path.join(soundPath(), "warning.wav"), 25])
             self.soundset.append(['Request', os.path.join(soundPath(), "request.wav"), 25])
