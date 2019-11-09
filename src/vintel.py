@@ -41,10 +41,13 @@ class Application(QApplication):
             import ctypes
             myApplicationID = str("{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT))
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myApplicationID)
+            # and maybe this...
+
 
         if sys.platform != "win32" and len(sys.argv) <= 2:
             print("Usage: python vintel.py <chatlogsdir>")
             sys.exit(1)
+
 
             # Set up paths
         chatLogDirectory = getEveChatlogDir(passedDir=sys.argv[1] if len(sys.argv) > 1 else None)
@@ -65,15 +68,15 @@ class Application(QApplication):
 
         # Setting local directory for cache, resources and logging
         createResourceDirs()
-        if getattr(sys, 'frozen', False):
-            respath = "./"
-        else:
-            respath = "vi/ui/res/"
-        respath = resourcePath(respath)
-        if not os.path.exists(resourcePath(respath+"logo.png")):
-            print("Could not find Logo")
+        # if getattr(sys, 'frozen', False):
+        #     respath = "./"
+        # else:
+        #     respath = "vi/ui/res/"
+        # respath = resourcePath()
+        if not os.path.exists(resourcePath("logo.png")):
+            logger.error("Could not find Logo")
         try:
-            splash = QtWidgets.QSplashScreen(QtGui.QPixmap(respath+"logo.png"))
+            splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("logo.png")))
         except Exception as e:
             print("Failed to load Splash", e)
             raise e
@@ -120,7 +123,7 @@ class Application(QApplication):
         EsiInterface(cache_dir=getVintelDir())
         splash.show()
         self.processEvents()
-        trayIcon = systemtray.TrayIcon(self, respath)
+        trayIcon = systemtray.TrayIcon(self)
         trayIcon.show()
         self.mainWindow = viui.MainWindow(chatLogDirectory, trayIcon, backGroundColor)
         self.mainWindow.show()
@@ -142,7 +145,7 @@ def uploadLog():
     try:
         session = ftplib.FTP("vintel.tschache.com", "vintellog", "jYie93#7")
         logFilename = os.path.join(getVintelLogDir(), "output.log")
-        file_hdl = open(logFilename, "rt")
+        file_hdl = open(logFilename, "rb")
         dest = str(time.time())+"_output.log"
         session.storlines("STOR "+dest, file_hdl)
         file_hdl.close()
@@ -151,7 +154,7 @@ def uploadLog():
         logger.error("Problem uploading Log-File", e)
         pass
 
-def exceptHook(exceptionType, exceptionValue, tracebackObject):
+def myExceptionHook(exceptionType, exceptionValue, tracebackObject):
     """
         Global function to catch unhandled exceptions.
     """
@@ -164,7 +167,7 @@ def exceptHook(exceptionType, exceptionValue, tracebackObject):
     except Exception:
         pass
 
-sys.excepthook = exceptHook
+sys.excepthook = myExceptionHook
 
 app = Application(sys.argv)
 sys.exit(app.exec_())

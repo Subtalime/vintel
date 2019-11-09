@@ -41,9 +41,9 @@ include_files = [
     ("docs/regionselect.txt", "docs/regionselect.txt"),
     ("docs/jumpbridgeformat.txt", "docs/jumpbridgeformat.txt"),
     ]
-requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'EsiPy', 'pyswagger']
+requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy', 'pyswagger']
 packages = []
-packages = [ "EsiPy", "pyswagger", "pyglet", "six", "clipboard", ]
+packages = [ "esipy", "pyswagger", "pyglet", "six", "clipboard", ]
 
 replace_paths = [("vi/ui/res/mapdata", "mapdata"), ("vi/ui/res", "sound")]
 setup(
@@ -53,7 +53,7 @@ setup(
     executables = executables,
     options = {
         'build_exe': {
-            'build_exe': "../Vintel-"+str(VERSION),
+            'build_exe': "../releases/Vintel-"+str(VERSION),
             'packages': packages,
             'include_files': include_files,
             'replace_paths': replace_paths,

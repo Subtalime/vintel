@@ -23,6 +23,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def resourcePath(relativePath = None):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
