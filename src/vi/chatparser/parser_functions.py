@@ -102,7 +102,7 @@ def parseShips(rtext: Tag) -> bool:
                 upperText = upperText.replace(char, "")
 
             # for shipName in evegate.SHIPNAMES:
-            if upperText in EsiHelper().ShipNamesUpper:
+            if upperText in EsiHelper().ShipsUpper:
                 hit = True
                 start = text.upper().find(upperText)
                 end = start + len(upperText)
