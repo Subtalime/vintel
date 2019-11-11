@@ -22,15 +22,14 @@ from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import pyqtSignal, QEvent, Qt
 from .cache.cache import Cache
 import logging
+from time import time
 from logging import LogRecord
 from vi.version import DISPLAY
 
-# TODO: default to Logging.DEBUG, but filter output here to what is wanted
-# TODO: go back in the Log (File?) and show based on Log-Setting
-# TODO: prun Text-Size... may grow beyond X MB
+LOGGER = logging.getLogger(__name__)
+
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
-    log_records = []
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
@@ -40,7 +39,13 @@ class LogWindow(QtWidgets.QWidget):
             self.logLevel = logging.WARNING
         self.logHandler = LogWindowHandler(self)
         logging.getLogger().addHandler(self.logHandler)
-
+        # keep maximum of 5k lines in buffer
+        self.tidySize = 5000
+        self.pruneTime = time()
+        # check only every hour
+        self.pruneDelay = 60 * 60 # 1 hour
+        self.log_records = []
+        self._tidying = False
         self.setBaseSize(400, 300)
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
         self.setTitle()
@@ -70,10 +75,21 @@ class LogWindow(QtWidgets.QWidget):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
         self.textEdit.append(text)
 
+
     def store(self, record: LogRecord):
         self.log_records.append(record)
         if record.levelno >= self.logLevel:
             self.write(self.logHandler.format(record))
+        if self.pruneTime + self.pruneDelay < time() and not self._tidying:
+            self._tidying = True
+            if len(self.log_records) > self.tidySize:
+                LOGGER.debug("LogWindow Tidy start")
+                del self.log_records[:len(self.log_records)-self.tidySize]
+                self.refresh()
+                LOGGER.debug("LogWindow Tidy complete")
+            self.pruneTime = time()
+            self._tidying = False
+
 
     def refresh(self):
         self.textEdit.clear()

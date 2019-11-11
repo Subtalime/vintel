@@ -42,7 +42,6 @@ from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from vi import states
 from vi.esihelper import EsiHelper
-
 logger = logging.getLogger(__name__)
 
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
@@ -88,9 +87,9 @@ def parseShips(rtext: Tag) -> bool:
     :param rtext: Tag
     :return: bool if content has changed
     """
-    def formatShipName(text: str, realShipName: str, word: str) -> str:
-        newText = u"""<a style="color:green;font-weight:bold" href="ship_name/{0}">{1}</a>"""
-        text = text.replace(word, newText.format(realShipName, word))
+    def formatShipName(text: str, realShipName: str, word: str, tooltip: str) -> str:
+        newText = u"""<a style="color:green;font-weight:bold" title="{2}" href="ship_name/{0}">{1}</a>"""
+        text = text.replace(word, newText.format(realShipName, word, tooltip))
         return text
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString)]
@@ -113,7 +112,8 @@ def parseShips(rtext: Tag) -> bool:
                     hit = False
                 if hit:
                     shipInText = text[start:end]
-                    formatted = formatShipName(text, shipInText, part)
+                    shipType=EsiHelper().esi.getShipGroupTypes(EsiHelper().ShipsUpper[upperText]['group_id'])['name']
+                    formatted = formatShipName(text, shipInText, part, shipType)
                     textReplace(text, formatted)
                     return True
 
@@ -242,63 +242,53 @@ def parseCharnames(rtext: Tag) -> bool:
     """
 
     def findNames(text: NavigableString) -> dict:
-
+        WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
         def chunks(listofwords: list, size: int = 1, offset = 0) -> list:
-            return (listofwords[pos:pos + size] for pos in range(0 + offset, len(listofwords), size))
+            return [" ".join(listofwords[pos:pos + size]) for pos in range(0 + offset, len(listofwords), size)]
+
+
 
         names = {}
         if len(text.strip()) == 0:
             return names
-        words = text.split(" ")
+
+        words = text.split()
+        # chunks of 2s
         logger.debug("Analysing Names in: {}".format(words))
         try:
-            for checkname in words:
-                for char in CHARS_TO_IGNORE:
-                    checkname = checkname.replace(char, "")
-                if len(checkname) >= 3:
-                    found = False
-                    for a in names.items():
-                        if re.search(checkname, a[0], re.IGNORECASE):
-                            found = True
-                            break
-                    if not found and EsiHelper().checkPlayerName(checkname):
-                        names[checkname] = checkname
+            for pairs in range(2,0,-1):
+                checklist = chunks(words, pairs)
+                for checkname in checklist:
+                    for char in CHARS_TO_IGNORE:
+                        checkname = checkname.replace(char, "")
+                    if checkname.upper() in WORDS_TO_IGNORE: continue
+                    if len(checkname) >= 3:
+                        found = False
+                        for a in names.items():
+                            if re.search(checkname, a[0], re.IGNORECASE):
+                                found = True
+                                break
+                        if not found:
+                            char = EsiHelper().checkPlayerName(checkname)
+                            if char is not None:
+                                names[checkname] = char
             logger.debug("Found names: {}".format(names))
         except Exception as e:
             logger.error("Error parsing Namse", e)
         return names
 
-        # words = text.strip(" ").split()
-        # for offset in range(0, min(3, len(words) - 1)):
-        #     # start with 3 words and work down
-        #     for chunk in range(3, 0, -1):
-        #         for groups in chunks(words, chunk, offset):
-        #             checkname = toreplace = " ".join(groups)
-        #             for char in CHARS_TO_IGNORE:
-        #                 checkname = checkname.replace(char, "")
-        #             if len(checkname) >= 3:
-        #                 found = False
-        #                 for a in names.items():
-        #                     if re.search(checkname, a[0], re.IGNORECASE):
-        #                         found = True
-        #                         break
-        #                 if not found and EsiHelper().checkPlayerName(checkname):
-        #                     names[checkname] = toreplace
-        #
-        # return names
-
-    def formatCharname(text: str, charname: str, originalname: str):
-        newText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{0}">{1}</a>"""
-        text = text.replace(charname, newText.format(charname, originalname))
-        return text
+    def formatCharname(text: str, charname: str, esicharacter: dict):
+        formatText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{1}">{0}</a>"""
+        newtext = text.replace(charname, formatText.format(charname, esicharacter["id"]))
+        return newtext
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t) >= 3]
 
     replaced = False
     for text in texts: # iterate through each
         names = findNames(text) # line
-        for name in names.items():
-            newText = formatCharname(text, name[0], name[1])
+        for name, chara in names.items():
+            newText = formatCharname(text, name, chara)
             textReplace(text, newText)
             return True
     return replaced

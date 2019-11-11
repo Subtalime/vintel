@@ -18,9 +18,14 @@
 #
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtCore import pyqtSignal, QUrl
+from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt
+from PyQt5.QtWidgets import QApplication
+from PyQt5 import QtGui
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from vi.MapViewPage import MapViewPage
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 class PanningWebView(QWidget):
     zoom_factor = pyqtSignal(float)
@@ -35,6 +40,22 @@ class PanningWebView(QWidget):
         self.vl.addWidget(self.view)
         self.setLayout(self.vl)
         self.oldContent = None
+
+        # self.installEventFilter(self)
+
+    def wheelEvent(self, a0: QtGui.QWheelEvent) -> None:
+        modifier = QApplication.keyboardModifiers()
+        if modifier == Qt.ControlModifier:
+            LOGGER.debug("Control-Delta %r" % a0.Delta())
+        a0.accept()
+
+    def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
+        if a1.type() == QEvent.Wheel:
+            modifier = QApplication.keyboardModifiers()
+            if modifier == Qt.ControlModifier:
+                LOGGER.debug("Ctrl-Mouse-Scroll %r" % a1.Delta())
+        return False
+
 
 
     def setZoomFactor(self, value: float):

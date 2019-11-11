@@ -25,7 +25,7 @@ import six
 from bs4 import BeautifulSoup
 from vi import states
 
-from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, parseSystems
+from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, parseSystems, parseCharnames
 
 # Names the local chatlogs could start with (depends on l10n of the client)
 LOCAL_NAMES = ("Local", "Lokal", six.text_type("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439"))
@@ -141,8 +141,8 @@ class ChatParser(object):
             continue
         while parseSystems(self.systems, rtext, systems):
             continue
-        # while parseCharnames(rtext):
-        #     continue
+        while parseCharnames(rtext):
+            continue
 
         parsedStatus = parseStatus(rtext)
         status = parsedStatus if parsedStatus is not None else states.ALARM

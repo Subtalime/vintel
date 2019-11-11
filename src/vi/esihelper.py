@@ -45,14 +45,15 @@ class EsiHelper:
             return avatar
         return None
 
-    def checkPlayerName(self, characterName: str) -> bool:
+    def checkPlayerName(self, characterName: str) -> dict:
         resp = self.esi.getCharacterId(characterName, True)
         if resp:
             for charid in resp["character"]:
                 character = self.esi.getCharacter(charid)
                 if character and character.get("name") == characterName:
-                    return True
-        return False
+                    character["id"] = charid
+                    return character
+        return None
 
     def getSystemStatistics(self) -> dict:
         try:

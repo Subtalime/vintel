@@ -18,9 +18,13 @@
 #
 
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
-from PyQt5.QtCore import pyqtSignal, QPointF, QUrl
+from PyQt5.QtCore import pyqtSignal, QPointF, QUrl, QEvent, Qt
+from PyQt5.QtWidgets import QApplication
+from PyQt5 import QtGui
 from queue import Queue
 import logging
+
+LOGGER = logging.getLogger(__name__)
 
 class MapViewPage(QWebEnginePage):
     link_clicked = pyqtSignal(QUrl)
@@ -36,6 +40,13 @@ class MapViewPage(QWebEnginePage):
         self.currentHtml = None
         self.currentScrollPos = QPointF()
         self.repositioning = False
+
+
+    def wheelEvent(self, a0: QtGui.QWheelEvent) -> None:
+        modifier = QApplication.keyboardModifiers()
+        if modifier == Qt.ControlModifier:
+            LOGGER.debug("Control-Delta %r" % a0.Delta())
+
 
     def onLoadFinished(self):
         self.load_complete = True

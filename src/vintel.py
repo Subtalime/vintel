@@ -97,8 +97,21 @@ class Application(QApplication):
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
+        class MyFormatter(logging.Formatter):
+            import datetime as dt
+            converter = dt.datetime.fromtimestamp
+
+            def formatTime(self, record, datefmt=None):
+                ct = self.converter(record.created)
+                if datefmt:
+                    s = ct.strftime(datefmt)
+                else:
+                    t = ct.strftime("%Y-%m-%d %H:%M:%S")
+                    s = "%s,%03d" % (t, record.msecs)
+                return s
+
         # Setup logging for console and rotated log files
-        formatter = logging.Formatter('%(asctime)s|%(levelname)s %(module)s/%(funcName)s: %(message)s', datefmt='%d/%m %H:%M:%S')
+        formatter = MyFormatter(fmt='%(asctime)s|%(levelname)s [%(threadName)s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s', datefmt='%d/%m %H:%M:%S.%f')
         rootLogger = logging.getLogger()
         # rootLogger.setLevel(level=logLevel)
 

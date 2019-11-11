@@ -137,7 +137,9 @@ class AvatarFindThread(QThread):
                 # Block waiting for addChatEntry() to enqueue something
                 chatEntry = self.queue.get()
                 if not self.active:
+                    logging.debug("Request for Avatar but Thread not enabled")
                     continue
+
                 charname = chatEntry.message.user
                 logging.debug("AvatarFindThread getting avatar for %s" % charname)
                 avatar = None
@@ -145,20 +147,16 @@ class AvatarFindThread(QThread):
                     with open(resourcePath("logo_small.png"), "rb") as f:
                         avatar = f.read()
                 if not avatar:
-                    avatar = cache.getAvatar(charname)
-                    if avatar:
-                        logging.debug("AvatarFindThread found cached avatar for %s" % charname)
-                if not avatar:
-                    diffLastCall = time.time() - lastCall
-                    if diffLastCall < wait:
-                        time.sleep((wait - diffLastCall) / 1000.0)
+                    # diffLastCall = time.time() - lastCall
+                    # if diffLastCall < wait:
+                    #     time.sleep((wait - diffLastCall) / 1000.0)
+                    # lastCall = time.time()
                     avatar = EsiHelper().getAvatarByName(charname)
-                    lastCall = time.time()
-                    if avatar:
-                        cache.putAvatar(charname, avatar)
                 if avatar:
                     logging.debug("AvatarFindThread emit avatar_update for %s" % charname)
                     self.avatar_update.emit(chatEntry, avatar)
+                else:
+                    logging.debug("AvatarFindThread Avator not found for %s" % charname)
             except Exception as e:
                 logging.error("Error in AvatarFindThread : %r", e)
 

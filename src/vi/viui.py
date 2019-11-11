@@ -814,7 +814,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         if scrollToBottom:
             self.chatListWidget.scrollToBottom()
 
-    def openEnemy(self, playerName):
+    def openEnemy(self, playerId):
+        if playerId:
+            zKill = "https://zkillboard.com/character/{}".format(playerId)
+            webbrowser.open(zKill)
         pass
 
     @staticmethod
@@ -905,6 +908,18 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         else:
             self.avatar_loaded.emit(chatEntry.message.user, avatarData)
 
+    def checkPlayerLocations(self):
+        if len(self.knownPlayers) == 0:
+            # this is worth an Alert
+            pass
+        check = False
+        for character in self.knownPlayers.keys():
+            if self.knownPlayers[character].monitor and self.knownPlayers[character].location:
+                check = True
+        if not check:
+            # Alert the User
+            pass
+
     def logFileChanged(self, path):
         logger.debug("Log file changed: {}".format(path))
         # wait for Map to be completly loaded
@@ -947,6 +962,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
                         systemname = system.name
                         systemList[systemname].setStatus(message.status)
                         activePlayers = self.knownPlayers.getActiveNames()
+                        # notify User if we don't have locations for active Players
+                        self.checkPlayerLocations()
                         if message.status in (states.REQUEST,
                                               states.ALARM) and message.user not in activePlayers:
                             alarmDistance = self.alarmDistance if message.status == states.ALARM else 0

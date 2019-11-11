@@ -47,6 +47,7 @@ class CharacterMenu(QMenu):
         action.setData(self._actionName(character.getName))
         action.setObjectName(character.getName)
         action.setChecked(character.getStatus)
+        action.setToolTip("deselect to disable monitoring")
         self._menu_actions[character.getName] = action
         self.addAction(action)
         return True

@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'ChatEntry.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.0
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -37,14 +38,6 @@ class Ui_Form(object):
         self.avatarLabel.setObjectName("avatarLabel")
         self.horizontalLayout.addWidget(self.avatarLabel)
         self.textLabel = QtWidgets.QLabel(Form)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.textLabel.sizePolicy().hasHeightForWidth())
-        self.textLabel.setSizePolicy(sizePolicy)
-        self.textLabel.setTextFormat(QtCore.Qt.RichText)
-        self.textLabel.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
-        self.textLabel.setWordWrap(True)
         self.textLabel.setObjectName("textLabel")
         self.horizontalLayout.addWidget(self.textLabel)
         self.gridLayout.addLayout(self.horizontalLayout, 1, 1, 1, 1)
@@ -56,6 +49,4 @@ class Ui_Form(object):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.avatarLabel.setText(_translate("Form", "TextLabel"))
-        self.textLabel.setText(_translate("Form", "?"))
-
-
+        self.textLabel.setText(_translate("Form", "TextLabel"))
