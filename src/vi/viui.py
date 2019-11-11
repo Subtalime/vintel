@@ -1,18 +1,18 @@
 ###########################################################################
 #  Vintel - Visual Intel Chat Analyzer									  #
 #  Copyright (C) 2014-15 Sebastian Meyer (sparrow.242.de+eve@gmail.com )  #
-#																		  #
+#
 #  This program is free software: you can redistribute it and/or modify	  #
 #  it under the terms of the GNU General Public License as published by	  #
 #  the Free Software Foundation, either version 3 of the License, or	  #
 #  (at your option) any later version.									  #
-#																		  #
+#
 #  This program is distributed in the hope that it will be useful,		  #
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of		  #
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the		  #
 #  GNU General Public License for more details.							  #
-#																		  #
-#																		  #
+#
+#
 #  You should have received a copy of the GNU General Public License	  #
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
@@ -23,8 +23,8 @@ import six
 import requests
 import webbrowser
 import vi.version
-
 import logging
+
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 from PyQt5.QtGui import QColor
@@ -59,11 +59,6 @@ from vi.ui.MainWindow import Ui_MainWindow
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
 
-try:
-    import pickle
-except ImportError:  # pragma: no cover
-    import cPickle as pickle
-
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
@@ -71,7 +66,8 @@ CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
 
 LOGGER = logging.getLogger(__name__)
 
-class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
+
+class MainWindow(QMainWindow, Ui_MainWindow):
     chat_message_added = pyqtSignal(ChatEntryWidget)
     avatar_loaded = pyqtSignal(str, bytes)
 
@@ -86,7 +82,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.mapUpdateThread = None
         self.chatparser = None
         self.cache = Cache()
-
         self.setWindowTitle(vi.version.DISPLAY)
         self.setColor(backGroundColor)
         self.message_expiry = MESSAGE_EXPIRY_SECS
@@ -98,7 +93,6 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
-
         self.pathToLogs = pathToLogs
         self.clipboardTimer = QtCore.QTimer(self)
         self.oldClipboardContent = ""
@@ -153,10 +147,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.opacityGroup.addAction(action)
             self.menuTransparency.addAction(action)
 
-        #
-        # Platform specific UI resizing - we size items in the resource files to look correct on the mac,
-        # then resize other platforms as needed
-        #
+        # Platform specific UI resizing - we size items in the resource files to look
+        # correct on the mac, then resize other platforms as needed
         if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
             font = self.statisticsButton.font()
             font.setPointSize(8)
@@ -356,10 +348,9 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         # self.cache.putIntoCache("region_name", "Delve")
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
-            diagText = "Something went wrong getting map data. Proceeding with older cached data. " \
-                       "Check for a newer version and inform the maintainer.\n\nError: {0} {1}".format(
-                type(e),
-                six.text_type(e))
+            diagText = "Something went wrong getting map data. Proceeding with older " \
+                       "cached data. Check for a newer version and inform the maintainer." \
+                       "\n\nError: {0} {1}".format(type(e), six.text_type(e))
             LOGGER.warning(diagText)
             QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
@@ -470,8 +461,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
         self.trayIcon.hide()
         if self.logWindow:
             self.logWindow.close()
-
-        event.accept()
+        sys.exit(0)
 
     def setSoundVolume(self, value):
         SoundManager().setSoundVolume(value)
@@ -531,9 +521,10 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.soundSetupAction.setEnabled(False)
             # self.soundButton.setEnabled(False)
             QMessageBox.warning(None, "Sound disabled",
-                                "The lib 'pyglet' which is used to play sounds cannot be found, ""so the "
-                                "soundsystem is disabled.\nIf you want sound, please install the 'pyglet' "
-                                "library. This warning will not be shown again.", QMessageBox.Ok)
+                                "The lib 'pyglet' which is used to play sounds cannot "
+                                "be found, so the soundsystem is disabled.\nIf you want sound, "
+                                "please install the 'pyglet' library. This warning will "
+                                "not be shown again.", QMessageBox.Ok)
         else:
             self.soundSetupAction.setEnabled(True)
             if newValue is None:
@@ -613,8 +604,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.statisticsThread.requestStatistics()
 
     def clipboardChanged(self, mode=0):
-        if not (
-                mode == 0 and self.kosClipboardActiveAction.isChecked() and self.clipboard.mimeData().hasText()):
+        if not (mode == 0 and self.kosClipboardActiveAction.isChecked() and
+                self.clipboard.mimeData().hasText()):
             return
         content = six.text_type(self.clipboard.text())
         contentTuple = tuple(content)
@@ -666,7 +657,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
-                        format(x / self.mapView.page().zoomFactor(), y / self.mapView.page().zoomFactor()))
+                        format(x / self.mapView.page().zoomFactor(),
+                               y / self.mapView.page().zoomFactor()))
         # self.mapView.page().runJavaScript(_scrollTo)
         self.initialMapPosition = QPointF(x, y)
 
@@ -774,7 +766,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             self.dotlan.setJumpbridges(self, data)
             if url or (data and len(data) > 0):
                 if url:
-                    self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()), url,
+                    self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()),
+                                            url,
                                             maxAge=Cache.FOREVER)
                 else:
                     self.cache.putJumpbridge(self.dotlan.region, data)
@@ -942,7 +935,7 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             elif message.status == states.KOS_STATUS_REQUEST:
                 # Do not accept KOS requests from any but monitored intel channels
                 # as we don't want to encourage the use of xxx in those channels.
-                if not message.room in self.roomnames:
+                if message.room not in self.roomnames:
                     text = message.message[4:]
                     text = text.replace("  ", ",")
                     parts = (name.strip() for name in text.split(","))
@@ -953,8 +946,8 @@ class MainWindow(QMainWindow, vi.ui.MainWindow.Ui_MainWindow):
             elif message.user not in (
                     "EVE-System", "EVE System") and message.status != states.IGNORE:
                 self.addMessageToIntelChat(message)
-                # For each system that was mentioned in the message, check for alarm distance to the current system
-                # and alarm if within alarm distance.
+                # For each system that was mentioned in the message, check for alarm distance
+                # to the current system and alarm if within alarm distance.
                 systemList = self.dotlan.systems
                 if message.systems:
                     messageLogged = True

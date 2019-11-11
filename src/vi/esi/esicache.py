@@ -55,7 +55,6 @@ def updateDatabase(oldVersion, con):
             con.execute(update[0])
     con.commit()
 
-
 def _hash(data):
     """ generate a hash from data object to be used as cache key """
     hash_algo = hashlib.new('md5')

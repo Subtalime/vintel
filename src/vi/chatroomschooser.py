@@ -25,6 +25,10 @@ from PyQt5.QtCore import pyqtSignal
 from vi.cache.cache import Cache
 
 from vi.ui.ChatroomsChooser import Ui_Dialog
+
+LOGGER = logging.getLogger(__name__)
+
+
 class ChatroomChooser(QtWidgets.QDialog, Ui_Dialog):
     rooms_changed = pyqtSignal(list)
 
@@ -40,16 +44,12 @@ class ChatroomChooser(QtWidgets.QDialog, Ui_Dialog):
             roomnames = u"querius.imperium,delve.imperium"
         self.roomnamesField.setPlainText(roomnames)
 
-
     def saveClicked(self):
         text = six.text_type(self.roomnamesField.toPlainText())
         rooms = [six.text_type(name.strip()) for name in text.split(",")]
-        logging.debug("Added rooms: {}".format(rooms))
+        LOGGER.debug("Added rooms: {}".format(rooms))
         self.accept()
         self.rooms_changed.emit(rooms)
 
-
     def setDefaults(self):
         self.roomnamesField.setPlainText(u"querius.imperium,delve.imperium")
-
-

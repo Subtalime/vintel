@@ -1,22 +1,3 @@
-#   Vintel - Visual Intel Chat Analyzer
-#   Copyright (c) 2019. Steven Tschache (github@tschache.com)
-#  #
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#  #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
-#   GNU General Public License for more details.
-#  #
-#   You should have received a copy of the GNU General Public License
-#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
-#  #
-#  #
-# 
-
 ###########################################################################
 #																		  #
 #  This program is free software: you can redistribute it and/or modify	  #
@@ -46,7 +27,8 @@ from vi.resources import resourcePath
 from vi import states
 from vi.sound.soundmanager import SoundManager
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+
 
 class TrayContextMenu(QtWidgets.QMenu):
     instances = set()
@@ -110,7 +92,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def __init__(self, app):
         self.resource_path = resourcePath()
-        logger.debug("TrayIcon looking for %s" % resourcePath("logo_small.png"))
+        LOGGER.debug("TrayIcon looking for %s" % resourcePath("logo_small.png"))
         self.icon = QIcon(resourcePath("logo_small.png"))
         QSystemTrayIcon.__init__(self, self.icon, app)
         self.setToolTip("Your Vintel-Information-Service! :)")
@@ -119,7 +101,6 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self.showAlarm = True
         self.showRequest = True
         self.alarmDistance = 0
-
 
     def changeAlarmDistance(self):
         distance = self.alarmDistance
@@ -147,7 +128,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             cm.requestCheck.setChecked(newValue)
         self.showRequest = newValue
 
-    def showNotification(self, message, system, char, distance, soundlist: list=None):
+    def showNotification(self, message, system, char, distance, soundlist: list = None):
         if message is None:
             return
         room = message.room
@@ -167,10 +148,12 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             elif message.status == states.REQUEST:
                 SoundManager().setSoundVolume(soundlist["Request"][2])
                 soundFile = soundlist["Request"][1]
-        if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
+        if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(
+                states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "ALARM!"
             icon = 2
-            speechText = (u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
+            speechText = (
+                u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
             text = speechText + (u"\nText: %s" % message.plainText)
             if soundFile:
                 SoundManager().playSoundFile(soundFile, text, speechText)
@@ -178,7 +161,8 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             else:
                 SoundManager().playSound("alarm", text, speechText)
             self.lastNotifications[states.ALARM] = time.time()
-        elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
+        elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(
+                states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "Status request"
             icon = 1
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
@@ -191,5 +175,5 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         if not (title is None or text is None) or icon:
             if text == "":
                 text = "{}".format(**locals())
-            logger.debug("Trayicon-Message: \"%s\"" % text)
+            LOGGER.debug("Trayicon-Message: \"%s\"" % text)
             self.showMessage(title, text, icon)

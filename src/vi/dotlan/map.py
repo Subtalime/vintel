@@ -1,3 +1,25 @@
+#  Vintel - Visual Intel Chat Analyzer
+#  Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
+
+import time
+import logging
+import requests
+import six
 from bs4 import BeautifulSoup
 from vi.esi import esiinterface
 from vi.dotlan.mysystem import MySystem as System
@@ -5,8 +27,8 @@ from vi.dotlan.exception import DotlanException
 from vi.cache.cache import Cache
 from vi.version import URL
 
-import time, logging, requests, six
 
+LOGGER = logging.getLogger(__name__)
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
              "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
@@ -35,7 +57,7 @@ class Map(object):
         return content
 
     def __init__(self, region, svgFile=None):
-        logging.debug("Initializing Map for {}".format(region))
+        LOGGER.debug("Initializing Map for {}".format(region))
         self.region = region
         cache = Cache()
         self.outdatedCacheError = None
@@ -48,7 +70,8 @@ class Map(object):
         if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg, esiinterface().secondsTillDowntime() + 60 * 60)
+                cache.putIntoCache("map_" + self.region, svg,
+                                   esiinterface().secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
                 svg = cache.getFromCache("map_" + self.region, True)
@@ -72,7 +95,7 @@ class Map(object):
         self._jumpMapsVisible = False
         self._statisticsVisible = False
         self.marker = self.soup.select("#select_marker")[0]
-        logging.debug("Initializing Map for {}: Done".format(region))
+        LOGGER.debug("Initializing Map for {}: Done".format(region))
 
     def _extractSystemsFromSoup(self, soup):
         systems = {}
@@ -86,7 +109,7 @@ class Map(object):
             systemId = symbolId[3:]
             try:
                 systemId = int(systemId)
-            except ValueError as e:
+            except ValueError:
                 continue
             for element in symbol.select(".sys"):
                 name = element.select("text")[0].text.strip().upper()
@@ -155,7 +178,8 @@ class Map(object):
             which the line ends
         """
         for jump in self.soup.select("#jumps")[0].select(".j"):
-            if "jumpbridge" in jump["class"]: continue
+            if "jumpbridge" in jump["class"]:
+                ontinue
             parts = jump["id"].split("-")
             if parts[0] == "j":
                 startSystem = self.systemsById[int(parts[1])]
@@ -170,7 +194,7 @@ class Map(object):
         return content
 
     def addSystemStatistics(self, statistics):
-        logging.info("addSystemStatistics start")
+        LOGGER.info("addSystemStatistics start")
         if statistics is not None:
             for systemId, system in self.systemsById.items():
                 if systemId in statistics:
@@ -178,8 +202,7 @@ class Map(object):
         else:
             for system in self.systemsById.values():
                 system.setStatistics(None)
-        logging.info("addSystemStatistics complete")
-
+        LOGGER.info("addSystemStatistics complete")
 
     def setJumpbridges(self, jumpbridgesData):
         """
@@ -217,7 +240,8 @@ class Map(object):
             line = soup.new_tag("line", x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
                                 y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
                                 x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
-                                y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1], visibility="hidden",
+                                y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
+                                visibility="hidden",
                                 style="stroke:#{0}".format(jbColor))
             line["stroke-width"] = 2
             line["class"] = ["jumpbridge", ]
@@ -251,5 +275,4 @@ class Map(object):
                 svgFile.write(svgData)
                 svgFile.close()
         except Exception as e:
-            logging.error(e)
-
+            LOGGER.error(e)

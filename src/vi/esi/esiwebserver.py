@@ -16,10 +16,13 @@
 #
 
 import threading
+import logging
 from urllib import parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from PyQt5.QtCore import QUrl
 from .esiconfig import EsiConfig
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EsiWebServer(object):
@@ -54,5 +57,5 @@ class EsiWebServer(object):
                         b"You have verified your account on ESI. You can now close this window")
 
             except Exception as e:
-                self.logger.error("Unexpected response: %s: %r", self.requestline, e)
+                LOGGER.error("Unexpected response: %s: %r", self.requestline, e)
                 self.wfile.write(b"I don't know what you are on about")

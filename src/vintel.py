@@ -184,4 +184,3 @@ sys.excepthook = myExceptionHook
 
 app = Application(sys.argv)
 sys.exit(app.exec_())
-

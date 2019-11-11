@@ -35,22 +35,23 @@ from vi.resources import resourcePath, getVintelDir
 from vi.chatentrywidget import ChatEntryWidget
 from vi.esihelper import EsiHelper
 
-
 STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 24
 
 LOGGER = logging.getLogger(__name__)
 
-# attempt to run this in a thread rather thana timer
+
+# attempt to run this in a thread rather than a timer
 # to reduce flickering on reload
 class MapUpdateThread(Thread, QObject):
     map_update = pyqtSignal(str)
 
-    def __init__(self, timerInterval: int=4000):
+    def __init__(self, timerInterval: int = 4000):
         Thread.__init__(self, name="MapUpdate")
         QObject.__init__(self)
-        LOGGER.debug("Starting Map-Thread {}".format(timerInterval))
+        LOGGER.debug("Starting Map-Thread (Interval {}ms)".format(timerInterval))
         self.queue = queue.Queue()
+        self.active = True
         self.activeData = False
         if timerInterval > 1000:
             timerInterval = timerInterval / 1000
@@ -65,24 +66,30 @@ class MapUpdateThread(Thread, QObject):
             tobj.js.string = scroll
             tobj.soup.svg.append(tobj.js)
             return str(tobj.soup)
-        loadMapAttempt =0
+
+        loadMapAttempt = 0
         while True:
             tobj = local()
             try:
                 tobj.timeout = False
-                tobj.content, tobj.zoomFactor, tobj.scrollPosition = self.queue.get(timeout=self.timeout)
+                tobj.content, tobj.zoomFactor, tobj.scrollPosition = self.queue.get(
+                    timeout=self.timeout)
             except Exception:
-                tobj.timeout  = True
+                tobj.timeout = True
                 pass
-            if not self.activeData: # we don't have initial Map-Data yet
+            if not self.activeData:  # we don't have initial Map-Data yet
                 loadMapAttempt += 1
                 LOGGER.debug("Map-Content update attempt, but not active")
                 if loadMapAttempt > self.maxLoadMapAttempts:
-                    LOGGER.critical("Something is stopping the program of progressing. (Map-Attempts > {}\n"
-                                     "If this continues to happen, delete the Cache-File in \"{}\""
-                                     % (self.maxLoadMapAttempts, getVintelDir()))
+                    LOGGER.critical(
+                        "Something is stopping the program of progressing. (Map-Attempts > {}\n"
+                        "If this continues to happen, delete the Cache-File in \"{}\""
+                        % (self.maxLoadMapAttempts, getVintelDir()))
                     exit(-1)
                 continue
+            if not self.active:
+                LOGGER.debug("Ending {}" % self.name)
+                return
             try:
                 loadMapAttempt = 0
                 if not tobj.timeout:  # not based on Timeout
@@ -102,46 +109,44 @@ class MapUpdateThread(Thread, QObject):
                 LOGGER.error("Problem with setMapContent: %r", e)
 
     def quit(self):
-        self.activeData = False
+        self.active = False
         LOGGER.debug("Stopping Map-Thread")
-        self.queue.put(None)
-        Thread.quit(self)
 
 
 class AvatarFindThread(Thread, QObject):
     avatar_update = pyqtSignal(ChatEntryWidget, bytes)
 
     def __init__(self):
-        Thread.__init__(self, name="AvatarFine")
+        Thread.__init__(self, name="AvatarFind")
         QObject.__init__(self)
         LOGGER.debug("Starting Avatar-Thread")
         self.queue = SixQueue.Queue()
         self.active = True
         self.wait = 300  # time between 2 requests in ms
 
-
     def addChatEntry(self, chatEntry, clearCache=False):
         try:
             if clearCache:
                 cache = Cache()
                 cache.removeAvatar(chatEntry.message.user)
-
             # Enqeue the data to be picked up in run()
             self.queue.put(chatEntry)
         except Exception as e:
             LOGGER.error("Error in AvatarFindThread: %r", e)
-
 
     def run(self):
         tobj = local()
         while True:
             try:
                 tobj.lastCall = 0
-                # Block waiting for addChatEntry() to enqueue something
-                tobj.chatEntry = self.queue.get()
-                if not self.active:
-                    LOGGER.debug("Request for Avatar but Thread not enabled")
-                    continue
+                try:# Block waiting for addChatEntry() to enqueue something
+                    tobj.chatEntry = self.queue.get(False)
+                except Exception as e:
+                    if not self.active:
+                        LOGGER.debug("Ending {}" % self.name)
+                        return
+                    if e:
+                        continue
 
                 tobj.charname = tobj.chatEntry.message.user
                 LOGGER.debug("AvatarFindThread getting avatar for %s" % tobj.charname)
@@ -163,12 +168,12 @@ class AvatarFindThread(Thread, QObject):
             except Exception as e:
                 LOGGER.error("Error in AvatarFindThread : %r", e)
 
-
     def quit(self):
         self.active = False
         LOGGER.debug("Stopping Avatar-Thread")
-        self.queue.put(None)
-        Thread.quit(self)
+        # if self.active:
+        #     self.queue.put(None)
+        # super(__class__, self).quit()
 
 
 class KOSCheckerThread(Thread, QObject):
@@ -181,7 +186,6 @@ class KOSCheckerThread(Thread, QObject):
         self.queue = SixQueue.Queue()
         self.recentRequestNamesAndTimes = {}
         self.active = True
-
 
     def addRequest(self, names, requestType, onlyKos=False):
         try:
@@ -198,15 +202,14 @@ class KOSCheckerThread(Thread, QObject):
         except Exception as e:
             LOGGER.error("Error in KOSCheckerThread.addRequest: %r", e)
 
-
     def run(self):
         while True:
             # Block waiting for addRequest() to enqueue something
-            names, requestType, onlyKos = self.queue.get()
+            names, requestType, onlyKos = self.queue.get(False)
             if not self.active:
-                continue
+                return
             try:
-                #LOGGER.info("KOSCheckerThread kos checking %s" %  str(names))
+                # LOGGER.info("KOSCheckerThread kos checking %s" %  str(names))
                 hasKos = False
                 if not names:
                     continue
@@ -231,8 +234,6 @@ class KOSCheckerThread(Thread, QObject):
     def quit(self):
         self.active = False
         LOGGER.debug("Stopping KOSChecker-Thread")
-        self.queue.put((None, None, None))
-        Thread.quit(self)
 
 
 class MapStatisticsThread(Thread, QObject):
@@ -248,18 +249,18 @@ class MapStatisticsThread(Thread, QObject):
         self.refreshTimer = None
         self.active = True
 
-
     def requestStatistics(self):
         self.queue.put(1)
-
 
     def run(self):
         self.refreshTimer = QTimer()
         self.refreshTimer.timeout.connect(self.requestStatistics)
         while True:
             # Block waiting for requestStatistics() to enqueue a token
-            self.queue.get()
+            req = self.queue.get(False)
             if not self.active:
+                return
+            if req != 1:
                 continue
             self.refreshTimer.stop()
             LOGGER.debug("MapStatisticsThread requesting statistics")
@@ -274,12 +275,10 @@ class MapStatisticsThread(Thread, QObject):
             self.statistic_data_update.emit(requestData)
             LOGGER.debug("MapStatisticsThread emitted statistic_data_update")
 
-
     def quit(self):
         self.active = False
         LOGGER.debug("Stopping MapStatistics-Thread")
-        self.queue.put(None)
-        Thread.quit(self)
+
 
 class FileWatcherThread(Thread, QObject):
     file_change = pyqtSignal(str)
@@ -292,7 +291,7 @@ class FileWatcherThread(Thread, QObject):
         self.active = True
         self._warned = False
         self.maxAge = maxAge
-        self.scan_delay = 500  #ms
+        self.scan_delay = 500  # ms
         self.maxFiles = 200
         # index = Folder, content = {path, os.stat}
         self.filesInFolder = {}
@@ -308,14 +307,16 @@ class FileWatcherThread(Thread, QObject):
             # here, periodically, we check if any files have been added to the folder
             if self.active:
                 self._scanPaths()
-                for path in self.filesInFolder.keys(): # dict
-                    self.filesInFolder[path] = self._checkChanges(list(self.filesInFolder[path].items()))
-            pass
+                for path in self.filesInFolder.keys():  # dict
+                    self.filesInFolder[path] = self._checkChanges(
+                        list(self.filesInFolder[path].items()))
+            else:
+                return
 
     def quit(self) -> None:
         self.active = False
         LOGGER.debug("Stopping FileWatcher-Thread")
-        super(__class__, self).quit()
+        # self.thread().exit()
 
     def fileChanged(self, path):
         self.file_change.emit(path)
@@ -324,7 +325,9 @@ class FileWatcherThread(Thread, QObject):
         # only do this ONCE at startup
         if self._warned:
             return
-        LOGGER.warning("Log-Folder \"{}\" has more than {} files (actually has {})! This will impact performance! Consider tidying up!".format(path, self.maxFiles, length))
+        LOGGER.warning(
+            "Log-Folder \"{}\" has more than {} files (actually has {})! This will impact performance! Consider tidying up!".format(
+                path, self.maxFiles, length))
         self._warned = True
 
     def _checkChanges(self, checkList):
@@ -353,7 +356,8 @@ class FileWatcherThread(Thread, QObject):
         changed = False
         now = time.time()
         # order by date descending
-        folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True)
+        folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime,
+                               reverse=True)
         if self.maxFiles and len(folderContent) > self.maxFiles:
             self._sendWarning(path, len(folderContent))
         for fullPath in folderContent:
@@ -376,4 +380,3 @@ class FileWatcherThread(Thread, QObject):
                 pass
         if changed:
             self.filesInFolder[path] = filesInDir
-

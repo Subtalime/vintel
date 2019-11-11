@@ -20,9 +20,10 @@
 import logging
 import re
 
+LOGGER = logging.getLogger(__name__)
+
+
 class Bridges(list):
-    def __init__(self):
-        self = []
 
     def export(self):
         bridgeList = []
@@ -31,14 +32,17 @@ class Bridges(list):
             bridgeList.append(routes)
         return bridgeList
 
+
 class Bridge(object):
-    def __init__(self, region: str, start: str, end: str, status: str="Online", distance: float=0., direction: str="<>"):
+    def __init__(self, region: str, start: str, end: str, status: str = "Online",
+                 distance: float = 0., direction: str = "<>"):
         self.region = u"{}".format(region)
         self.start = u"{}".format(start)
         self.end = u"{}".format(end)
         self.status = status
         self.distance = float(distance)
         self.direction = direction
+
 
 class Import:
     def __init__(self):
@@ -68,7 +72,7 @@ class Import:
 
         return self.bridges.export()
 
-    def readGarpaFile(self, fileName: str=None, clipboard: str=None):
+    def readGarpaFile(self, fileName: str = None, clipboard: str = None):
         try:
             if not clipboard:
                 with open(fileName, "r") as f:
@@ -78,7 +82,7 @@ class Import:
             if content:
                 return self.convertGarpaData(content)
         except Exception as e:
-            logging.error("Error in importing Garpa Jumpbridges: %r", e)
+            LOGGER.error("Error in importing Garpa Jumpbridges: %r", e)
         return []
 
 
@@ -87,4 +91,3 @@ if __name__ == "__main__":
 
     data = Import().readGarpaFile(importFile)
     print(data)
-

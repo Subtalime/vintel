@@ -27,6 +27,7 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
+
 class PanningWebView(QWidget):
     zoom_factor = pyqtSignal(float)
 
@@ -56,8 +57,6 @@ class PanningWebView(QWidget):
                 LOGGER.debug("Ctrl-Mouse-Scroll %r" % a1.Delta())
         return False
 
-
-
     def setZoomFactor(self, value: float):
         self.zoom_factor.emit(value)
         return self.page().setZoomFactor(value)
@@ -73,8 +72,7 @@ class PanningWebView(QWidget):
     def page(self) -> QWebEnginePage:
         return self.mapView
 
-    def setHtml(self, p_str: str, baseUrl: QUrl=None, *args, **kwargs):
+    def setHtml(self, p_str: str, baseUrl: QUrl = None, *args, **kwargs):
         if self.oldContent != p_str:
             self.page().setHtml(p_str, baseUrl, *args, **kwargs)
             self.oldContent = p_str
-

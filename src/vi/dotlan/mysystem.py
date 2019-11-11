@@ -47,7 +47,6 @@ class MySystem(System):
                     if alarmTime < maxDiff:
                         break
                     offset += 1
-
             # calc the new timer for injecting into JS
             diff = time.time() - self.lastAlarmTime
             minutes = int(math.floor(diff / 60))

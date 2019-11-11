@@ -42,7 +42,7 @@ from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from vi import states
 from vi.esihelper import EsiHelper
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
 
@@ -77,7 +77,8 @@ def parseStatus(rtext):
             return states.REQUEST
         elif ("?" in originalText):
             return states.REQUEST
-        elif (text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE" "STILL BLUE", "ALL BLUES")):
+        elif (text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE",
+                                       "STILL BLUE", "ALL BLUES")):
             return states.CLEAR
 
 
@@ -107,8 +108,9 @@ def parseShips(rtext: Tag) -> bool:
                 hit = True
                 start = text.upper().find(upperText)
                 end = start + len(upperText)
-                if ((start > 0 and text.upper()[start - 1] not in (".", ",", " ", "X")) or (
-                        end < len(text.upper()) - 1 and text.upper()[end] not in (".", ",", "S", " "))):
+                if ((start > 0 and text.upper()[start - 1] not in (".", ",", " ", "X"))
+                        or (end < len(text.upper()) - 1 and
+                            text.upper()[end] not in (".", ",", "S", " "))):
                     hit = False
                 if hit:
                     shipInText = text[start:end]
@@ -126,9 +128,7 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
     :param foundSystems:
     :return: bool
     """
-    
     systemNames = systems.keys()
-    
     # words to ignore on the system parser. use UPPER CASE
     WORDS_TO_IGNORE = ("IN", "IS", "AS")
 
@@ -142,13 +142,11 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
         worktext = text
         for char in CHARS_TO_IGNORE:
             worktext = worktext.replace(char, "")
-            
         # Drop redundant whitespace so as to not throw off word index
         worktext = ' '.join(worktext.split())
         words = worktext.split(" ")
 
         for idx, word in enumerate(words):
-            
             # Is this about another a system's gate?
             if len(words) > idx + 1:
                 if words[idx+1].upper() == 'GATE':
@@ -161,7 +159,6 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
                         # '_____ GATE' mentioned in message, which is not what we're
                         # interested in, so go to checking next word.
                         continue
-            
             upperWord = word.upper()
             if upperWord != word and upperWord in WORDS_TO_IGNORE: continue
             if upperWord in systemNames:  # - direct hit on name
@@ -180,10 +177,12 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
                 upperWordParts = upperWord.split("-")  # (I-I will match I43-IF3)
                 for system in systemNames:
                     systemParts = system.split("-")
-                    if (len(upperWordParts) == 2 and len(systemParts) == 2 and len(upperWordParts[0]) > 1 and len(
-                            upperWordParts[1]) > 1 and len(systemParts[0]) > 1 and len(systemParts[1]) > 1 and len(
-                            upperWordParts) == len(systemParts) and upperWordParts[0][0] == systemParts[0][0] and
-                                upperWordParts[1][0] == systemParts[1][0]):
+                    if (len(upperWordParts) == 2 and len(systemParts) == 2
+                            and len(upperWordParts[0]) > 1 and len(upperWordParts[1]) > 1
+                            and len(systemParts[0]) > 1 and len(systemParts[1]) > 1
+                            and len(upperWordParts) == len(systemParts)
+                            and upperWordParts[0][0] == systemParts[0][0]
+                            and upperWordParts[1][0] == systemParts[1][0]):
                         foundSystems.add(systems[system])
                         formattedText = formatSystem(text, word, system)
                         textReplace(text, formattedText)
@@ -196,7 +195,6 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
                         formattedText = formatSystem(text, word, system)
                         textReplace(text, formattedText)
                         return True
-                        
     return False
 
 
@@ -234,19 +232,19 @@ def parseUrls(rtext: Tag) -> bool:
             textReplace(text, formatUrl(text, url))
             return True
 
+
 def parseCharnames(rtext: Tag) -> bool:
     """
     check the Chat-Entry for any Character-Names and mark them with "show_enemy"
     :param rtext:
     :return:
     """
-
     def findNames(text: NavigableString) -> dict:
         WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
-        def chunks(listofwords: list, size: int = 1, offset = 0) -> list:
-            return [" ".join(listofwords[pos:pos + size]) for pos in range(0 + offset, len(listofwords), size)]
-
-
+        def chunks(listofwords: list, size: int=1, offset=0) -> list:
+            return [" ".join(listofwords[pos:pos + size]) for pos in range(0 + offset,
+                                                                           len(listofwords),
+                                                                           size)]
 
         names = {}
         if len(text.strip()) == 0:
@@ -254,14 +252,15 @@ def parseCharnames(rtext: Tag) -> bool:
 
         words = text.split()
         # chunks of 2s
-        logger.debug("Analysing Names in: {}".format(words))
+        LOGGER.debug("Analysing Names in: {}".format(words))
         try:
-            for pairs in range(2,0,-1):
+            for pairs in range(2, 0, -1):
                 checklist = chunks(words, pairs)
                 for checkname in checklist:
                     for char in CHARS_TO_IGNORE:
                         checkname = checkname.replace(char, "")
-                    if checkname.upper() in WORDS_TO_IGNORE: continue
+                    if checkname.upper() in WORDS_TO_IGNORE:
+                        continue
                     if len(checkname) >= 3:
                         found = False
                         for a in names.items():
@@ -272,9 +271,9 @@ def parseCharnames(rtext: Tag) -> bool:
                             char = EsiHelper().checkPlayerName(checkname)
                             if char is not None:
                                 names[checkname] = char
-            logger.debug("Found names: {}".format(names))
+            LOGGER.debug("Found names: {}".format(names))
         except Exception as e:
-            logger.error("Error parsing Namse", e)
+            LOGGER.error("Error parsing Namse", e)
         return names
 
     def formatCharname(text: str, charname: str, esicharacter: dict):
@@ -285,16 +284,19 @@ def parseCharnames(rtext: Tag) -> bool:
     texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t) >= 3]
 
     replaced = False
-    for text in texts: # iterate through each
-        names = findNames(text) # line
+    for text in texts:  # iterate through each
+        names = findNames(text)  # line
         for name, chara in names.items():
             newText = formatCharname(text, name, chara)
             textReplace(text, newText)
             return True
     return replaced
 
+
 if __name__ == "__main__":
-    chat_text = "Zedan Chent-Shi  in B-7DFU in a Merlin together " + " with  Tablot Manzari  and  Sephora Dunn  in Dominix  AntsintheEyeJohnsen  +4  4K-TRB"
+    chat_text = "Zedan Chent-Shi  in B-7DFU in a Merlin together " \
+                "with  Tablot Manzari  and  Sephora Dunn  in " \
+                "Dominix  AntsintheEyeJohnsen  +4  4K-TRB"
     charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
 
     formatedText = u"<rtext>{0}</rtext>".format(chat_text)
@@ -306,7 +308,7 @@ if __name__ == "__main__":
 
     while parseCharnames(rtext):
         continue
-    logger.debug("Names found: %r", rtext)
+    LOGGER.debug("Names found: %r", rtext)
     exit(0)
     parts = chat_text.strip(" ").split(" ")
     checkwords = ""
@@ -317,14 +319,13 @@ if __name__ == "__main__":
             originalText = checkwords
             if len(checkwords) > 3:
                 if checkwords in charnames:
-                    print ("Hit with {}".format(checkwords))
+                    print("Hit with {}".format(checkwords))
                     # last hit
                     index = parts.index(part)
                     i = 0
                     while i < index:
                         parts.pop(0)
-                        i+=1
+                        i += 1
                     break
         checkwords = ""
         parts.pop(0)
-

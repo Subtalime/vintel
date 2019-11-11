@@ -18,14 +18,15 @@
 #
 
 from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import  QListWidget, QMenu, QAction
+from PyQt5.QtWidgets import QListWidget, QMenu, QAction
 from vi.character.Characters import Characters, Character
 from collections import OrderedDict
 import logging
 
+
 # TODO: add emit-action on click
 class CharacterMenu(QMenu):
-    def __init__(self, menuname: str, parent: QObject=None, characters: Characters=None):
+    def __init__(self, menuname: str, parent: QObject = None, characters: Characters = None):
         super(CharacterMenu, self).__init__(menuname, parent)
         self._listWidget = QListWidget()
         self._menu_actions = dict()
@@ -77,5 +78,5 @@ class CharacterMenu(QMenu):
                 if obj:
                     self.removeAction(obj)
             self._menu_actions = dict()
-        except Exception as e:
+        except Exception:
             raise

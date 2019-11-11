@@ -26,6 +26,8 @@ from vi.resources import resourcePath, getVintelMap
 import logging
 from vi.ui.RegionChooserList import Ui_Dialog
 
+LOGGER = logging.getLogger(__name__)
+
 
 class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
     new_region_range_chosen = pyqtSignal(str)
@@ -72,9 +74,10 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
     def saveClicked(self):
         if not self.checkMapFiles():
             resPath = getVintelMap()
-            QMessageBox.critical(self, "Region selection",
-                                 "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(resPath,
-                                                                                                 self.txtRegions.text()))
+            QMessageBox.critical(None, "Region selection",
+                                 "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(
+                                     resPath,
+                                     self.txtRegions.text()))
             self.txtRegions.setFocus()
             return
 
@@ -87,7 +90,7 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
         if len(litems) > 0 and self.txtRegions.text():
             saveCache += "," + self.txtRegions.text()
         Cache().putIntoCache("region_name_range", saveCache, 60 * 60 * 24 * 365)
-        logging.info("New list of Regions selected: {}".format(saveCache))
+        LOGGER.info("New list of Regions selected: {}".format(saveCache))
         self.new_region_range_chosen.emit(saveCache)
         self.accept()
 
@@ -97,7 +100,8 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
             with open(resourcePath("docs/regionselect.txt")) as f:
                 content = f.read()
                 content = content.replace("<mapdir>", getVintelMap())
-                QMessageBox.information(self, "Region-Help", content)
-        except Exception:
-            QMessageBox.warning(self, "Help-File",
-                                "Unable to find Help-File \n{}".format(resourcePath("docs/regionselect.txt")))
+                QMessageBox.information(None, "Region-Help", content)
+        except FileNotFoundError:
+            QMessageBox.warning(None, "Help-File",
+                                "Unable to find Help-File \n{}".format(
+                                    resourcePath("docs/regionselect.txt")))

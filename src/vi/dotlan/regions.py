@@ -79,5 +79,3 @@ def convertRegionName(name):
                 nextUpper = False
             converted.append(char)
     return u"".join(converted)
-
-

@@ -28,6 +28,9 @@ import clipboard
 import vi.ui.JumpbridgeChooser
 from vi.jumpbridge import Import
 
+LOGGER = logging.getLogger(__name__)
+
+
 class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
     set_jump_bridge_url = pyqtSignal(str, str)
 
@@ -53,7 +56,7 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             self.accept()
             self.set_jump_bridge_url.emit(url, None)
         except Exception as e:
-            logging.error("Finding Jumpbridgedata failed for \"%s\": %r", url, e)
+            LOGGER.error("Finding Jumpbridgedata failed for \"%s\": %r", url, e)
 
     def accept(self) -> None:
         QDialog.accept(self)
@@ -71,4 +74,4 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
                     else:
                         QtWidgets.QMessageBox.warning(self, "Jumpbridgedata from Clipboard", "Invalid data found in Clipboard")
             except Exception as e:
-                logging.error("Error while using Clipboard-Jumpdata: %r", e)
+                LOGGER.error("Error while using Clipboard-Jumpdata: %r", e)

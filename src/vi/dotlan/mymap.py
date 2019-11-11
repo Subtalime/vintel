@@ -29,6 +29,7 @@ import datetime
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
              "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
+LOGGER = logging.getLogger(__name__)
 
 
 class MyMap(Map):
@@ -49,8 +50,9 @@ class MyMap(Map):
           return red+green+blue;
         };
         // max time for alarm, rect color, secondLine color
-        var ALARM_COLORS = [60 * 4, "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#FFFFFF", 60 * 15, "#FFFA0F", "#000000",
-                        60 * 25, "#FFFDA2", "#000000", 60 * 60 * 24, "#FFFFFF", "#000000"];
+        var ALARM_COLORS = [60 * 4,  "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#FFFFFF", 
+                            60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000", 
+                            60 * 60 * 24, "#FFFFFF", "#000000"];
         var ALARM_COLOR = ALARM_COLORS[2];
         var UNKNOWN_COLOR = "#FFFFFF";
         var CLEAR_COLOR = "#59FF6C";
@@ -78,10 +80,8 @@ class MyMap(Map):
                 }
                 minutes = parseInt(elapsed / 60, 10);
                 seconds = parseInt(elapsed % 60, 10);
-
                 minutes = minutes < 10 ? "0" + minutes : minutes;
                 seconds = seconds < 10 ? "0" + seconds : seconds;
-
                 secondline.textContent = minutes + ":" + seconds;
                 if (state == STATE[2]) {
                     var secondsUntilWhite = 3 * 60;
@@ -90,32 +90,26 @@ class MyMap(Map):
                         calcValue = 255;
                         secondline.style = "fill: #008100;";
                     } 
-//                    secondline.textContent = secondline.textContent + "(" + calcValue + ", " + fullcolorhex(calcValue, 255, calcValue) +")";
                     rect.style.backgroundColor = '#'+fullColorHex(calcValue, 255, calcValue);
                 }
                 else { 
                     secondline.style.color = slcolor;
                     rect.style.backgroundColor = bgcolor;
                 }
-
             }, 1000);
-
         }
         function startTimerCountdown(seconds, display, frame) {
             var start = new Date().getTime() + seconds * 1000, elapsed = 0;
             window.setInterval(function() {
                 var time = start - new Date().getTime();
                 elapsed = Math.ceil(time / 100) / 10;
-
                 if (elapsed < 0) {
                     return;
                 }
                 minutes = parseInt(elapsed / 60, 10);
                 seconds = parseInt(elapsed % 60, 10);
-
                 minutes = minutes < 10 ? "0" + minutes : minutes;
                 seconds = seconds < 10 ? "0" + seconds : seconds;
-
                 display.textContent = minutes + ":" + seconds;
             }, 1000);
         }
@@ -124,17 +118,14 @@ class MyMap(Map):
             window.setInterval(function() {
                 var time = new Date().getTime();
                 elapsed = Math.ceil((end - time) / 100) / 10;
-
                 if (elapsed < 0) {
                     return;
                 }
                 elapsed = (time - start) / 1000;
                 minutes = parseInt(elapsed / 60, 10);
                 seconds = parseInt(elapsed % 60, 10);
-
                 minutes = minutes < 10 ? "0" + minutes : minutes;
                 seconds = seconds < 10 ? "0" + seconds : seconds;
-
                 display.textContent = minutes + ":" + seconds;
             }, 1000);
         }
@@ -205,7 +196,6 @@ class MyMap(Map):
             self.progress = None
         return self
 
-
     def debugWriteSoup(self, svgData):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
         dir, file = os.path.split(os.path.abspath(__file__))
@@ -214,8 +204,7 @@ class MyMap(Map):
             with open(os.path.join(dir, "output_{}.svg".format(ts)), "w+") as svgFile:
                 svgFile.write(svgData)
         except Exception as e:
-            logging.error(e)
-
+            LOGGER.error(e)
 
     def setJumpbridges(self, parent, jumpbridgesData):
         """
@@ -237,7 +226,7 @@ class MyMap(Map):
             colorCount = 0
             jumpCount = 0
             for bridge in jumpbridgesData:
-                jumpCount+=1
+                jumpCount += 1
                 if jumpCount % 4:
                     progress.setValue(jumpCount)
                 if progress.wasCanceled():
@@ -275,7 +264,7 @@ class MyMap(Map):
                 if ">" in connection:
                     line["marker-end"] = "url(#arrowend_{0})".format(jbColor)
                 jumps.insert(0, line)
-        except Exception as e:
+        except Exception:
             raise
         finally:
             if progress:

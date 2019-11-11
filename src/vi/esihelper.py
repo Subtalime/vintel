@@ -21,10 +21,13 @@ import logging
 from vi.esi.esiinterface import EsiInterface
 from vi.cache.cache import Cache
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+
+
 class EsiHelper:
     _ShipsUpper = {}
     _Ships = {}
+
     def __init__(self):
         self.esi = EsiInterface()
         self.cache = Cache()
@@ -93,6 +96,7 @@ class EsiHelper:
             for ship in self.esi.getShipList:
                 self._ShipsUpper[str(ship['name']).upper()] = ship
         return self._ShipsUpper
+
     @property
     def Ships(self):
         if len(self._Ships) == 0:
@@ -105,5 +109,5 @@ class EsiHelper:
             ship = self.ShipsUpper[shipName.upper()]
             return ship['type_id']
         except:
-            logger.error("Unable to find Ship {}".format(shipName))
+            LOGGER.error("Unable to find Ship {}".format(shipName))
         return None

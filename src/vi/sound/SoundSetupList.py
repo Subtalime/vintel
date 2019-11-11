@@ -26,13 +26,14 @@ from vi.ui.SoundSetupList import Ui_Dialog
 
 from vi.sound.soundmanager import SoundManager
 from vi.cache.cache import Cache
-from vi.resources import soundPath, resourcePath
+from vi.resources import soundPath
+
 
 class SoundSettingDialog(QDialog, Ui_Dialog):
-
     class MyTableModel(QAbstractTableModel):
         layout_to_be_changed = pyqtSignal()
         layout_changed = pyqtSignal()
+
         def __init__(self, datain, headerdata, parent=None):
             """
             Args:
@@ -51,7 +52,7 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
                 return len(self.arraydata[0])
             return 0
 
-        def data(self, index, role = Qt.DisplayRole):
+        def data(self, index, role=Qt.DisplayRole):
             if not index.isValid():
                 return QVariant()
             elif role != Qt.DisplayRole:
@@ -94,7 +95,7 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
             self.layout_changed.emit()
 
     def __init__(self, parent=None):
-        QDialog.__init__(self,parent=parent)
+        QDialog.__init__(self, parent=parent)
         self.setupUi(self)
         # get Sounds from Cache
         self.soundset = Cache().getFromCache("sound_setting_list")
@@ -134,7 +135,6 @@ class SoundSettingDialog(QDialog, Ui_Dialog):
 
     def browseFile(self):
         if self.current_rowIndex:
-            import os
             soundFile = self.txtSound.text()
             if not os.path.exists(soundFile):
                 soundFile = os.path.join(soundPath(), os.path.basename(soundFile))

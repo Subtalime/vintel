@@ -21,10 +21,9 @@ import os
 import sys
 import logging
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
-
-def resourcePath(relativePath = None):
+def resourcePath(relativePath=None):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
     if getattr(sys, 'frozen', False):
@@ -37,7 +36,8 @@ def resourcePath(relativePath = None):
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
 
-def soundPath(relativePath = None):
+
+def soundPath(relativePath=None):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
     basePath = resourcePath("sound")
@@ -45,6 +45,7 @@ def soundPath(relativePath = None):
         return basePath
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
+
 
 def mapPath(relativePath=None):
     """ Get absolute path to resource, works for dev and for PyInstaller
@@ -55,13 +56,15 @@ def mapPath(relativePath=None):
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
 
+
 def getEveDir() -> str:
     eveDirectory = None
     if sys.platform.startswith("darwin"):
         eveDirectory = os.path.join(os.path.expanduser("~"), "Documents", "EVE")
         if not os.path.exists(eveDirectory):
-            eveDirectory = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Eve Online",
-                                            "p_drive", "User", "My Documents", "EVE")
+            eveDirectory = os.path.join(os.path.expanduser("~"), "Library", "Application Support",
+                                        "Eve Online",
+                                        "p_drive", "User", "My Documents", "EVE")
     elif sys.platform.startswith("linux"):
         eveDirectory = os.path.join(os.path.expanduser("~"), "EVE")
     elif sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
@@ -72,8 +75,11 @@ def getEveDir() -> str:
         eveDirectory = os.path.join(documentsPath, "EVE")
     return eveDirectory
 
+
 eveChatLogDir = None
-def getEveChatlogDir(passedDir: str=None, log: bool=False) -> str:
+
+
+def getEveChatlogDir(passedDir: str = None, log: bool = False) -> str:
     global eveChatLogDir
     if passedDir:
         eveChatLogDir = passedDir
@@ -85,7 +91,8 @@ def getEveChatlogDir(passedDir: str=None, log: bool=False) -> str:
         logger.debug("getEveChatlogDir: {}".format(chatLogDirectory))
     return chatLogDirectory
 
-def getVintelDir(filePath: str=None, log: bool=False) -> str:
+
+def getVintelDir(filePath: str = None, log: bool = False) -> str:
     eveDir = getEveDir()
     vintelDir = os.path.join(eveDir, "vintel")
     if not os.path.exists(vintelDir):
@@ -95,12 +102,13 @@ def getVintelDir(filePath: str=None, log: bool=False) -> str:
             if not log:
                 print("getVintelDir: Error creating \"%s\": %r" % (vintelDir, e))
             else:
-                logger.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
+                L.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
     if filePath:
         vintelDir = os.path.join(vintelDir, filePath)
     return vintelDir
 
-def getVintelLogDir(log: bool=False) -> str:
+
+def getVintelLogDir(log: bool = False) -> str:
     vintelDir = os.path.join(getVintelDir(), "logs")
     if not os.path.exists(vintelDir):
         try:
@@ -109,11 +117,11 @@ def getVintelLogDir(log: bool=False) -> str:
             if not log:
                 print("getVintelLogDir: Error creating \"%s\": %r" % (vintelDir, e))
             else:
-                logger.error("getVintelLogDir: Error creating \"%s\": %r", vintelDir, e)
+                LOGGER.error("getVintelLogDir: Error creating \"%s\": %r", vintelDir, e)
     return vintelDir
 
 
-def getVintelMap(regionName: str=None, log: bool=False) -> str:
+def getVintelMap(regionName: str = None, log: bool = False) -> str:
     vintelDir = mapPath()
     if not os.path.exists(vintelDir):
         try:
@@ -122,14 +130,15 @@ def getVintelMap(regionName: str=None, log: bool=False) -> str:
             if not log:
                 print("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
             else:
-                logger.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
+                LOGGER.error("getVintelMap: Error creating \"%s\": %r", vintelDir, e)
     if regionName:
         if not regionName.endswith(".svg"):
             regionName += ".svg"
         vintelDir = os.path.join(vintelDir, regionName)
     return vintelDir
 
-def getVintelSound(soundFile: str=None, log: bool=False) -> str:
+
+def getVintelSound(soundFile: str = None, log: bool = False) -> str:
     vintelDir = soundPath()
     if not os.path.exists(vintelDir):
         try:
@@ -138,14 +147,15 @@ def getVintelSound(soundFile: str=None, log: bool=False) -> str:
             if not log:
                 print("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
             else:
-                logger.error("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
+                LOGGER.error("getVintelSound: Error creating \"%s\": %r", vintelDir, e)
     if soundFile:
         if not soundFile.endswith(".wav"):
             soundFile += ".wav"
         vintelDir = os.path.join(vintelDir, soundFile)
     return vintelDir
 
-def createResourceDirs(log: bool=False):
+
+def createResourceDirs(log: bool = False):
     getVintelDir(log=log)
     getVintelMap(log=log)
     getVintelSound(log=log)

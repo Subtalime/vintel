@@ -14,18 +14,24 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
-from PyQt5.QtCore import QThread, QTimer
+from PyQt5.QtCore import QTimer, QObject
+from threading import Thread
 import time
 import queue
+import logging
 from .esiinterface import EsiInterface
 
+
+LOGGER = logging.getLogger(__name__)
 # This is purely to load ESI in the background, since it can take quite a while!
 # Once loaded, the thread can actually be stopped
-class EsiThread(QThread):
+class EsiThread(Thread, QObject):
     POLL_RATE = 5000
 
     def __init__(self, use_cache: bool = True, cache_directory: str = None):
-        QThread.__init__(self)
+        Thread.__init__(self, name="Esi")
+        QObject.__init__(self)
+        LOGGER.debug("Starting ESI Thread")
         self.__use_cache = use_cache
         # if use_cache and cache_directory and not os.path.exists(cache_directory):
         #     raise AttributeError("\"cache_directory\" (%s) does not exist!" % cache_directory)
@@ -49,9 +55,11 @@ class EsiThread(QThread):
         self.refreshTimer.timeout.connect(self.requestInstance)
         while True:
             # Block waiting for requestStatistics() to enqueue a token
-            self.queue.get()
+            req = self.queue.get(False)
             if not self.active:
                 return
+            if req != 1:
+                continue
             # this should stop any kind of future polling
             self.refreshTimer.stop()
             # this can take a while... loading Swagger and loading Ship-Data
@@ -69,5 +77,4 @@ class EsiThread(QThread):
 
     def quit(self):
         self.active = False
-        self.queue.put(None)
-        QThread.quit(self)
+        LOGGER.debug("Stopping ESI Thread")

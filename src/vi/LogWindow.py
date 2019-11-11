@@ -28,8 +28,10 @@ from vi.version import DISPLAY
 
 LOGGER = logging.getLogger(__name__)
 
+
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
+
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
@@ -43,7 +45,7 @@ class LogWindow(QtWidgets.QWidget):
         self.tidySize = 5000
         self.pruneTime = time()
         # check only every hour
-        self.pruneDelay = 60 * 60 # 1 hour
+        self.pruneDelay = 60 * 60  # 1 hour
         self.log_records = []
         self._tidying = False
         self.setBaseSize(400, 300)
@@ -51,13 +53,14 @@ class LogWindow(QtWidgets.QWidget):
         self.setTitle()
         self.textEdit = QtWidgets.QTextEdit(self)
         self.textEdit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
-        self.textEdit.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
+        self.textEdit.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
         self.textEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.textEdit.customContextMenuRequested.connect(self.contextMenuEvent)
 
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
-        self.setBaseSize(400,300)
+        self.setBaseSize(400, 300)
         vbox.addWidget(self.textEdit)
 
         self.cache = Cache()
@@ -75,7 +78,6 @@ class LogWindow(QtWidgets.QWidget):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
         self.textEdit.append(text)
 
-
     def store(self, record: LogRecord):
         self.log_records.append(record)
         if record.levelno >= self.logLevel:
@@ -84,12 +86,11 @@ class LogWindow(QtWidgets.QWidget):
             self._tidying = True
             if len(self.log_records) > self.tidySize:
                 LOGGER.debug("LogWindow Tidy start")
-                del self.log_records[:len(self.log_records)-self.tidySize]
+                del self.log_records[:len(self.log_records) - self.tidySize]
                 self.refresh()
                 LOGGER.debug("LogWindow Tidy complete")
             self.pruneTime = time()
             self._tidying = False
-
 
     def refresh(self):
         self.textEdit.clear()
@@ -116,27 +117,33 @@ class LogWindow(QtWidgets.QWidget):
         self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
         self.cache.putIntoCache("log_window_visible", not self.isHidden())
 
+    # default QAction to make "checkable"
+    class LogAction(QtWidgets.QAction):
+        def __init__(self, name: str = None):
+            QtWidgets.QAction.__init__(self, name)
+            self.setCheckable(True)
+
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         currLevel = self.logLevel
         menu = QMenu(self)
-        debug = QtWidgets.QAction("Debug", checkable=True)
+        debug = self.LogAction("Debug")
         if currLevel == logging.DEBUG:
             debug.setChecked(True)
         menu.addAction(debug)
-        info = QtWidgets.QAction("Info", checkable=True)
+        info = self.LogAction("Info")
         if currLevel == logging.INFO:
             info.setChecked(True)
         menu.addAction(info)
-        warning = QtWidgets.QAction("Warning", checkable=True)
+        warning = self.LogAction("Warning")
         if currLevel == logging.WARN:
             warning.setChecked(True)
         menu.addAction(warning)
-        error = QtWidgets.QAction("Error", checkable=True)
+        error = self.LogAction("Error")
         if currLevel == logging.ERROR:
             error.setChecked(True)
         menu.addAction(error)
-        crit = QtWidgets.QAction("Critical", checkable=True)
+        crit = self.LogAction("Critical")
         if currLevel == logging.CRITICAL:
             crit.setChecked(True)
         menu.addAction(crit)
@@ -160,11 +167,10 @@ class LogWindow(QtWidgets.QWidget):
             self.logLevel = currLevel
             self.refresh()
 
-        #self maybe not... so we can hold ALL data and filter the output based on Level?
-        # self.logHandler.setLevel(self.logLevel)
         Cache().putIntoCache("log_window_level", self.logLevel)
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
+
 
 class LogWindowHandler(logging.Handler):
     def __init__(self, parent):

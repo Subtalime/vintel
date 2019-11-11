@@ -26,7 +26,8 @@ from vi.chatentrywidget import ChatEntryWidget
 from vi import states
 import vi.ui.SystemChat
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+
 
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
@@ -36,7 +37,7 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         QDialog.__init__(self, parent)
         # loadUi(resourcePath("vi/ui/SystemChat.ui"), self)
         if not isinstance(knownPlayers, list):
-            logger.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
+            LOGGER.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
             exit(-1)
         self.setupUi(self)
         self.parent = parent
@@ -61,7 +62,6 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         # self.connect(self.locationButton, PYQT_SIGNAL("clicked()"), self.locationSet)
         self.locationButton.clicked.connect(self.locationSet)
 
-
     def _addMessageToChat(self, message, avatarPixmap):
         scrollToBottom = False
         if (self.chat.verticalScrollBar().value() == self.chat.verticalScrollBar().maximum()):
@@ -78,7 +78,6 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         if scrollToBottom:
             self.chat.scrollToBottom()
 
-
     def addChatEntry(self, entry):
         if self.chatType == SystemChat.SYSTEM:
             message = entry.message
@@ -86,28 +85,23 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
             if self.selector in message.systems:
                 self._addMessageToChat(message, avatarPixmap)
 
-
     def locationSet(self):
         char = six.text_type(self.playerNamesBox.currentText())
         self.location_set.emit(char, self.system.name)
         # self.emit(PYQT_SIGNAL("location_set"), char, self.system.name)
-
 
     def newAvatarAvailable(self, charname, avatarData):
         for entry in self.chatEntries:
             if entry.message.user == charname:
                 entry.updateAvatar(avatarData)
 
-
     def setSystemAlarm(self):
         self.system.setStatus(states.ALARM)
         self.parent.updateMapView()
 
-
     def setSystemClear(self):
         self.system.setStatus(states.CLEAR)
         self.parent.updateMapView()
-
 
     def closeDialog(self):
         self.accept()

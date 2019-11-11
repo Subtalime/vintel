@@ -21,11 +21,11 @@ import time
 import math
 from vi import states
 
+
 class System(object):
     """
         A System on the Map
     """
-
     ALARM_COLORS = [(60 * 4, "#FF0000", "#FFFFFF"), (60 * 10, "#FF9B0F", "#FFFFFF"), (60 * 15, "#FFFA0F", "#000000"),
                     (60 * 25, "#FFFDA2", "#000000"), (60 * 60 * 24, "#FFFFFF", "#000000")]
     ALARM_COLOR = ALARM_COLORS[0][1]
@@ -226,4 +226,3 @@ class System(object):
 
     def __repr__(self):
         return "{}:".format(self.name) + (",".join("{}.{}".format(key, val) for key, val in self.statistics.items()))
-

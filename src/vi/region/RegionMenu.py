@@ -22,6 +22,8 @@ from PyQt5.QtCore import QObject
 from vi.cache.cache import Cache
 import logging
 
+LOGGER = logging.getLogger(__name__)
+
 
 def getRegionName(word: str):
     if word.endswith(".svg"):
@@ -40,7 +42,8 @@ class RegionMenu(QMenu):
         self.regionNames = ["Delve"]
         self.addItems()
 
-    def _actionName(self, region: str) -> str:
+    @staticmethod
+    def _actionName(region: str) -> str:
         return str(region).replace(' ', '_').replace('-', '_') + "_action"
 
     def addItem(self, regionName: str) -> QAction:
@@ -73,15 +76,15 @@ class RegionMenu(QMenu):
     def addItems(self):
         self.removeItems()
         regionNames = Cache().getFromCache("region_name_range")
-        logging.debug("Updating Region-Menu with {}".format(regionNames))
+        LOGGER.debug("Updating Region-Menu with {}".format(regionNames))
         if regionNames:
-            self.regionNames = [ getRegionName(y) for y in regionNames.split(",") ]
+            self.regionNames = [getRegionName(y) for y in regionNames.split(",")]
             for name in self.regionNames:
                 if name is None or name == "":
                     self.regionNames.pop()
         self.regionNames.sort()
         self.selectedRegion = self.getSelectedRegion
-        if not self.selectedRegion in self.regionNames:
+        if self.selectedRegion not in self.regionNames:
             self.selectedRegion = self.regionNames[0]
             Cache().putIntoCache("region_name", self.selectedRegion)
         for region in self.regionNames:
@@ -104,5 +107,5 @@ class RegionMenu(QMenu):
                 if action:
                     self.removeAction(action)
             self._menu_actions = dict()
-        except Exception as e:
+        except Exception:
             raise

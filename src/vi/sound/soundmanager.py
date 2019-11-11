@@ -1,18 +1,18 @@
 ###########################################################################
 #  Vintel - Visual Intel Chat Analyzer									  #
 #  Copyright (C) 2014-15 Sebastian Meyer (sparrow.242.de+eve@gmail.com )  #
-#																		  #
+#
 #  This program is free software: you can redistribute it and/or modify	  #
 #  it under the terms of the GNU General Public License as published by	  #
 #  the Free Software Foundation, either version 3 of the License, or	  #
 #  (at your option) any later version.									  #
-#																		  #
+#
 #  This program is distributed in the hope that it will be useful,		  #
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of		  #
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the		  #
 #  GNU General Public License for more details.							  #
-#																		  #
-#																		  #
+#
+#
 #  You should have received a copy of the GNU General Public License	  #
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
@@ -28,9 +28,9 @@ import time
 import six
 import wave
 
+from threading import Thread
 from collections import namedtuple
-from PyQt5.QtCore import QThread
-from vi.resources import resourcePath, soundPath
+from vi.resources import soundPath
 from six.moves import queue
 import logging
 from vi.singleton import Singleton
@@ -38,7 +38,8 @@ import pyglet
 import pyglet.clock
 import pyglet.resource
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+
 
 class SoundManager(six.with_metaclass(Singleton)):
     SOUNDS = {"alarm": "178032__zimbot__redalert-klaxon-sttos-recreated.wav",
@@ -86,8 +87,8 @@ class SoundManager(six.with_metaclass(Singleton)):
                 path = None
             if path and not os.path.exists(path):
                 import glob
-                hits = glob.glob(os.path.join(soundPath()
-                                        , os.path.basename(path)), recursive=True)
+                hits = glob.glob(os.path.join(soundPath(),
+                                              os.path.basename(path)), recursive=True)
                 if hits:
                     path = hits[0]
                 else:
@@ -111,8 +112,7 @@ class SoundManager(six.with_metaclass(Singleton)):
     #
     #  Inner class handle audio playback without blocking the UI
     #
-
-    class SoundThread(QThread):
+    class SoundThread(Thread):
         queue = None
         useGoogleTTS = False
         useVoiceRss = False
@@ -121,30 +121,29 @@ class SoundManager(six.with_metaclass(Singleton)):
         isDarwin = sys.platform.startswith("darwin")
         volume = 25
 
-
         def __init__(self):
-            QThread.__init__(self)
+            Thread.__init__(self, name="SoundThread")
             self.queue = queue.Queue()
             self.player = pyglet.media.Player()
             self.player.loop = False
             self.active = True
 
-
         def setVolume(self, volume):
             self.volume = volume
-
 
         def run(self):
             while True:
                 audioFile, message, abbreviatedMessage = self.queue.get()
                 if not self.active:
                     return
-                if SoundManager().useSpokenNotifications and (message != "" or abbreviatedMessage != ""):
+                if SoundManager().useSpokenNotifications and (
+                        message != "" or abbreviatedMessage != ""):
                     if abbreviatedMessage != "":
                         message = abbreviatedMessage
                     if not self.speak(message):
                         self.playAudioFile(audioFile, False)
-                        logger.error("SoundThread: sorry, speech not yet implemented on this platform")
+                        LOGGER.error(
+                            "SoundThread: sorry, speech not yet implemented on this platform")
                 # elif audioFile is not None:
                 else:
                     self.playAudioFile(audioFile, False)
@@ -155,7 +154,6 @@ class SoundManager(six.with_metaclass(Singleton)):
             if self.player:
                 self.player.pause()
                 self.player.delete()
-            QThread.quit(self)
 
         def stop(self):
             if self.player:
@@ -171,7 +169,6 @@ class SoundManager(six.with_metaclass(Singleton)):
             else:
                 return False
             return True
-
 
         def handleIdleTasks(self):
             self.speakRandomChuckNorrisJoke()
@@ -193,7 +190,8 @@ class SoundManager(six.with_metaclass(Singleton)):
                     subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
             except Exception as e:
                 # wave.open throws weird errors, hence the logging like thi
-                logger.error("SoundThread.playAudioFile exception on {0}: {1}".format(filename, str(e)))
+                LOGGER.error(
+                    "SoundThread.playAudioFile exception on {0}: {1}".format(filename, str(e)))
                 # self.player = media.Player()
                 # self.player.loop = False
 
@@ -201,7 +199,7 @@ class SoundManager(six.with_metaclass(Singleton)):
             try:
                 os.system("say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message))
             except Exception as e:
-                logger.error("SoundThread.darwinSpeak exception: %s" % message, e)
+                LOGGER.error("SoundThread.darwinSpeak exception: %s" % message, e)
 
         #
         #  Experimental text-to-speech stuff below
@@ -211,12 +209,12 @@ class SoundManager(six.with_metaclass(Singleton)):
 
         def playTTS(self, inputText=''):
             try:
-                mp3url = 'http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us'.format(
-                    **locals())
+                mp3url = 'http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us'.\
+                    format(**locals())
                 self.playAudioFile(requests.get(mp3url, stream=True).raw)
                 time.sleep(.5)
             except requests.exceptions.RequestException as e:
-                logger.error('playTTS error: %s' % mp3url, e)
+                LOGGER.error('playTTS error: %s' % mp3url, e)
 
         # google_tts
 
@@ -229,7 +227,8 @@ class SoundManager(six.with_metaclass(Singleton)):
             if args is None:
                 args = audioArgs(language='en', output=open('output.mp3', 'w'))
             if type(args) is dict:
-                args = audioArgs(language=args.get('language', 'en'), output=open(args.get('output', 'output.mp3'), 'w'))
+                args = audioArgs(language=args.get('language', 'en'),
+                                 output=open(args.get('output', 'output.mp3'), 'w'))
             # Process inputText into chunks
             # Google TTS only accepts up to (and including) 100 characters long texts.
             # Split the text in segments of maximum 100 characters long.
@@ -238,8 +237,10 @@ class SoundManager(six.with_metaclass(Singleton)):
             # Download chunks and write them to the output file
             for idx, val in enumerate(combinedText):
                 mp3url = "http://translate.google.com/translate_tts?tl=%s&q=%s&total=%s&idx=%s&ie=UTF-8&client=t&key=%s" % (
-                args.language, requests.utils.quote(val), len(combinedText), idx, self.GOOGLE_TTS_API_KEY)
-                headers = {"Host": "translate.google.com", "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1)"}
+                    args.language, requests.utils.quote(val), len(combinedText), idx,
+                    self.GOOGLE_TTS_API_KEY)
+                headers = {"Host": "translate.google.com",
+                           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1)"}
                 sys.stdout.write('.')
                 sys.stdout.flush()
                 if len(val) > 0:
@@ -247,7 +248,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                         args.timeout.write(requests.get(mp3url, headers=headers).content)
                         time.sleep(.5)
                     except requests.exceptions.RequestException as e:
-                        logger.error('audioExtractToMp3 error: %s' % mp3url, e)
+                        LOGGER.error('audioExtractToMp3 error: %s' % mp3url, e)
             args.output.close()
             return args.output.name
 
@@ -304,5 +305,4 @@ class SoundManager(six.with_metaclass(Singleton)):
                         combinedText.extend(splitTextRecursive(val, regexps, maxLength))
                 return combinedText
 
-            return splitTextRecursive(inputText.replace('\n', ''), ['([\,|\.|;]+)', '( )'])
-
+            return splitTextRecursive(inputText.replace('\n', ''), ["([\,|\.|;]+)", '( )'])

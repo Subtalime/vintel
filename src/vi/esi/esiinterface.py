@@ -32,15 +32,18 @@ from .esiwait import EsiWait
 
 lock = threading.Lock()
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
+
 
 def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
-    logger.info("TOKEN We got new token: %s" % access_token)
-    logger.info("TOKEN refresh token used: %s" % refresh_token)
-    logger.info("TOKEN Expires in %d" % expires_in)
+    LOGGER.info("TOKEN We got new token: %s" % access_token)
+    LOGGER.info("TOKEN refresh token used: %s" % refresh_token)
+    LOGGER.info("TOKEN Expires in %d" % expires_in)
+
 
 def logrepr(className: type) -> str:
     return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
+
                                                                                              "")
 def synchronized(lock):
     """ Synchronisation decorator """
@@ -73,7 +76,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
     class __OnceOnly:
         def __init__(self, enablecache: bool = True):
             if EsiInterface._esiLoading:
-                logger.error("Esi already currently being loaded...")
+                LOGGER.error("Esi already currently being loaded...")
                 while EsiInterface.esiLoading is not "complete":
                     pass
                 return
@@ -81,8 +84,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.caching = enablecache
             self.esicache = EsiCache(self.caching)
             self.progress = None
-            self.logger = logger
-            self.logger.info("Creating ESI access")
+            LOGGER.info("Creating ESI access")
             self.authenticated = False
             self.esiConfig = EsiConfig()
             self.server = None
@@ -106,7 +108,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     with EsiConfigDialog(self.esiConfig) as inputDia:
                         res = inputDia.exec_()
                         if not res == inputDia.Accepted:
-                            logger.info("User canceled Client-ID Input-Dialog")
+                            LOGGER.info("User canceled Client-ID Input-Dialog")
                             exit(0)
                         self.esiConfig = inputDia.esiConfig
                     self.esicache.set("esi_callback", self.esiConfig.ESI_CALLBACK)
@@ -131,15 +133,15 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 while not self.apiInfo:
                     try:
                         if EsiConfig.ESI_SECRET_KEY:
-                            self.logger.debug("Checking the Secretkey")
+                            LOGGER.debug("Checking the Secretkey")
                             self.tokens = self.security.auth(EsiConfig.ESI_SECRET_KEY)
                             EsiConfig.ESI_SECRET_KEY = None
                             self.apiInfo = self.security.verify()
                             # store the Token
                             self.esicache.set("esi_token", self.tokens)
-                            self.logger.debug("Secretkey success")
+                            LOGGER.debug("Secretkey success")
                         elif refreshKey:
-                            self.logger.debug("Checking the Refresh-Token")
+                            LOGGER.debug("Checking the Refresh-Token")
                             self.security.update_token({
                                 'access_token': '',
                                 'expires_in': -1,
@@ -147,54 +149,53 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             })
                             refreshKey = None
                             self.apiInfo = self.security.refresh()
-                            self.logger.debug("Refreshtoken success")
+                            LOGGER.debug("Refreshtoken success")
                         elif tokenKey:
-                            self.logger.debug("Checking the Tokenkey")
+                            LOGGER.debug("Checking the Tokenkey")
                             self.security.update_token(tokenKey)
                             tokenKey = None
                             self.apiInfo = self.security.refresh()
-                            self.logger.debug("Tokenkey success")
+                            LOGGER.debug("Tokenkey success")
                         else:
-                            self.logger.debug("Waiting for Website response of Secretkey")
+                            LOGGER.debug("Waiting for Website response of Secretkey")
                             self.waitForSecretKey()
                     except APIException as e:
-                        self.logger.error("EsiAPI Error", e)
+                        LOGGER.error("EsiAPI Error", e)
                         APIException("Problem with the API?", e)
                         self.waitForSecretKey()
                     except AttributeError as e:
-                        self.logger.error("EsiAttribute Error", e)
+                        LOGGER.error("EsiAttribute Error", e)
                         APIException("Attribute problem?", e)
                         self.waitForSecretKey()
                     except Exception as e:
-                        self.logger.error("Some unexpected error in Esi", e)
+                        LOGGER.error("Some unexpected error in Esi", e)
                         raise
 
-                if self.logger:
-                    self.logger.debug("ESI loading Swagger...")
-                    # outputs a load of data in Debug
-                    oldSetting = self.logger.getEffectiveLevel()
-                    self.logger.setLevel(logging.WARN)
+                LOGGER.debug("ESI loading Swagger...")
+                # outputs a load of data in Debug
+                oldSetting = LOGGER.getEffectiveLevel()
+                LOGGER.setLevel(logging.WARN)
                 while not self.esiApp:
                     try:
                         self.esiApp = EsiApp(cache=EsiCache(self.caching),
                                              cache_time=3 * 86400).get_latest_swagger
                     except (Exception, HTTPException) as e:
-                        self.logger.error("Error while retrieving latest Swagger", e)
+                        LOGGER.error("Error while retrieving latest Swagger", e)
                         if e.code == 500:
                             self.esicache.invalidateAll()
-                            self.logger.exception("ESI-Interface not explicitly instantiated!")
+                            LOGGER.exception("ESI-Interface not explicitly instantiated!")
                             raise
 
                             # Reset logging to old level
-                self.logger.setLevel(oldSetting)
-                self.logger.debug("ESI loading Swagger...complete")
-                self.logger.debug("Finished authorizing with ESI")
+                LOGGER.setLevel(oldSetting)
+                LOGGER.debug("ESI loading Swagger...complete")
+                LOGGER.debug("Finished authorizing with ESI")
                 self.authenticated = True
                 # now we can store the Client-ID
                 self.esicache.set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
 
             except Exception as e:
-                self.logger.critical("Error authenticating with ESI", e)
+                LOGGER.critical("Error authenticating with ESI", e)
                 raise
             EsiInterface.esiLoading = "complete"
 
@@ -219,13 +220,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
     def __init__(self, use_caching: bool = True, cache_dir: str = None):
         if not EsiInterface._instance:
             self.caching = use_caching
-            self.logger = logger
             if self.caching and cache_dir:
                 EsiCache.BASE_DIR = cache_dir
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
             try:
                 EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
-            except Exception as e:
+            except Exception:
                 exit(-1)
         self.cache = EsiCache(self.caching)
 
@@ -292,7 +292,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     if not cache_expiry_secs:
                         try:
                             cache_expiry_secs = self.calcExpiryResponse(response)
-                        except:
+                        except Exception:
                             pass
                     # some items in the response may not be storable... so make a storable copy
                     response = self._copyModel(response.data)
@@ -300,7 +300,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.cache.putIntoCache(cache_key, response, cache_expiry_secs)
             except Exception as e:
                 self.cache.delFromCache(cache_key)
-                self.logger.error("Error executing Operation [%s] %r" % (operation, kwargs), e)
+                LOGGER.error("Error executing Operation [%s] %r" % (operation, kwargs), e)
                 raise
         return response
 
@@ -440,7 +440,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             cacheKey = "_".join(("esicache", "getshiplist"))
             ships = self.cache.get(cacheKey)
             if ships is None or len(ships) == 0:
-                self.logger.debug("Loading Ship-Data...")
+                LOGGER.debug("Loading Ship-Data...")
                 ships = []
                 shipgroup = self.getShipGroups()
                 for group in shipgroup['groups']:
@@ -449,10 +449,10 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         shipitem = self.getShip(ship)
                         ships.append(shipitem)
                 self.cache.set(cacheKey, ships)
-                self.logger.debug("Loading Ship-Data...complete")
+                LOGGER.debug("Loading Ship-Data...complete")
         except Exception as e:
             self.cache.invalidate(cacheKey)
-            self.logger.error("Error retrieving Ship-List from ESI", e)
+            LOGGER.error("Error retrieving Ship-List from ESI", e)
             raise
         return ships
 

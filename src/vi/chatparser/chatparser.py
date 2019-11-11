@@ -24,11 +24,13 @@ import logging
 import six
 from bs4 import BeautifulSoup
 from vi import states
-
-from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, parseSystems, parseCharnames
+from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, \
+    parseSystems, parseCharnames
 
 # Names the local chatlogs could start with (depends on l10n of the client)
-LOCAL_NAMES = ("Local", "Lokal", six.text_type("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439"))
+LOCAL_NAMES = ("Local", "Lokal",
+               six.text_type("\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439"))
+LOGGER = logging.getLogger(__name__)
 
 
 class ChatParser(object):
@@ -45,7 +47,8 @@ class ChatParser(object):
         self.knownMessages = []  # message we allready analyzed
         self.locations = {}  # informations about the location of a char
         self.ignoredPaths = []
-        # for the following to work, SVG JS has to use Message-Timestamp to determine the actual reporting time
+        # for the following to work, SVG JS has to use Message-Timestamp to determine the
+        # actual reporting time
         self.goBackInTime = 60 * 20  # 20 minutes prior messages analysed
         self.collectInitFileData()
 
@@ -74,11 +77,12 @@ class ChatParser(object):
                 content = f.read()
             lines = content.split("\n")
         except Exception as e:
-            logging.warning("Failed to read log file \"%s\" %r", path, e)
+            LOGGER.warning("Failed to read log file \"%s\" %r", path, e)
             self.ignoredPaths.append(path)
             return None
 
-        if path not in self.fileData or (roomname in LOCAL_NAMES and "charname" not in self.fileData.get(path, [])):
+        if path not in self.fileData or (roomname in LOCAL_NAMES and
+                                         "charname" not in self.fileData.get(path, [])):
             self.fileData[path] = {}
             if roomname in LOCAL_NAMES:
                 charname = None
@@ -105,7 +109,7 @@ class ChatParser(object):
         try:
             timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
         except ValueError:
-            logging.error("Invalid Timestamp in Room \"{}\"".format(roomname))
+            LOGGER.error("Invalid Timestamp in Room \"{}\"".format(roomname))
             return None
         # finding the username of the poster
         userEnds = line.find(">")
@@ -121,15 +125,16 @@ class ChatParser(object):
 
         # KOS request
         if upperText.startswith("XXX "):
-            return Message(roomname, text, timestamp, username, systems, upperText, status=states.KOS_STATUS_REQUEST)
+            return Message(roomname, text, timestamp, username, systems, upperText,
+                           status=states.KOS_STATUS_REQUEST)
         elif roomname.startswith("="):
-            return Message(roomname, "xxx " + text, timestamp, username, systems, "XXX " + upperText, status=states.KOS_STATUS_REQUEST)
+            return Message(roomname, "xxx " + text, timestamp, username, systems,
+                           "XXX " + upperText, status=states.KOS_STATUS_REQUEST)
         elif upperText.startswith("VINTELSOUND_TEST"):
-            return Message(roomname, text, timestamp, username, systems, upperText, status=states.SOUND_TEST)
+            return Message(roomname, text, timestamp, username, systems, upperText,
+                           status=states.SOUND_TEST)
         if roomname not in self.rooms:
             return None
-
-
         message = Message(roomname, "", timestamp, username, systems, text, originalText)
         # May happen if someone plays > 1 account
         if message in self.knownMessages:
@@ -150,7 +155,9 @@ class ChatParser(object):
         # If message says clear and no system? Maybe an answer to a request?
         if status == states.CLEAR and not systems:
             maxSearch = 2  # we search only max_search messages in the room
-            for count, oldMessage in enumerate(oldMessage for oldMessage in self.knownMessages[-1::-1] if oldMessage.room == roomname):
+            for count, oldMessage in enumerate(oldMessage for oldMessage in
+                                               self.knownMessages[-1::-1]
+                                               if oldMessage.room == roomname):
                 if oldMessage.systems and oldMessage.status == states.REQUEST:
                     for system in oldMessage.systems:
                         systems.add(system)
@@ -160,7 +167,7 @@ class ChatParser(object):
         message.message = six.text_type(rtext)
         message.status = status
         # multiple clients?
-        if not message in self.knownMessages:
+        if message not in self.knownMessages:
             self.knownMessages.append(message)
             if systems:
                 for system in systems:
@@ -174,14 +181,13 @@ class ChatParser(object):
         """
         charname = self.fileData[path]["charname"]
         if charname not in self.locations:
-            self.locations[charname] = {"system": "?", "timestamp": datetime.datetime(1970, 1, 1, 0, 0, 0, 0)}
-
+            self.locations[charname] = {"system": "?",
+                                        "timestamp": datetime.datetime(1970, 1, 1, 0, 0, 0, 0)}
         # Finding the timestamp
         timeStart = line.find("[") + 1
         timeEnds = line.find("]")
         timeStr = line[timeStart:timeEnds].strip()
         timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
-
         # Finding the username of the poster
         userEnds = line.find(">")
         username = line[timeEnds + 1:userEnds].strip()
@@ -234,7 +240,8 @@ class ChatParser(object):
 
 
 class Message(object):
-    def __init__(self, room, message, timestamp, user, systems, upperText, plainText="", status=states.ALARM):
+    def __init__(self, room, message, timestamp, user, systems, upperText,
+                 plainText="", status=states.ALARM):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
