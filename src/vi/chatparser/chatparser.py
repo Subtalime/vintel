@@ -225,7 +225,7 @@ class ChatParser(object):
                 message = None
                 if roomname in LOCAL_NAMES:
                     message = self._parseLocal(path, line)
-                else:
+                elif roomname in self.rooms:
                     message = self._lineToMessage(line, roomname)
                 if message:
                     messages.append(message)

@@ -19,9 +19,11 @@
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QMenu
-from PyQt5.QtCore import pyqtSignal, QEvent, Qt
+from PyQt5.QtCore import pyqtSignal, QEvent, Qt, QObject
 from .cache.cache import Cache
 import logging
+import queue
+from logging.handlers import QueueHandler, QueueListener
 from time import time
 from logging import LogRecord
 from vi.version import DISPLAY
@@ -30,6 +32,7 @@ LOGGER = logging.getLogger(__name__)
 
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
+
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
@@ -37,13 +40,20 @@ class LogWindow(QtWidgets.QWidget):
         if not self.logLevel:
             # by default, have warnings only shown there
             self.logLevel = logging.WARNING
+        # setup a blocking Queue (ready for tidying)
+        self.queue = queue.Queue(-1)  # unlimited
+        self.queue_handler = QueueHandler(self.queue)
         self.logHandler = LogWindowHandler(self)
-        logging.getLogger().addHandler(self.logHandler)
+        self.queue_listener = QueueListener(self.queue, self.logHandler)
+        logging.getLogger().addHandler(self.queue_handler)
+        self.logHandler.new_message.connect(self.store)
+        # logging.getLogger().addHandler(self.logHandler)
         # keep maximum of 5k lines in buffer
-        self.tidySize = 5000
+        self.tidySize = 100
         self.pruneTime = time()
         # check only every hour
-        self.pruneDelay = 60 * 60 # 1 hour
+        self.pruneDelay = 60 * 5 # 1 hour
+        self.doTidy = True
         self.log_records = []
         self._tidying = False
         self.setBaseSize(400, 300)
@@ -60,6 +70,7 @@ class LogWindow(QtWidgets.QWidget):
         self.setBaseSize(400,300)
         vbox.addWidget(self.textEdit)
 
+        self.queue_listener.start()
         self.cache = Cache()
         rect = self.cache.getFromCache("log_window")
         if rect:
@@ -77,19 +88,27 @@ class LogWindow(QtWidgets.QWidget):
 
 
     def store(self, record: LogRecord):
+        # stop adding records while Tidyup
+        while self._tidying:
+            continue
         self.log_records.append(record)
         if record.levelno >= self.logLevel:
             self.write(self.logHandler.format(record))
-        if self.pruneTime + self.pruneDelay < time() and not self._tidying:
-            self._tidying = True
-            if len(self.log_records) > self.tidySize:
-                LOGGER.debug("LogWindow Tidy start")
-                del self.log_records[:len(self.log_records)-self.tidySize]
-                self.refresh()
-                LOGGER.debug("LogWindow Tidy complete")
-            self.pruneTime = time()
-            self._tidying = False
-
+        if self.doTidy:
+            if self.pruneTime + self.pruneDelay < time() and not self._tidying:
+                num_records = len(self.log_records)
+                if num_records > self.tidySize:
+                    try:
+                        self._tidying = True
+                        LOGGER.debug("LogWindow Tidy start")
+                        del self.log_records[:num_records-self.tidySize]
+                    except Exception:
+                        LOGGER.error("Error in Tidy-Up of Log-Window")
+                    finally:
+                        self._tidying = False
+                        self.pruneTime = time()
+                        self.refresh()
+                        LOGGER.debug("LogWindow Tidy complete")
 
     def refresh(self):
         self.textEdit.clear()
@@ -108,13 +127,17 @@ class LogWindow(QtWidgets.QWidget):
             if self.windowState() & Qt.WindowMinimized:
                 self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
                 self.cache.putIntoCache("log_window_visible", str(False))
+                LOGGER.debug("LogWindow hidden")
                 self.hide()
             else:
+                LOGGER.debug("LogWindow visible")
                 self.show()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
         self.cache.putIntoCache("log_window_visible", not self.isHidden())
+        LOGGER.debug("LogWindow closed")
+        self.queue_listener.stop()
 
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
@@ -166,9 +189,15 @@ class LogWindow(QtWidgets.QWidget):
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
 
-class LogWindowHandler(logging.Handler):
+
+from logging.handlers import BaseRotatingHandler
+
+
+class LogWindowHandler(logging.Handler, QObject):
+    new_message = pyqtSignal(logging.LogRecord)
     def __init__(self, parent):
         logging.Handler.__init__(self)
+        QObject.__init__(self)
         self.parent = parent
         formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
         # always log all messages ! The Window-Output is managed by self.logLevel
@@ -176,6 +205,7 @@ class LogWindowHandler(logging.Handler):
         self.setFormatter(formatter)
 
     def emit(self, record):
-        self.parent.store(record)
+        self.new_message.emit(record)
+        # self.parent.store(record)
         # self.parent.write(self.format(record))
-        self.parent.update()
+        # self.parent.update()

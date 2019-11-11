@@ -240,7 +240,7 @@ def parseCharnames(rtext: Tag) -> bool:
     :param rtext:
     :return:
     """
-
+    MAX_WORDS_FOR_CHARACTERNAME = 3
     def findNames(text: NavigableString) -> dict:
         WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
         def chunks(listofwords: list, size: int = 1, offset = 0) -> list:
@@ -256,7 +256,7 @@ def parseCharnames(rtext: Tag) -> bool:
         # chunks of 2s
         logger.debug("Analysing Names in: {}".format(words))
         try:
-            for pairs in range(2,0,-1):
+            for pairs in range(MAX_WORDS_FOR_CHARACTERNAME,0,-1):
                 checklist = chunks(words, pairs)
                 for checkname in checklist:
                     for char in CHARS_TO_IGNORE:

@@ -36,9 +36,10 @@ from vi.chatentrywidget import ChatEntryWidget
 from vi.esihelper import EsiHelper
 
 
-STATISTICS_UPDATE_INTERVAL_MSECS = 1 * 60 * 1000
-FILE_DEFAULT_MAX_AGE = 60 * 60 * 24
+STATISTICS_UPDATE_INTERVAL_MSECS = (1 * 60) * 1000  # every hour
+FILE_DEFAULT_MAX_AGE = 60 * 60 * 24  # oldest Chatlog-File to scan
 
+LOGGER = logging.getLogger(__name__)
 
 # attempt to run this in a thread rather thana timer
 # to reduce flickering on reload
@@ -370,4 +371,5 @@ class FileWatcherThread(QThread):
                 pass
         if changed:
             self.filesInFolder[path] = filesInDir
-
+            LOGGER.debug("currently tracking %d files in %s" % (len(self.filesInFolder), path))
+            LOGGER.debug("  %r" % self.filesInFolder[path])
