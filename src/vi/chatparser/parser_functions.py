@@ -269,6 +269,7 @@ def parseCharnames(rtext: Tag) -> bool:
                                 found = True
                                 break
                         if not found:
+                            LOGGER.debug("Couldn't find \"%s\" in list of \"%r\" names" % (checkname, names))
                             char = EsiHelper().checkPlayerName(checkname)
                             if char is not None:
                                 names[checkname] = char

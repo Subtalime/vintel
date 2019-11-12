@@ -50,7 +50,7 @@ class TrayContextMenu(QtWidgets.QMenu):
         self.addAction(self.framelessCheck)
         self.addSeparator()
         self.requestCheck = QAction("Show status request notifications", self)
-        self.requestCheck.setCheckable(Tr)
+        self.requestCheck.setCheckable(True)
         self.requestCheck.setChecked(True)
         self.addAction(self.requestCheck)
         self.requestCheck.triggered.connect(self.trayIcon.switchRequest)

@@ -31,7 +31,7 @@ from PyQt5.QtCore import QThread, QTimer, pyqtSignal
 
 from vi import koschecker
 from vi.cache.cache import Cache
-from vi.resources import resourcePath
+from vi.resources import resourcePath, getVintelDir
 from vi.chatentrywidget import ChatEntryWidget
 from vi.esihelper import EsiHelper
 
@@ -75,7 +75,7 @@ class MapUpdateThread(QThread):
                 logging.debug("Map-Content update attempt, but not active")
                 if loadMapAttempt > 10:
                     logging.critical("Something is stopping the program of progressing. (Map-Attempts > 10\n"
-                                     "If this continues to happen, delete the Cache-File in \"{}\"" % getVintelDir())
+                                     "If this continues to happen, delete the Cache-File in \"%s\"" % getVintelDir())
                     exit(-1)
                 continue
             try:
@@ -341,7 +341,11 @@ class FileWatcherThread(QThread):
         changed = False
         now = time.time()
         # order by date descending
-        folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True)
+        try:
+            folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True)
+        except:
+            # might be tidying up in the background
+            pass
         if self.maxFiles and len(folderContent) > self.maxFiles:
             self._sendWarning(path, len(folderContent))
         for fullPath in folderContent:

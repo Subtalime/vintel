@@ -78,18 +78,18 @@ class ChatParser(object):
         filename = os.path.basename(path)
         roomname = filename[:-20]
 
+        try:
+            with open(path, "r", encoding='utf-16-le') as f:
+                content = f.read()
+            lines = content.split("\n")
+        except Exception as e:
+            LOGGER.warning("Failed to read log file \"%s\" %r", path, e)
+            self.ignoredPaths.append(path)
+            return None
         if path not in self.fileData or (roomname in LOCAL_NAMES and
                                          "charname" not in self.fileData.get(path, [])):
-            try:
-                with open(path, "r", encoding='utf-16-le') as f:
-                    content = f.read()
-                lines = content.split("\n")
-            except Exception as e:
-                LOGGER.warning("Failed to read log file \"%s\" %r", path, e)
-                self.ignoredPaths.append(path)
-                return None
-            self.fileData[path] = {}
-            if roomname in LOCAL_NAMES:
+            if roomname in LOCAL_NAMES or roomname in self.rooms:
+                self.fileData[path] = {}
                 charname = None
                 sessionStart = None
                 # for local-chats we need more infos
@@ -103,10 +103,12 @@ class ChatParser(object):
                         self.fileData[path]["charname"] = charname
                         self.fileData[path]["sessionstart"] = sessionStart
                         break
-            # TODO: review this!
-            elif roomname not in self.rooms:
-                return None
-            self.fileData[path]["lines"] = len(lines)
+                self.fileData[path]["lines"] = len(lines)
+                LOGGER.debug("Registered %s as interested fileData file" % path)
+                if path in self.ignoredPaths:
+                    self.ignoredPaths.remove(path)
+        if path not in self.fileData and path not in self.ignoredPaths:
+            self.ignoredPaths.append(path)
         return lines
 
     def _parseLine(self, line, roomname) -> tuple:
@@ -230,6 +232,7 @@ class ChatParser(object):
         if path not in self.fileData:
             # seems eve created a new file. New Files have 12 lines header
             self.fileData[path] = {"lines": 13}
+        LOGGER.debug("File %s has changed" % path)
         oldLength = self.fileData[path]["lines"]
         lines = self.addFile(path)
         if path in self.ignoredPaths or lines is None:

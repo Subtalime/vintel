@@ -917,7 +917,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         LOGGER.debug("Log file changed: {}".format(path))
         # wait for Map to be completly loaded
         while not self.chatparser:
-            return
+            continue
         messages = self.chatparser.fileModified(path)
         if self.knownPlayers.addNames(self.chatparser.getListeners()):
             LOGGER.debug("Found new Player")

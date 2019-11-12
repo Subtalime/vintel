@@ -46,7 +46,7 @@ class Character:
         self.location = location
 
     @property
-    def getLocations(self) -> str:
+    def getLocation(self) -> str:
         return self.location
 
     def disable(self):
