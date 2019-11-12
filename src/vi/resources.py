@@ -88,7 +88,7 @@ def getEveChatlogDir(passedDir: str = None, log: bool = False) -> str:
     eveDir = getEveDir()
     chatLogDirectory = os.path.join(eveDir, "logs", "Chatlogs")
     if log:
-        logger.debug("getEveChatlogDir: {}".format(chatLogDirectory))
+        LOGGER.debug("getEveChatlogDir: {}".format(chatLogDirectory))
     return chatLogDirectory
 
 
@@ -102,7 +102,7 @@ def getVintelDir(filePath: str = None, log: bool = False) -> str:
             if not log:
                 print("getVintelDir: Error creating \"%s\": %r" % (vintelDir, e))
             else:
-                L.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
+                LOGGER.error("getVintelDir: Error creating \"%s\": %r", vintelDir, e)
     if filePath:
         vintelDir = os.path.join(vintelDir, filePath)
     return vintelDir

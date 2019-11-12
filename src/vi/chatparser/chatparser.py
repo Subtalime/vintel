@@ -34,12 +34,14 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ChatParser(object):
-    """ ChatParser will analyze every new line that was found inside the Chatlogs.
     """
-
+    ChatParser will analyze every new line that was found inside the Chatlogs.
+    """
     def __init__(self, path, rooms, systems):
-        """ path = the path with the logs
-            rooms = the rooms to parse"""
+        """
+        path = the path with the logs
+        rooms = the rooms to parse
+        """
         self.path = path  # the path with the chatlog
         self.rooms = rooms  # the rooms to watch (excl. local)
         self.systems = systems  # the known systems as dict name: system
@@ -61,6 +63,9 @@ class ChatParser(object):
             if currentTime - fileTime < maxDiff:
                 self.addFile(fullPath)
 
+    def setRooms(self, roomnames: list):
+        self.rooms = roomnames
+
     def getListeners(self):
         characters = []
         for filename in self.fileData:
@@ -69,20 +74,20 @@ class ChatParser(object):
         return characters
 
     def addFile(self, path):
-        # lines = None
+        lines = None
         filename = os.path.basename(path)
         roomname = filename[:-20]
-        try:
-            with open(path, "r", encoding='utf-16-le') as f:
-                content = f.read()
-            lines = content.split("\n")
-        except Exception as e:
-            LOGGER.warning("Failed to read log file \"%s\" %r", path, e)
-            self.ignoredPaths.append(path)
-            return None
 
         if path not in self.fileData or (roomname in LOCAL_NAMES and
                                          "charname" not in self.fileData.get(path, [])):
+            try:
+                with open(path, "r", encoding='utf-16-le') as f:
+                    content = f.read()
+                lines = content.split("\n")
+            except Exception as e:
+                LOGGER.warning("Failed to read log file \"%s\" %r", path, e)
+                self.ignoredPaths.append(path)
+                return None
             self.fileData[path] = {}
             if roomname in LOCAL_NAMES:
                 charname = None
@@ -98,10 +103,13 @@ class ChatParser(object):
                         self.fileData[path]["charname"] = charname
                         self.fileData[path]["sessionstart"] = sessionStart
                         break
+            # TODO: review this!
+            elif roomname not in self.rooms:
+                return None
             self.fileData[path]["lines"] = len(lines)
         return lines
 
-    def _lineToMessage(self, line, roomname):
+    def _parseLine(self, line, roomname) -> tuple:
         # finding the timestamp
         timeStart = line.find("[") + 1
         timeEnds = line.find("]")
@@ -110,12 +118,17 @@ class ChatParser(object):
             timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
         except ValueError:
             LOGGER.error("Invalid Timestamp in Room \"{}\"".format(roomname))
-            return None
+            raise
         # finding the username of the poster
         userEnds = line.find(">")
         username = line[timeEnds + 1:userEnds].strip()
         # finding the pure message
         text = line[userEnds + 1:].strip()  # text will the text to work an
+        return (timestamp, username, text)
+
+    def _lineToMessage(self, line, roomname):
+        timestamp, username, text = self._parseLine(line, roomname)
+
         originalText = text
         formatedText = u"<rtext>{0}</rtext>".format(text)
         soup = BeautifulSoup(formatedText, 'html.parser')
@@ -133,8 +146,12 @@ class ChatParser(object):
         elif upperText.startswith("VINTELSOUND_TEST"):
             return Message(roomname, text, timestamp, username, systems, upperText,
                            status=states.SOUND_TEST)
+
+        # TODO: check this!
+        # why even analyse, if we're not interested
         if roomname not in self.rooms:
             return None
+
         message = Message(roomname, "", timestamp, username, systems, text, originalText)
         # May happen if someone plays > 1 account
         if message in self.knownMessages:
@@ -176,24 +193,16 @@ class ChatParser(object):
         return None
 
     def _parseLocal(self, path, line):
-        message = []
-        """ Parsing a line from the local chat. Can contain the system of the char
         """
+        Parsing a line from the local chat. Can contain the system of the char
+        """
+        message = []
         charname = self.fileData[path]["charname"]
         if charname not in self.locations:
             self.locations[charname] = {"system": "?",
                                         "timestamp": datetime.datetime(1970, 1, 1, 0, 0, 0, 0)}
-        # Finding the timestamp
-        timeStart = line.find("[") + 1
-        timeEnds = line.find("]")
-        timeStr = line[timeStart:timeEnds].strip()
-        timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
-        # Finding the username of the poster
-        userEnds = line.find(">")
-        username = line[timeEnds + 1:userEnds].strip()
+        timestamp, username, text = self._parseLine(line, "local")
 
-        # Finding the pure message
-        text = line[userEnds + 1:].strip()  # text will the text to work an
         if username in ("EVE-System", "EVE System"):
             if ":" in text:
                 system = text.split(":")[1].strip().replace("*", "").upper()

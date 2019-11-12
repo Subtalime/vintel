@@ -43,17 +43,20 @@ class TrayContextMenu(QtWidgets.QMenu):
         self._buildMenu()
 
     def _buildMenu(self):
-        self.framelessCheck = QAction("Frameless Window", self, checkable=True)
+        self.framelessCheck = QAction("Frameless Window", self)
+        self.framelessCheck.setCheckable(True)
         self.framelessCheck.triggered.connect(self.trayIcon.changeFrameless)
         # self.connect(self.framelessCheck, PYQT_SIGNAL("triggered()"), self.trayIcon.changeFrameless)
         self.addAction(self.framelessCheck)
         self.addSeparator()
-        self.requestCheck = QAction("Show status request notifications", self, checkable=True)
+        self.requestCheck = QAction("Show status request notifications", self)
+        self.requestCheck.setCheckable(Tr)
         self.requestCheck.setChecked(True)
         self.addAction(self.requestCheck)
         self.requestCheck.triggered.connect(self.trayIcon.switchRequest)
         # self.connect(self.requestCheck, PYQT_SIGNAL("triggered()"), self.trayIcon.switchRequest)
-        self.alarmCheck = QAction("Show alarm notifications", self, checkable=True)
+        self.alarmCheck = QAction("Show alarm notifications", self)
+        self.alarmCheck.setCheckable(True)
         self.alarmCheck.setChecked(True)
         self.alarmCheck.triggered.connect(self.trayIcon.switchAlarm)
         # self.connect(self.alarmCheck, PYQT_SIGNAL("triggered()"), self.trayIcon.switchAlarm)
@@ -61,7 +64,8 @@ class TrayContextMenu(QtWidgets.QMenu):
         distanceMenu = self.addMenu("Alarm Distance")
         self.distanceGroup = QActionGroup(self)
         for i in range(0, 6):
-            action = QAction("{0} Jumps".format(i), None, checkable=True)
+            action = QAction("{0} Jumps".format(i), None)
+            action.setCheckable(True)
             if i == 0:
                 action.setChecked(True)
             action.alarmDistance = i

@@ -24,7 +24,7 @@ from .cache.cache import Cache
 import logging
 import queue
 import threading
-from logging.handlers import QueueHandler, QueueListener
+from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
 from time import time
 from logging import LogRecord
 from vi.version import DISPLAY
@@ -76,6 +76,7 @@ class LogWindow(QtWidgets.QWidget):
         # keep maximum of 5k lines in buffer
         self.tidySize = 5000
         self.pruneTime = time()
+        self._tidying = False
         # check only every hour
         self.pruneDelay = 60 * 60  # 1 hour
         # Log-Messages stored here
@@ -118,18 +119,20 @@ class LogWindow(QtWidgets.QWidget):
         self.textEdit.append(text)
 
     def prune(self):
-        if self.pruneTime + self.pruneDelay < time() and not self._tidying:
+        if not self._tidying and self.pruneTime + self.pruneDelay < time():
+            self.pruneTime = time()
             num_records = len(self.log_records)
             if num_records > self.tidySize:
                 try:
                     _acquireLock()
+                    self._tidying = True
                     LOGGER.debug("LogWindow Tidy-Up start")
                     del self.log_records[:num_records - self.tidySize]
                 except Exception as e:
                     LOGGER.error("Error in Tidy-Up of Log-Window", e)
                 finally:
                     _releaseLock()
-                    self.pruneTime = time()
+                    self._tidying = False
                     self.refresh()
                     LOGGER.debug("LogWindow Tidy-Up complete")
 

@@ -23,7 +23,7 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
 from vi.cache.cache import Cache
 
-VERSION = "1.2.2"
+VERSION = "1.2.3"
 SNAPSHOT = True  # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 PROGNAME = "Vintel"

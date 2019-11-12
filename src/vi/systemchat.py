@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import QDialog, QListWidgetItem
 from PyQt5.QtCore import pyqtSignal, QObject
 from vi.chatentrywidget import ChatEntryWidget
 from vi import states
+from vi.character import Characters
 import vi.ui.SystemChat
 
 LOGGER = logging.getLogger(__name__)
@@ -50,8 +51,12 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         if self.chatType == SystemChat.SYSTEM:
             titleName = self.selector.name
             self.system = selector
+        # TODO: verify this!
+        # only add characters which I "seem" to know, aren't here
+        characters = Characters()
         for player in knownPlayers:
-            self.playerNamesBox.addItem(player)
+            if characters[player].getLocation() != self.system.name:
+                self.playerNamesBox.addItem(player)
         self.setWindowTitle("Chat for {0}".format(titleName))
         # self.connect(self.closeButton, PYQT_SIGNAL("clicked()"), self.closeDialog)
         self.closeButton.clicked.connect(self.closeDialog)

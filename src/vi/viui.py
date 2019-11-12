@@ -864,7 +864,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def changedRoomnames(self, newRoomnames):
         self.cache.putIntoCache("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
-        self.chatparser.rooms = newRoomnames
+        self.chatparser.setRooms(newRoomnames)
         # TODO: this is new (ST) to update the Rooms after changes
         # TODO: otherwise it wont have effect until restart of program
         self.chatparser.collectInitFileData()
