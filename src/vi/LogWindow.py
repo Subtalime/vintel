@@ -23,6 +23,7 @@ from PyQt5.QtCore import pyqtSignal, QEvent, Qt, QObject
 from .cache.cache import Cache
 import logging
 import queue
+import threading
 from logging.handlers import QueueHandler, QueueListener
 from time import time
 from logging import LogRecord
@@ -30,49 +31,78 @@ from vi.version import DISPLAY
 
 LOGGER = logging.getLogger(__name__)
 
+_lock = threading.RLock()
+
+
+def _acquireLock():
+    """
+    Acquire the module-level lock for serializing access to shared data.
+    This should be released with _releaseLock().
+    """
+    if _lock:
+        _lock.acquire()
+
+
+def _releaseLock():
+    """
+    Release the module-level lock acquired by calling _acquireLock().
+    """
+    if _lock:
+        _lock.release()
+
 
 class LogWindow(QtWidgets.QWidget):
+    """
+    Output-Window of all Log-File-Content. More convenient than "tail -F" on the Log-File
+    Also, ability to Filter by Log-Level
+    """
     logging_level_event = pyqtSignal(int)
 
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
-        self.logLevel = Cache().getFromCache("log_window_level")
-        if not self.logLevel:
-            # by default, have warnings only shown there
-            self.logLevel = logging.WARNING
-        # setup a blocking Queue (ready for tidying)
-        self.queue = queue.Queue(-1)  # unlimited
-        self.queue_handler = QueueHandler(self.queue)
+        self.cache = Cache()
+        # setup a blocking Queue in case LogWindow can't keep up
+        msg_queue = queue.Queue(-1)  # unlimited
+        queue_handler = QueueHandler(msg_queue)
+        # all done, now create new Handler
+        logging.getLogger().addHandler(queue_handler)
+        # our own Log-Handler
         self.logHandler = LogWindowHandler(self)
-        self.queue_listener = QueueListener(self.queue, self.logHandler)
-        logging.getLogger().addHandler(self.queue_handler)
+        # the queue will send to Log-Window-Handler
+        self.queue_listener = QueueListener(msg_queue, self.logHandler)
+        # any new Log-Messages, send to storage
         self.logHandler.new_message.connect(self.store)
-        # logging.getLogger().addHandler(self.logHandler)
         # keep maximum of 5k lines in buffer
         self.tidySize = 5000
         self.pruneTime = time()
         # check only every hour
         self.pruneDelay = 60 * 60  # 1 hour
+        # Log-Messages stored here
         self.log_records = []
-        self._tidying = False
+
+        # oh, now actually build the window...
         self.setBaseSize(400, 300)
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
-        self.setTitle()
         self.textEdit = QtWidgets.QTextEdit(self)
         self.textEdit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
         self.textEdit.setTextInteractionFlags(
             QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
         self.textEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.textEdit.customContextMenuRequested.connect(self.contextMenuEvent)
-
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
         self.setBaseSize(400, 300)
         vbox.addWidget(self.textEdit)
 
+        # start the Log-Queue
         self.queue_listener.start()
-        self.cache = Cache()
+        self.logLevel = self.cache.getFromCache("log_window_level")
+        if not self.logLevel:
+            # by default, have warnings only shown here
+            self.logLevel = logging.WARNING
+        self.setTitle()
+
         rect = self.cache.getFromCache("log_window")
         if rect:
             self.restoreGeometry(rect)
@@ -81,34 +111,33 @@ class LogWindow(QtWidgets.QWidget):
             self.show()
 
     def setTitle(self):
-        self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging._levelToName[self.logLevel]))
+        self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging.getLevelName(self.logLevel)))
 
     def write(self, text):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
         self.textEdit.append(text)
 
+    def prune(self):
+        if self.pruneTime + self.pruneDelay < time() and not self._tidying:
+            num_records = len(self.log_records)
+            if num_records > self.tidySize:
+                try:
+                    _acquireLock()
+                    LOGGER.debug("LogWindow Tidy-Up start")
+                    del self.log_records[:num_records - self.tidySize]
+                except Exception as e:
+                    LOGGER.error("Error in Tidy-Up of Log-Window", e)
+                finally:
+                    _releaseLock()
+                    self.pruneTime = time()
+                    self.refresh()
+                    LOGGER.debug("LogWindow Tidy-Up complete")
+
     def store(self, record: LogRecord):
-        # stop adding records while Tidyup
-        while self._tidying:
-            continue
         self.log_records.append(record)
         if record.levelno >= self.logLevel:
             self.write(self.logHandler.format(record))
-        if self.doTidy:
-            if self.pruneTime + self.pruneDelay < time() and not self._tidying:
-                num_records = len(self.log_records)
-                if num_records > self.tidySize:
-                    try:
-                        self._tidying = True
-                        LOGGER.debug("LogWindow Tidy start")
-                        del self.log_records[:num_records-self.tidySize]
-                    except Exception:
-                        LOGGER.error("Error in Tidy-Up of Log-Window")
-                    finally:
-                        self._tidying = False
-                        self.pruneTime = time()
-                        self.refresh()
-                        LOGGER.debug("LogWindow Tidy complete")
+        self.prune()
 
     def refresh(self):
         self.textEdit.clear()
@@ -194,11 +223,9 @@ class LogWindow(QtWidgets.QWidget):
         self.logging_level_event.emit(self.logLevel)
 
 
-from logging.handlers import BaseRotatingHandler
-
-
 class LogWindowHandler(logging.Handler, QObject):
     new_message = pyqtSignal(logging.LogRecord)
+
     def __init__(self, parent):
         logging.Handler.__init__(self)
         QObject.__init__(self)

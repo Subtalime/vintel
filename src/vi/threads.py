@@ -130,9 +130,6 @@ class AvatarFindThread(QThread):
 
 
     def run(self):
-        cache = Cache()
-        lastCall = 0
-        wait = 300  # time between 2 requests in ms
         while True:
             try:
                 # Block waiting for addChatEntry() to enqueue something
@@ -148,10 +145,6 @@ class AvatarFindThread(QThread):
                     with open(resourcePath("logo_small.png"), "rb") as f:
                         avatar = f.read()
                 if not avatar:
-                    # diffLastCall = time.time() - lastCall
-                    # if diffLastCall < wait:
-                    #     time.sleep((wait - diffLastCall) / 1000.0)
-                    # lastCall = time.time()
                     avatar = EsiHelper().getAvatarByName(charname)
                 if avatar:
                     logging.debug("AvatarFindThread emit avatar_update for %s" % charname)
