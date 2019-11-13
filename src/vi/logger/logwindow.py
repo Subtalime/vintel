@@ -20,7 +20,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import pyqtSignal, QEvent, Qt, QObject
-from .cache.cache import Cache
+from vi.cache.cache import Cache
 import logging
 import queue
 import threading
@@ -240,6 +240,3 @@ class LogWindowHandler(logging.Handler, QObject):
 
     def emit(self, record):
         self.new_message.emit(record)
-        # self.parent.store(record)
-        # self.parent.write(self.format(record))
-        # self.parent.update()
