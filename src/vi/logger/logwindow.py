@@ -60,7 +60,6 @@ class LogWindow(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
-
         self.cache = Cache()
         # setup a blocking Queue in case LogWindow can't keep up
         msg_queue = queue.Queue(-1)  # unlimited
@@ -107,6 +106,7 @@ class LogWindow(QtWidgets.QWidget):
         rect = self.cache.getFromCache("log_window")
         if rect:
             self.restoreGeometry(rect)
+
         vis = self.cache.getFromCache("log_window_visible")
         if bool(vis):
             self.show()

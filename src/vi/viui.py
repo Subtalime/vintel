@@ -717,9 +717,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def showLoggingWindow(self):
         if self.logWindow.isHidden():
-            self.logWindow.setVisible(True)
-            self.logWindow.show()
-            self.logWindow.raise_()
+            self.logWindow.showNormal()
+            self.logWindow.activateWindow()
 
     def showChatroomChooser(self):
         chooser = ChatroomChooser(self)

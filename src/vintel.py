@@ -20,7 +20,9 @@
 
 import os
 from logging.handlers import RotatingFileHandler
+import logging
 from logging import StreamHandler
+
 from PyQt5 import QtGui, QtWidgets
 from vi import version, systemtray, viui
 from vi.cache import cache
@@ -29,7 +31,9 @@ from vi.resources import resourcePath, getEveChatlogDir, getVintelDir, getVintel
 from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
+from vi.logger.logconfig import LogConfiguration
 
+LOGGER = logging.getLogger(__name__)
 
 class Application(QApplication):
     def __init__(self, args):
@@ -68,13 +72,7 @@ class Application(QApplication):
 
         # Setting local directory for cache, resources and logging
         createResourceDirs()
-        # if getattr(sys, 'frozen', False):
-        #     respath = "./"
-        # else:
-        #     respath = "vi/ui/res/"
-        # respath = resourcePath()
-        if not os.path.exists(resourcePath("logo.png")):
-            logger.error("Could not find Logo")
+
         try:
             splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("logo.png")))
         except Exception as e:
@@ -97,45 +95,13 @@ class Application(QApplication):
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
-        class MyFormatter(logging.Formatter):
-            import datetime as dt
-            converter = dt.datetime.fromtimestamp
+        LogConfiguration(log_folder=getVintelLogDir())
 
-            def formatTime(self, record, datefmt=None):
-                ct = self.converter(record.created)
-                if datefmt:
-                    s = ct.strftime(datefmt)
-                else:
-                    t = ct.strftime("%Y-%m-%d %H:%M:%S")
-                    s = "%s,%03d" % (t, record.msecs)
-                return s
-
-        # Setup logging for console and rotated log files
-        formatter = MyFormatter(
-            fmt='%(asctime)s|%(levelname)s [%(threadName)s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s',
-            datefmt='%d/%m %H:%M:%S.%f')
-        rootLogger = logging.getLogger()
-        # rootLogger.setLevel(level=logLevel)
-
-        logFilename = os.path.join(getVintelLogDir(), "output.log")
-        fileHandler = RotatingFileHandler(maxBytes=(1048576 * 5), backupCount=7,
-                                          filename=logFilename, mode='a')
-        fileHandler.setFormatter(formatter)
-        # in the log file, ALWAYS debug
-        fileHandler.setLevel(logging.DEBUG)
-        rootLogger.addHandler(fileHandler)
-
-        # stdout
-        consoleHandler = StreamHandler()
-        consoleHandler.setFormatter(formatter)
-        consoleHandler.setLevel(logLevel)
-        # output logging to a Window
-        rootLogger.addHandler(consoleHandler)
-        logging.info("------------------- %s %s starting up -------------------", version.PROGNAME,
+        LOGGER.info("------------------- %s %s starting up -------------------", version.PROGNAME,
                      version.VERSION)
-        logging.info("Looking for chat logs at: %s", getEveChatlogDir())
-        logging.info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
-        logging.info("Writing logs to: %s", getVintelLogDir())
+        LOGGER.info("Looking for chat logs at: %s", getEveChatlogDir())
+        LOGGER.info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
+        LOGGER.info("Writing logs to: %s", getVintelLogDir())
         # let's hope, this will speed up start-up
         EsiInterface(cache_dir=getVintelDir())
         splash.show()
@@ -149,7 +115,6 @@ class Application(QApplication):
 
 
 import sys
-import logging
 import traceback
 from vi.version import VERSION, PROGNAME, AUTHOR, AUTHOR_EMAIL
 
@@ -157,7 +122,6 @@ __name__ = PROGNAME
 __author__ = AUTHOR + " (" + AUTHOR_EMAIL + ")"
 __version__ = VERSION
 
-LOGGER = logging.getLogger(__name__)
 import ftplib
 import time
 
