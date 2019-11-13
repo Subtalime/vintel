@@ -21,8 +21,8 @@ handlers:
     class: logging.handlers.RotatingFileHandler
     formatter: mine
     level: DEBUG
-    filename: !log_path logconfig.log
-    maxBytes: 1024
+    filename: !log_path vintel.log
+    maxBytes: 5242880
     backupCount: 10
     encoding: utf8
 
@@ -44,5 +44,9 @@ loggers:
     handlers: [console, file]
     propagate: no
 
+  root:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
 
 

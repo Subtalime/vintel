@@ -175,18 +175,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.setPalette(p)
 
     def setConstants(self):
-        self.map_update_interval = self.cache.getFromCache("map_update_interval", True)
+        self.map_update_interval = int(self.cache.getFromCache("map_update_interval", True))
         if not self.map_update_interval:
             self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
             self.cache.putIntoCache("map_update_interval", self.map_update_interval)
-        self.clipboard_check_interval = self.cache.getFromCache("clipboard_check_interval", True)
+        self.clipboard_check_interval = int(self.cache.getFromCache("clipboard_check_interval", True))
         if not self.clipboard_check_interval:
             self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
             self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
-        self.message_expiry = self.cache.getFromCache("message_expiry", True)
+        self.message_expiry = int(self.cache.getFromCache("message_expiry", True))
         if not self.message_expiry:
             self.message_expiry = MESSAGE_EXPIRY_SECS
             self.cache.putIntoCache("message_expiry", self.message_expiry)
+        backColor = self.cache.getFromCache("background_color")
+        self.setStyleSheet("QWidget { background-color: %s; }" % backColor)
 
     def updateCharacterMenu(self):
         self.menuCharacters.removeItems()
@@ -249,7 +251,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
         self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
         self.actionSettings.triggered.connect(self.settings)
-        self.actionSettings.setEnabled(False)
+        self.actionSettings.setEnabled(True)
 
         # if Log-Window is disabled for any reason
         if not self.logWindow:

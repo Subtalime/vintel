@@ -38,22 +38,25 @@ include_files = [
     ("vi/ui/res/logo_small.png", "logo_small.png"),
     ("vi/ui/res/logo_small_green.png", "logo_small_green.png"),
     ("vi/ui/res/qmark.png", "qmark.png"),
+    ("vi/ui/res/logging.yaml", "logging.yaml.example"),
     ("docs/regionselect.txt", "docs/regionselect.txt"),
     ("docs/jumpbridgeformat.txt", "docs/jumpbridgeformat.txt"),
-    ]
-requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy', 'pyswagger']
+]
+requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy',
+            'pyswagger',
+            'PyYAML']
 packages = []
-packages = [ "esipy", "pyswagger", "pyglet", "six", "clipboard", ]
+packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
 
 replace_paths = [("vi/ui/res/mapdata", "mapdata"), ("vi/ui/res", "sound")]
 setup(
     name=PROGNAME,
-    version = VERSION,
-    description = DISPLAY,
-    executables = executables,
-    options = {
+    version=VERSION,
+    description=DISPLAY,
+    executables=executables,
+    options={
         'build_exe': {
-            'build_exe': "../releases/Vintel-"+str(VERSION),
+            'build_exe': "../releases/Vintel-" + str(VERSION),
             'packages': packages,
             'include_files': include_files,
             'replace_paths': replace_paths,

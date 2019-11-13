@@ -35,9 +35,6 @@ class MyDateFormatter(logging.Formatter):
             s = "%s,%03d" % (t, record.msecs)
         return s
 
-def construct_logfilepath(loader, node):
-    value = loader.construct_scalar(node)
-    return os.path.join(getVintelLogDir(), value)
 
 class LogConfiguration:
     LOG_CONFIG = "logging.yaml"
@@ -45,20 +42,22 @@ class LogConfiguration:
     MAX_FILE_COUNT = 7
 
     def __init__(self, config_file=LOG_CONFIG, log_folder="."):
+
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                    config_file) if not os.path.exists(config_file) else config_file
 
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
-                    yaml.add_constructor(u'!log_path', construct_logfilepath)
-                    config = yaml.load(f)
+                    yaml.add_constructor(u'!log_path', self.construct_logfilepath)
+                    # Loader MUST be specified, otherwise constructor wont work!
+                    config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
                     logging.config.dictConfig(config)
                 except ImportError:
                     try:
                         # next attempt INI-File format
-                        logging.config.fileConfig(config_path, disable_existing_loggers=False)
+                        logging.config.fileConfig(config_path, disable_existing_loggers=True)
                     except Exception as e:
                         # OK, I give up
                         print(e)
@@ -69,6 +68,9 @@ class LogConfiguration:
         else:
             self.default(log_folder=log_folder)
 
+    def construct_logfilepath(self, loader, node):
+        value = loader.construct_scalar(node)
+        return os.path.join(getVintelLogDir(), value)
 
     def default(self, log_level=logging.INFO, log_folder="."):
         # just in case any loggers are currently active
@@ -99,4 +101,13 @@ class LogConfiguration:
 
 
 if __name__ == "__main__":
+
+    yaml.add_constructor("!test", construct_logfilepath)
+    try:
+        print(yaml.load(u"""
+        foo: !test tester
+        """, Loader=yaml.Loader))
+    except:
+        raise
+
     log = LogConfiguration()

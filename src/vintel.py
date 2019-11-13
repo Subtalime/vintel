@@ -19,9 +19,7 @@
 ###########################################################################
 
 import os
-from logging.handlers import RotatingFileHandler
 import logging
-from logging import StreamHandler
 
 from PyQt5 import QtGui, QtWidgets
 from vi import version, systemtray, viui
@@ -33,7 +31,6 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 
-LOGGER = logging.getLogger(__name__)
 
 class Application(QApplication):
     def __init__(self, args):
@@ -95,10 +92,11 @@ class Application(QApplication):
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
-        LogConfiguration(log_folder=getVintelLogDir())
+        LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
 
+        LOGGER = logging.getLogger(__name__)
         LOGGER.info("------------------- %s %s starting up -------------------", version.PROGNAME,
-                     version.VERSION)
+                    version.VERSION)
         LOGGER.info("Looking for chat logs at: %s", getEveChatlogDir())
         LOGGER.info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
         LOGGER.info("Writing logs to: %s", getVintelLogDir())
@@ -125,7 +123,10 @@ __version__ = VERSION
 import ftplib
 import time
 
+LOGGER = logging.getLogger(__name__)
 
+
+# TODO: Get log file from logconfig!
 def __uploadLog():
     """
     upload Log-File for further analysis

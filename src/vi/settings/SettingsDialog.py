@@ -15,9 +15,9 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.btnColor.clicked.connect(self.colorChooser)
         self.buttonBox.accepted.connect(self.saveSettings)
         self.buttonBox.rejected.connect(self.accept)
-        self.txtClipboardCheckInterval.setText(str(int(self.cache.getFromCache("clipboard_check_interval", True)) / 1000))
-        self.txtMapExpiry.setText(str(int(self.cache.getFromCache("map_update_interval", True)) / 1000))
-        self.txtMessageExpiry.setText(str(int(self.cache.getFromCache("message_expiry", True)) / 60))
+        val = self.cache.getFromCache("clipboard_check_interval", True)
+        self.txtClipboardInterval.setText("4")
+        self.txtMessageExpiry.setText(str(int(self.cache.getFromCache("message_expiry", True))))
 
     def colorChooser(self):
         currcolor = self.cache.getFromCache("background_color", True)
@@ -33,8 +33,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     # TODO: save the settings and create a Trigger for listeners
     def saveSettings(self):
-        self.cache.putIntoCache("clipboard_check_interval", str(int(self.txtClipboardCheckInterval.toPlainText()) * 1000))
-        self.cache.putIntoCache("map_update_interval", str(int(self.txtMapExpiry.toPlainText()) * 1000))
-        self.cache.putIntoCache("message_expiry", str(int(self.txtMessageExpiry.toPlainText()) * 60))
+        self.cache.putIntoCache("clipboard_check_interval", str(int(self.txtClipboardInterval.text()) * 1000))
+        self.cache.putIntoCache("message_expiry", self.txtMessageExpiry.text())
         self.settings_saved.emit()
         self.accept()
