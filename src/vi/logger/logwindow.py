@@ -1,5 +1,20 @@
-#   Vintel - Visual Intel Chat Analyzer
-#   Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#  Vintel - Visual Intel Chat Analyzer
+#  Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -20,7 +35,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import pyqtSignal, QEvent, Qt, QObject
-from .cache.cache import Cache
+from vi.cache.cache import Cache
 import logging
 import queue
 from logging.handlers import QueueHandler, QueueListener
@@ -29,6 +44,7 @@ from logging import LogRecord
 from vi.version import DISPLAY
 
 LOGGER = logging.getLogger(__name__)
+
 
 class LogWindow(QtWidgets.QWidget):
     logging_level_event = pyqtSignal(int)
@@ -52,7 +68,7 @@ class LogWindow(QtWidgets.QWidget):
         self.tidySize = 100
         self.pruneTime = time()
         # check only every hour
-        self.pruneDelay = 60 * 5 # 1 hour
+        self.pruneDelay = 60 * 5  # 1 hour
         self.doTidy = True
         self.log_records = []
         self._tidying = False
@@ -61,13 +77,14 @@ class LogWindow(QtWidgets.QWidget):
         self.setTitle()
         self.textEdit = QtWidgets.QTextEdit(self)
         self.textEdit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
-        self.textEdit.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
+        self.textEdit.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
         self.textEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.textEdit.customContextMenuRequested.connect(self.contextMenuEvent)
 
         vbox = QtWidgets.QVBoxLayout()
         self.setLayout(vbox)
-        self.setBaseSize(400,300)
+        self.setBaseSize(400, 300)
         vbox.addWidget(self.textEdit)
 
         self.queue_listener.start()
@@ -86,7 +103,6 @@ class LogWindow(QtWidgets.QWidget):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
         self.textEdit.append(text)
 
-
     def store(self, record: LogRecord):
         # stop adding records while Tidyup
         while self._tidying:
@@ -101,7 +117,7 @@ class LogWindow(QtWidgets.QWidget):
                     try:
                         self._tidying = True
                         LOGGER.debug("LogWindow Tidy start")
-                        del self.log_records[:num_records-self.tidySize]
+                        del self.log_records[:num_records - self.tidySize]
                     except Exception:
                         LOGGER.error("Error in Tidy-Up of Log-Window")
                     finally:
@@ -139,27 +155,32 @@ class LogWindow(QtWidgets.QWidget):
         LOGGER.debug("LogWindow closed")
         self.queue_listener.stop()
 
+    class MyAction(QtWidgets.QAction):
+        def __init__(self, *args):
+            QtWidgets.QAction.__init__(self, *args)
+            self.setCheckable(True)
+
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         currLevel = self.logLevel
         menu = QMenu(self)
-        debug = QtWidgets.QAction("Debug", checkable=True)
+        debug = self.MyAction("Debug")
         if currLevel == logging.DEBUG:
             debug.setChecked(True)
         menu.addAction(debug)
-        info = QtWidgets.QAction("Info", checkable=True)
+        info = self.MyAction("Info")
         if currLevel == logging.INFO:
             info.setChecked(True)
         menu.addAction(info)
-        warning = QtWidgets.QAction("Warning", checkable=True)
+        warning = self.MyAction("Warning")
         if currLevel == logging.WARN:
             warning.setChecked(True)
         menu.addAction(warning)
-        error = QtWidgets.QAction("Error", checkable=True)
+        error = self.MyAction("Error")
         if currLevel == logging.ERROR:
             error.setChecked(True)
         menu.addAction(error)
-        crit = QtWidgets.QAction("Critical", checkable=True)
+        crit = self.MyAction("Critical")
         if currLevel == logging.CRITICAL:
             crit.setChecked(True)
         menu.addAction(crit)
@@ -183,18 +204,16 @@ class LogWindow(QtWidgets.QWidget):
             self.logLevel = currLevel
             self.refresh()
 
-        #self maybe not... so we can hold ALL data and filter the output based on Level?
+        # self maybe not... so we can hold ALL data and filter the output based on Level?
         # self.logHandler.setLevel(self.logLevel)
         Cache().putIntoCache("log_window_level", self.logLevel)
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
 
 
-from logging.handlers import BaseRotatingHandler
-
-
 class LogWindowHandler(logging.Handler, QObject):
     new_message = pyqtSignal(logging.LogRecord)
+
     def __init__(self, parent):
         logging.Handler.__init__(self)
         QObject.__init__(self)
@@ -206,6 +225,3 @@ class LogWindowHandler(logging.Handler, QObject):
 
     def emit(self, record):
         self.new_message.emit(record)
-        # self.parent.store(record)
-        # self.parent.write(self.format(record))
-        # self.parent.update()

@@ -33,7 +33,7 @@ from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
 from PyQt5.uic import loadUi
 
 from vi import states
-from vi.LogWindow import LogWindow
+from vi.logger.logwindow import LogWindow
 from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
