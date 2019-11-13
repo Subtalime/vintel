@@ -38,10 +38,12 @@ include_files = [
     ("vi/ui/res/logo_small.png", "logo_small.png"),
     ("vi/ui/res/logo_small_green.png", "logo_small_green.png"),
     ("vi/ui/res/qmark.png", "qmark.png"),
+    ("vi/ui/res/logging.yaml", "logging.yaml.example"),
     ("docs/regionselect.txt", "docs/regionselect.txt"),
     ("docs/jumpbridgeformat.txt", "docs/jumpbridgeformat.txt"),
     ]
-requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy', 'pyswagger']
+requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy', 'pyswagger',
+            'PyYAML']
 packages = []
 packages = [ "esipy", "pyswagger", "pyglet", "six", "clipboard", ]
 
