@@ -18,6 +18,7 @@
 
 import requests
 import logging
+import queue
 from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
@@ -38,11 +39,8 @@ LOGGER = logging.getLogger(__name__)
 
 def getNewestVersion():
     try:
-        newestVersion = Cache().getFromCache("vi_version_available")
-        if not newestVersion:
-            url = u"http://vintel.tschache.com/resources/current_version.txt"
-            newestVersion = requests.get(url).text
-            Cache().putIntoCache("vi_version_available", newestVersion)
+        url = u"http://vintel.tschache.com/resources/current_version.txt"
+        newestVersion = requests.get(url).text
         return newestVersion
     except Exception as e:
         LOGGER.error("Failed version-request: %s", e)
@@ -57,11 +55,14 @@ class NotifyNewVersionThread(Thread, QObject):
         QObject.__init__(self)
         LOGGER.debug("Starting Version-Thread")
         self.alerted = False
+        self.queue = queue.Queue()
         self.active = True
+        self.timeout = 60 * 60 * 6
 
     def run(self):
         while True:
             if not self.alerted:
+                # don't spam my server...
                 try:
                     # Is there a newer version available?
                     newestVersion = getNewestVersion()
@@ -72,6 +73,10 @@ class NotifyNewVersionThread(Thread, QObject):
                     LOGGER.error("Failed NotifyNewVersionThread: %s", e)
             if not self.active:
                 return
+            try:
+                self.queue.get(timeout=self.timeout)
+            except:
+                pass
 
     def quit(self) -> None:
         self.active = False

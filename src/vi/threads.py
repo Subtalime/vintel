@@ -70,13 +70,13 @@ class MapUpdateThread(QThread):
             except Exception:
                 timeout  = True
                 pass
-            if not self.activeData: # we don't have initial Map-Data yet
+            if timeout and not self.activeData: # we don't have initial Map-Data yet
                 loadMapAttempt += 1
                 logging.debug("Map-Content update attempt, but not active")
                 if loadMapAttempt > 10:
                     logging.critical("Something is stopping the program of progressing. (Map-Attempts > 10\n"
                                      "If this continues to happen, delete the Cache-File in \"%s\"" % getVintelDir())
-                    exit(-1)
+                    return
                 continue
             try:
                 loadMapAttempt = 0
@@ -103,7 +103,7 @@ class MapUpdateThread(QThread):
     def quit(self):
         self.activeData = False
         logging.debug("Stopping Map-Thread")
-        self.queue.put(None)
+        # self.queue.put(None)
         QThread.quit(self)
 
 
@@ -136,7 +136,7 @@ class AvatarFindThread(QThread):
                 chatEntry = self.queue.get()
                 if not self.active:
                     logging.debug("Request for Avatar but Thread not enabled")
-                    continue
+                    return
 
                 charname = chatEntry.message.user
                 logging.debug("AvatarFindThread getting avatar for %s" % charname)
@@ -158,7 +158,7 @@ class AvatarFindThread(QThread):
     def quit(self):
         self.active = False
         logging.debug("Stopping Avatar-Thread")
-        self.queue.put(None)
+        # self.queue.put(None)
         QThread.quit(self)
 
 
@@ -220,7 +220,7 @@ class KOSCheckerThread(QThread):
     def quit(self):
         self.active = False
         logging.debug("Stopping KOSChecker-Thread")
-        self.queue.put((None, None, None))
+        # self.queue.put((None, None, None))
         QThread.quit(self)
 
 
@@ -268,7 +268,7 @@ class MapStatisticsThread(QThread):
     def quit(self):
         self.active = False
         logging.debug("Stopping MapStatistics-Thread")
-        self.queue.put(None)
+        # self.queue.put(None)
         QThread.quit(self)
 
 class FileWatcherThread(QThread):
@@ -298,12 +298,13 @@ class FileWatcherThread(QThread):
                 self._scanPaths()
                 for path in self.filesInFolder.keys(): # dict
                     self.filesInFolder[path] = self._checkChanges(list(self.filesInFolder[path].items()))
-            pass
+            else:
+                return
 
     def quit(self) -> None:
         self.active = False
         logging.debug("Stopping FileWatcher-Thread")
-        super(__class__, self).quit()
+        # super(__class__, self).quit()
 
     def fileChanged(self, path):
         self.file_change.emit(path)
@@ -370,3 +371,4 @@ class FileWatcherThread(QThread):
             self.filesInFolder[path] = filesInDir
             LOGGER.debug("currently tracking %d files in %s" % (len(self.filesInFolder), path))
             LOGGER.debug("  %r" % self.filesInFolder[path])
+

@@ -26,11 +26,12 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
+
 class MapViewPage(QWebEnginePage):
     link_clicked = pyqtSignal(QUrl)
     scroll_detected = pyqtSignal(QPointF)
 
-    def __init__(self, parent: 'QObject'=None):
+    def __init__(self, parent: 'QObject' = None):
         super().__init__(parent)
         self.load_complete = False
         self.javaQueue = Queue()
@@ -41,12 +42,10 @@ class MapViewPage(QWebEnginePage):
         self.currentScrollPos = QPointF()
         self.repositioning = False
 
-
     def wheelEvent(self, a0: QtGui.QWheelEvent) -> None:
         modifier = QApplication.keyboardModifiers()
         if modifier == Qt.ControlModifier:
             LOGGER.debug("Control-Delta %r" % a0.Delta())
-
 
     def onLoadFinished(self):
         self.load_complete = True
@@ -54,7 +53,7 @@ class MapViewPage(QWebEnginePage):
     def onLoadStarted(self):
         self.load_complete = False
 
-    def setHtml(self, p_str: str, baseUrl: QUrl=None, *args, **kwargs):
+    def setHtml(self, p_str: str, baseUrl: QUrl = None, *args, **kwargs):
         if self.currentHtml != p_str:
             self.currentHtml = p_str
             super().setHtml(p_str, QUrl(baseUrl), *args, **kwargs)
@@ -63,7 +62,7 @@ class MapViewPage(QWebEnginePage):
         self.setZoomFactor(value)
 
     def onScrollPos(self, qPointF: QPointF):
-        if qPointF == QPointF(): # empty
+        if qPointF == QPointF():  # empty
             # we need to reposition to old good spot
             # here we need to restore the previous position
             # this still doesn't help... something still moves it to 0.0

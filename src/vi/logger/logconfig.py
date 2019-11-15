@@ -18,9 +18,14 @@
 import os
 import logging
 import yaml
+import threading
+import queue
 from logging.config import dictConfig
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
+from .logwindow import LogWindowHandler, LOG_WINDOW_HANDLER_NAME
 from vi.resources import getVintelLogDir
+
+LOGGER = logging.getLogger(__name__)
 
 class MyDateFormatter(logging.Formatter):
     import datetime as dt
@@ -36,10 +41,16 @@ class MyDateFormatter(logging.Formatter):
         return s
 
 
+def construct_logfilepath(loader, node):
+    value = loader.construct_scalar(node)
+    return os.path.join(getVintelLogDir(), value)
+
+
 class LogConfiguration:
     LOG_CONFIG = "logging.yaml"
     MAX_FILE_SIZE = 1024 * 1024 * 5
     MAX_FILE_COUNT = 7
+    LOG_FILE_PATH = None
 
     def __init__(self, config_file=LOG_CONFIG, log_folder="."):
 
@@ -49,11 +60,13 @@ class LogConfiguration:
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
-                    yaml.add_constructor(u'!log_path', self.construct_logfilepath)
+                    yaml.add_constructor(u'!log_path', construct_logfilepath)
                     # Loader MUST be specified, otherwise constructor wont work!
                     config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
                     logging.config.dictConfig(config)
+                    # success
+                    LogConfiguration.LOG_FILE_PATH = config_path
                 except ImportError:
                     try:
                         # next attempt INI-File format
@@ -67,10 +80,6 @@ class LogConfiguration:
                     raise
         else:
             self.default(log_folder=log_folder)
-
-    def construct_logfilepath(self, loader, node):
-        value = loader.construct_scalar(node)
-        return os.path.join(getVintelLogDir(), value)
 
     def default(self, log_level=logging.INFO, log_folder="."):
         # just in case any loggers are currently active
@@ -98,6 +107,48 @@ class LogConfiguration:
         consoleHandler.setFormatter(formatter)
         consoleHandler.setLevel(log_level)
         rootLogger.addHandler(consoleHandler)
+
+
+class LogConfigurationThread(threading.Thread):
+    def __init__(self, log_window = None, **kwargs):
+        threading.Thread.__init__(self, *kwargs)
+        self.queue = queue.Queue()
+        self.timeout = 5
+        self.active = True
+        self.filestat = None
+        self._logWindow = log_window
+
+    def run(self) -> None:
+        while self.active:
+            try:
+                self.queue.get(timeout=self.timeout)
+            except:
+                pass
+            # LOG_FILEPATH is real... but still catch, in case it has been moved/deleted
+            if LogConfiguration.LOG_FILE_PATH:
+                if not self.filestat:
+                    try:
+                        self.filestat = os.stat(LogConfiguration.LOG_FILE_PATH)
+                    except:
+                        pass
+                if self.filestat:
+                    newstat = os.stat(LogConfiguration.LOG_FILE_PATH)
+                    if newstat != self.filestat:
+                        self.filestat = newstat
+                        try:
+                            LOGGER.debug("Configuration-Change in \"{}\"".format(LogConfiguration.LOG_FILE_PATH))
+                            LogConfiguration(LogConfiguration.LOG_FILE_PATH)
+                            # Make sure our LogWindowHandler is still alive!
+                            if LOG_WINDOW_HANDLER_NAME not in logging._handlerList:
+                                if self._logWindow:
+                                    self._logWindow.addHandler(LogWindowHandler())
+                            LOGGER.debug("Configuration-Change applied")
+                        except:
+                            LOGGER.error("Error in Configuration!")
+                            pass
+
+    def quit(self) -> None:
+        self.active = False
 
 
 if __name__ == "__main__":
