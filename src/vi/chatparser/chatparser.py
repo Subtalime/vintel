@@ -69,7 +69,7 @@ class ChatParser(object):
     def getListeners(self):
         characters = []
         for filename in self.fileData:
-            if "charname" in self.fileData[filename]:
+            if "charname" in self.fileData[filename] and self.fileData[filename]["charname"] not in characters:
                 characters.append(self.fileData[filename]["charname"])
         return characters
 
@@ -137,7 +137,9 @@ class ChatParser(object):
         rtext = soup.select("rtext")[0]
         systems = set()
         upperText = text.upper()
-
+        # anything older than 5 minutes, ignore
+        if (datetime.datetime.now()- timestamp).total_seconds() > 60:
+            return None
         # KOS request
         if upperText.startswith("XXX "):
             return Message(roomname, text, timestamp, username, systems, upperText,

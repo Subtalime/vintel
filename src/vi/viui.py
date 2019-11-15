@@ -56,6 +56,7 @@ from vi.dotlan.exception import DotlanException
 # from vi.sound.SoundSettingDialog import SoundSettingDialog
 from vi.sound.SoundSetupList import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
+from vi.logger.logconfig import LogConfigurationThread
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
 
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.statisticsThread = None
         self.versionCheckThread = None
         self.mapUpdateThread = None
+        self.logConfigThread = None
         self.chatparser = None
         self.cache = Cache()
         self.setWindowTitle(vi.version.DISPLAY)
@@ -322,6 +324,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # statisticsThread is blocked until first call of requestStatistics
         self.statisticsThread.start()
 
+        self.logConfigThread = LogConfigurationThread(self.logWindow)
+        self.logConfigThread.start()
+
         LOGGER.debug("Finished Creating threads")
 
     # TODO: store each system configured in Regions
@@ -449,6 +454,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Stop the threads
         try:
             SoundManager().quit()
+            self.logConfigThread.quit()
             self.avatarFindThread.quit()
             self.filewatcherThread.paused = True
             self.filewatcherThread.quit()

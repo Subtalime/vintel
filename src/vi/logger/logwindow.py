@@ -32,7 +32,23 @@ from vi.version import DISPLAY
 LOGGER = logging.getLogger(__name__)
 
 _lock = threading.RLock()
+LOG_WINDOW_HANDLER_NAME = "_LogWindowHandler"
 
+class LogWindowHandler(logging.Handler, QObject):
+    new_message = pyqtSignal(logging.LogRecord)
+
+    def __init__(self, parent = None):
+        logging.Handler.__init__(self)
+        QObject.__init__(self)
+        self.parent = parent
+        formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
+        # always log all messages ! The Window-Output is managed by self.logLevel
+        self.setLevel(logging.DEBUG)
+        self.setFormatter(formatter)
+        self.set_name(LOG_WINDOW_HANDLER_NAME)
+
+    def emit(self, record):
+        self.new_message.emit(record)
 
 def _acquireLock():
     """
@@ -61,21 +77,14 @@ class LogWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
         self.cache = Cache()
-        # setup a blocking Queue in case LogWindow can't keep up
-        msg_queue = queue.Queue(-1)  # unlimited
-        queue_handler = QueueHandler(msg_queue)
-        # all done, now create new Handler
-        logging.getLogger().addHandler(queue_handler)
-        # our own Log-Handler
-        self.logHandler = LogWindowHandler(self)
-        # the queue will send to Log-Window-Handler
-        self.queue_listener = QueueListener(msg_queue, self.logHandler)
-        # any new Log-Messages, send to storage
-        self.logHandler.new_message.connect(self.store)
         # keep maximum of 5k lines in buffer
         self.tidySize = 5000
         self.pruneTime = time()
         self._tidying = False
+        self.msg_queue = None
+        self.logHandler = None
+        self.queue_listener = None
+        self.queue_handler = None
         # check only every hour
         self.pruneDelay = 60 * 60  # 1 hour
         # Log-Messages stored here
@@ -94,9 +103,7 @@ class LogWindow(QtWidgets.QWidget):
         self.setLayout(vbox)
         self.setBaseSize(400, 300)
         vbox.addWidget(self.textEdit)
-
-        # start the Log-Queue
-        self.queue_listener.start()
+        self.addHandler(LogWindowHandler(parent))
         self.logLevel = self.cache.getFromCache("log_window_level")
         if not self.logLevel:
             # by default, have warnings only shown here
@@ -110,6 +117,24 @@ class LogWindow(QtWidgets.QWidget):
         vis = self.cache.getFromCache("log_window_visible")
         if bool(vis):
             self.show()
+
+    def addHandler(self, logHandler: LogWindowHandler):
+        if not self.msg_queue:
+            # setup a blocking Queue in case LogWindow can't keep up
+            self.msg_queue = queue.Queue(-1)  # unlimited
+            self.queue_handler = QueueHandler(self.msg_queue)
+        # all done, now create new Handler
+        logging.getLogger().addHandler(self.queue_handler)
+        # our own Log-Handler
+        self.logHandler = logHandler
+        # the queue will send to Log-Window-Handler
+        if self.queue_listener:
+            self.queue_listener.stop()
+        self.queue_listener = QueueListener(self.msg_queue, self.logHandler)
+        # any new Log-Messages, send to storage
+        self.logHandler.new_message.connect(self.store)
+        # start the Log-Queue
+        self.queue_listener.start()
 
     def setTitle(self):
         self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging.getLevelName(self.logLevel)))
@@ -226,17 +251,3 @@ class LogWindow(QtWidgets.QWidget):
         self.logging_level_event.emit(self.logLevel)
 
 
-class LogWindowHandler(logging.Handler, QObject):
-    new_message = pyqtSignal(logging.LogRecord)
-
-    def __init__(self, parent):
-        logging.Handler.__init__(self)
-        QObject.__init__(self)
-        self.parent = parent
-        formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
-        # always log all messages ! The Window-Output is managed by self.logLevel
-        self.setLevel(logging.DEBUG)
-        self.setFormatter(formatter)
-
-    def emit(self, record):
-        self.new_message.emit(record)

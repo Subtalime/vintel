@@ -54,9 +54,10 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
         # only add characters which I "seem" to know, aren't here
         characters = Characters()
         for player in knownPlayers:
-            character = characters[player]
-            if character.getLocation != self.system.name:
+            if player in characters and characters[player].getLocation() != self.system.name or player not in characters:
                 self.playerNamesBox.addItem(player)
+        if len(self.playerNamesBox) == 0:
+            self.locationButton.setEnabled(False)
         self.setWindowTitle("Chat for {0}".format(titleName))
         self.closeButton.clicked.connect(self.closeDialog)
         self.alarmButton.clicked.connect(self.setSystemAlarm)

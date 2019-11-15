@@ -266,16 +266,18 @@ def parseCharnames(rtext: Tag) -> bool:
                         found = False
                         for a in names.items():
                             if re.search(checkname, a[0], re.IGNORECASE):
+                                LOGGER.debug("a part of \"{}\" was previously found".format(checkname))
                                 found = True
                                 break
                         if not found:
                             LOGGER.debug("Couldn't find \"%s\" in list of \"%r\" names" % (checkname, names))
                             char = EsiHelper().checkPlayerName(checkname)
                             if char is not None:
+                                LOGGER.debug("ESI found the character \"{}\"".format(checkname))
                                 names[checkname] = char
             LOGGER.debug("Found names: {}".format(names))
         except Exception as e:
-            LOGGER.error("Error parsing Namse", e)
+            LOGGER.error("Error parsing Names", e)
         return names
 
     def formatCharname(text: str, charname: str, esicharacter: dict):
@@ -291,7 +293,7 @@ def parseCharnames(rtext: Tag) -> bool:
         for name, chara in names.items():
             newText = formatCharname(text, name, chara)
             textReplace(text, newText)
-            return True
+            replaced = True
     return replaced
 
 

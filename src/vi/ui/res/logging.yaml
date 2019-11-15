@@ -18,11 +18,13 @@ formatters:
 
 handlers:
   file:
-    class: logging.handlers.RotatingFileHandler
+    class: logging.handlers.TimedRotatingFileHandler
     formatter: mine
+    when: midnight
+    delay: true
     level: DEBUG
     filename: !log_path vintel.log
-    maxBytes: 5242880
+#    maxBytes: 5242880
     backupCount: 10
     encoding: utf8
 
@@ -40,13 +42,17 @@ root:
 
 loggers:
   vi:
-    level: INFO
+    level: DEBUG
     handlers: [console, file]
-    propagate: no
+    propagate: yes
 
   root:
     level: INFO
     handlers: [console, file]
     propagate: no
 
+  vi.MapViewPage:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
 
