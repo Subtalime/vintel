@@ -11,7 +11,11 @@
   <component name="PackageRequirementsSettings">
     <option name="requirementsPath" value="C:\Users\stschach\PycharmProjects\vintel\requirements.txt" />
   </component>
+  <component name="PyBDDFrameworkConfig">
+    <option name="preferedFrameworkName" value="pytest-bdd" />
+  </component>
   <component name="TestRunnerService">
-    <option name="PROJECT_TEST_RUNNER" value="Unittests" />
+    <option name="projectConfiguration" value="pytest" />
+    <option name="PROJECT_TEST_RUNNER" value="pytest" />
   </component>
 </module>

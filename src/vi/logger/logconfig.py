@@ -40,6 +40,8 @@ class LogConfiguration:
     LOG_CONFIG = "logging.yaml"
     MAX_FILE_SIZE = 1024 * 1024 * 5
     MAX_FILE_COUNT = 7
+    # store the configured File-Path to the Log-File here
+    LOG_FILE_PATH = ""
 
     def __init__(self, config_file=LOG_CONFIG, log_folder="."):
 
@@ -54,6 +56,8 @@ class LogConfiguration:
                     config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
                     logging.config.dictConfig(config)
+                    # success... so store the Log-Path
+                    LogConfiguration.LOG_FILE_PATH = config['handlers']['file']['filename']
                 except ImportError:
                     try:
                         # next attempt INI-File format
@@ -85,6 +89,7 @@ class LogConfiguration:
             datefmt='%d/%m %H:%M:%S.%f')
 
         logFilename = os.path.join(log_folder, "output.log")
+        LogConfiguration.LOG_FILE_PATH = logFilename
         fileHandler = RotatingFileHandler(maxBytes=self.MAX_FILE_SIZE,
                                           backupCount=self.MAX_FILE_COUNT, filename=logFilename,
                                           mode='a')
@@ -102,12 +107,7 @@ class LogConfiguration:
 
 if __name__ == "__main__":
 
-    yaml.add_constructor("!test", construct_logfilepath)
-    try:
-        print(yaml.load(u"""
-        foo: !test tester
-        """, Loader=yaml.Loader))
-    except:
-        raise
 
     log = LogConfiguration()
+
+    print(LogConfiguration.LOG_FILE_PATH)

@@ -135,7 +135,7 @@ def __uploadLog():
     """
     try:
         session = ftplib.FTP("vintel.tschache.com", "vintellog", "jYie93#7")
-        logFilename = os.path.join(getVintelLogDir(), "output.log")
+        logFilename = LogConfiguration.LOG_FILE_PATH
         file_hdl = open(logFilename, "rb")
         dest = str(time.time()) + "_output.log"
         session.storlines("STOR " + dest, file_hdl)
