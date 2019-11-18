@@ -56,7 +56,7 @@ setup(
     executables=executables,
     options={
         'build_exe': {
-            'build_exe': "../releases/Vintel-" + str(VERSION),
+            'build_exe': "../releases/packages/Vintel-" + str(VERSION),
             'packages': packages,
             'include_files': include_files,
             'replace_paths': replace_paths,

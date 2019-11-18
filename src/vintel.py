@@ -31,7 +31,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 
-
+LOGGER = logging.getLogger(__name__)
 
 class Application(QApplication):
     def __init__(self, args):
@@ -93,9 +93,11 @@ class Application(QApplication):
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
-        LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
+        try:
+            LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
+        except:
+            LOGGER.critical("Error in Logging-Configuration!")
 
-        LOGGER = logging.getLogger(__name__)
         LOGGER.info("------------------- %s %s starting up -------------------", version.PROGNAME,
                     version.VERSION)
         LOGGER.info("Looking for chat logs at: %s", getEveChatlogDir())

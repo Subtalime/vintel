@@ -111,7 +111,8 @@ class System(object):
         return characters
 
     def getSoupId(self):
-        return self.name.replace("-", "_").lower() + u"_loc"
+        name_id = str(self.name)
+        return "loc_"+name_id.replace("-", "_").lower()
 
     def removeLocatedCharacter(self, charname):
         idName = self.getSoupId()

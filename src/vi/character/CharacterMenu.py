@@ -42,14 +42,14 @@ class CharacterMenu(QMenu):
             logging.critical("addItem(characters) must be of type \"Characters\"")
             return False
         # prevent duplicates
-        if character.getName in self._menu_actions.keys():
+        if character.getName() in self._menu_actions.keys():
             return False
-        action = QAction(character.getName, self, checkable=True)
-        action.setData(self._actionName(character.getName))
-        action.setObjectName(character.getName)
-        action.setChecked(character.getStatus)
+        action = QAction(character.getName(), self, checkable=True)
+        action.setData(self._actionName(character.getName()))
+        action.setObjectName(character.getName())
+        action.setChecked(character.getStatus())
         action.setToolTip("deselect to disable monitoring")
-        self._menu_actions[character.getName] = action
+        self._menu_actions[character.getName()] = action
         self.addAction(action)
         return True
 
@@ -65,9 +65,9 @@ class CharacterMenu(QMenu):
     def removeItem(self, character: Character) -> bool:
         if not isinstance(character, Character):
             logging.critical("removeItem(character) must be of type \"Character\"")
-        elif character.getName in self._menu_actions.keys():
-            self.removeAction(self._menu_actions.get(character.getName))
-            self._menu_actions.pop(character.getName)
+        elif character.getName() in self._menu_actions.keys():
+            self.removeAction(self._menu_actions.get(character.getName()))
+            self._menu_actions.pop(character.getName())
             return True
         return False
 
