@@ -30,7 +30,7 @@ def resourcePath(relativePath=None):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         basePath = os.path.dirname(sys.executable)
     else:
-        basePath = os.path.join(os.path.abspath("."), "vi/ui/res")
+        basePath = os.path.join(os.path.abspath("."), "vi", "ui", "res")
     if not relativePath:
         return basePath
     returnpath = os.path.join(basePath, relativePath)

@@ -29,23 +29,31 @@ class MySystem(System):
                                        systemId)
         self.setStatusTime = None
         self.timerload = ()
+        self.name_label = self.name.replace("-", "_").lower()
         self.rectId = self.svgElement.select("rect")[0]["id"]
+        if len(self.svgElement.select("rect")) > 1:
+            self.rectIce = self.svgElement.select("rect")[1]
+        else:
+            self.rectIce = self.rect
+        if not self.rectIce.has_attr("id"):
+            self.rectIce["id"] = "icerect{}".format(self.name_label)
+        self.rectIdIce = self.rectIce["id"]
         if not self.secondLine.has_attr("id"):
-            self.secondLine["id"] = "watch{}".format(self.name)
+            self.secondLine["id"] = "watch{}".format(self.name_label)
 
     def setStatus(self, newStatus):
         super(MySystem, self).setStatus(newStatus)
         self.setStatusTime = time.time()
 
     def update(self):
-        # super(MySystem, self).update()
+        super(MySystem, self).update()
         if self.status != states.UNKNOWN:
             # calc the new timer for injecting into JS
             diff = time.time() - self.lastAlarmTime
             minutes = int(math.floor(diff / 60))
             seconds = int(diff - minutes * 60)
             ndiff = minutes * 60 + seconds
-            self.timerload = (ndiff, self.secondLine["id"], self.rectId, self.status)
+            self.timerload = (ndiff, self.status, self.secondLine["id"], self.rectId, self.rectIdIce)
         else:
             self.secondLine.string = "??"
             self.timerload = ()

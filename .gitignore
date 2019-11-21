@@ -6,4 +6,8 @@
 /.idea/
 /Output/
 /releases/packages/
+/src/build/
+/src/dist/
+/releases/setup/*.exe
 /eve/
+/build/

@@ -37,7 +37,7 @@ class ChatParser(object):
     """
     ChatParser will analyze every new line that was found inside the Chatlogs.
     """
-    def __init__(self, path, rooms, systems):
+    def __init__(self, path, rooms, systems, character_parser, ship_parser):
         """
         path = the path with the logs
         rooms = the rooms to parse
@@ -45,10 +45,13 @@ class ChatParser(object):
         self.path = path  # the path with the chatlog
         self.rooms = rooms  # the rooms to watch (excl. local)
         self.systems = systems  # the known systems as dict name: system
+        self.chatParserEnabled = character_parser
+        self.shipScannerEnabled = ship_parser
         self.fileData = {}  # informations about the files in the directory
         self.knownMessages = []  # message we allready analyzed
         self.locations = {}  # informations about the location of a char
         self.ignoredPaths = []
+        self.chatParserEnabled = True
         # for the following to work, SVG JS has to use Message-Timestamp to determine the
         # actual reporting time
         self.goBackInTime = 60 * 20  # 20 minutes prior messages analysed
@@ -72,6 +75,16 @@ class ChatParser(object):
             if "charname" in self.fileData[filename] and self.fileData[filename]["charname"] not in characters:
                 characters.append(self.fileData[filename]["charname"])
         return characters
+
+    def characterParserEnabled(self, enable: bool=None) -> bool:
+        if enable is not None:
+            self.chatParserEnabled = enable
+        return self.chatParserEnabled
+
+    def shipParserEnabled(self, enable: bool=None) -> bool:
+        if enable is not None:
+            self.shipScannerEnabled = enable
+        return self.shipScannerEnabled
 
     def addFile(self, path):
         lines = None
@@ -161,14 +174,16 @@ class ChatParser(object):
         if message in self.knownMessages:
             message.status = states.IGNORE
             return message
-        while parseShips(rtext):
-            continue
+        if self.shipScannerEnabled:
+            while parseShips(rtext):
+                continue
         while parseUrls(rtext):
             continue
         while parseSystems(self.systems, rtext, systems):
             continue
-        while parseCharnames(rtext):
-            continue
+        if self.chatParserEnabled:
+            while parseCharnames(rtext):
+                continue
 
         parsedStatus = parseStatus(rtext)
         status = parsedStatus if parsedStatus is not None else states.ALARM

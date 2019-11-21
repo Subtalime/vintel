@@ -17,6 +17,7 @@
 
 import time
 import logging
+import sys
 
 from six.moves import range
 from PyQt5 import QtWidgets
@@ -79,6 +80,11 @@ class TrayContextMenu(QtWidgets.QMenu):
         self.quitAction.triggered.connect(self.trayIcon.quit)
         # self.connect(self.quitAction, PYQT_SIGNAL("triggered()"), self.trayIcon.quit)
         self.addAction(self.quitAction)
+        if getattr(sys, 'frozen', False):
+            self.addSeparator()
+            self.viewSource = QAction("View source", self)
+            self.viewSource.triggered.connect(self.trayIcon.viewSource)
+
 
     def changeAlarmDistance(self):
         for action in self.distanceGroup.actions():
@@ -105,6 +111,9 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self.showAlarm = True
         self.showRequest = True
         self.alarmDistance = 0
+
+    def viewSource(self):
+        pass
 
     def changeAlarmDistance(self):
         distance = self.alarmDistance

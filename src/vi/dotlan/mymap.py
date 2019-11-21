@@ -21,6 +21,7 @@ from bs4.element import  CData
 from PyQt5 import  QtWidgets
 from vi.dotlan.map import Map
 from vi.resources import getVintelMap
+import sys
 import time
 import logging
 import os
@@ -62,42 +63,46 @@ class MyMap(Map):
         }
 
         // max time for alarm, rect color, secondLine color
-        var ALARM_COLORS = [60 * 4,  "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#FFFFFF", 
+        var ALARM_COLORS = [60 * 4,  "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#000000", 
                             60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000", 
                             60 * 60 * 24, "#FFFFFF", "#000000"];
         var REQUEST_COLORS = [60 * 2, "#2989d8", "#000000",
                               60 * 60 * 24, "#FFFFFF", "#000000"];
-        var CLEAR_COLORS =  [60 * 2, "59FF6C", "#000000",
+        var CLEAR_COLORS =  [60 * 2, "#59FF6C", "#000000",
                              60 * 60 * 24, "#FFFFFF", "#000000"];
         var UNKNOWN_COLOR = "#FFFFFF";
         var CLEAR_COLOR = "#59FF6C";
         var STATE = ['alarm', 'was alarmed', 'clear', 'unknown', 'ignore', 'no change', 'request', 'location'];
-        // seconds to start at, where, fill, current state, alarm_colors offset
-        function showTimer(currentTime, secondline, rect, state) {
+        // seconds to start at, text-line, rectangle, where current state
+        function showTimer(currentTime, state, secondline, rect, rectice) {
             var bgcolor = UNKNOWN_COLOR; // the default
             var endcolor = CLEAR_COLOR;
             var slcolor = '#000000';
             var arrayoffset = -1;
-            var maxtime = -1;
+            var maxtime = 0;
             var startTime = new Date().getTime() - currentTime * 1000;
             window.setInterval(function() {
                 var time = new Date().getTime() - startTime;
                 var elapsed = Math.ceil(time / 100) / 10;
-                if (elapsed > maxtime) {
+                if (elapsed >= maxtime) {
                     if (state == STATE[0]) { // Alarm
                         while (arrayoffset + 1 < ALARM_COLORS.length / 3 && elapsed > maxtime) {
                             arrayoffset += 1;
-                            bgcolor = ALARM_COLORS[arrayoffset * 3 + 1];
-                            endcolor = ALARM_COLORS[(arrayoffset + 1) * 3 + 1];
+                            bgcolor = endcolor =  ALARM_COLORS[arrayoffset * 3 + 1];
+                            if (arrayoffset + 1 < ALARM_COLORS.length / 3) {
+                                endcolor = ALARM_COLORS[(arrayoffset + 1) * 3 + 1];
+                            }
                             slcolor = ALARM_COLORS[arrayoffset * 3 + 2];
                             maxtime = ALARM_COLORS[arrayoffset * 3];
                         }
                     }
                     else if (state == STATE[2]) { // Clear
-                        while (arrayoffset + 1 < ALARM_COLORS.length / 3 && elapsed > maxtime) {
+                        while (arrayoffset + 1 < CLEAR_COLORS.length / 3 && elapsed > maxtime) {
                             arrayoffset += 1;
-                            bgcolor = CLEAR_COLORS[arrayoffset * 3 + 1];
-                            endcolor = CLEAR_COLORS[(arrayoffset + 1) * 3 + 1];
+                            bgcolor = endcolor = CLEAR_COLORS[arrayoffset * 3 + 1];
+                            if (arrayoffset + 1 < CLEAR_COLORS.length / 3) {
+                                endcolor = CLEAR_COLORS[(arrayoffset + 1) * 3 + 1];
+                            }
                             slcolor = CLEAR_COLORS[arrayoffset * 3 + 2];
                             maxtime = CLEAR_COLORS[arrayoffset * 3];
                         }
@@ -105,24 +110,29 @@ class MyMap(Map):
                     else if (state == STATE[6]) { // Request
                         while (arrayoffset + 1 < REQUEST_COLORS.length / 3 && elapsed > maxtime) {
                             arrayoffset += 1;
-                            bgcolor = REQUEST_COLORS[arrayoffset * 3 + 1];
-                            endcolor = REQUEST_COLORS[(arrayoffset + 1) * 3 + 1];
+                            bgcolor = endcolor = REQUEST_COLORS[arrayoffset * 3 + 1];
+                            if (arrayoffset + 1 < REQUEST_COLORS.length / 3) {
+                                endcolor = REQUEST_COLORS[(arrayoffset + 1) * 3 + 1];
+                            }
                             slcolor = REQUEST_COLORS[arrayoffset * 3 + 2];
                             maxtime = REQUEST_COLORS[arrayoffset * 3];
                         }
                     }
                 }
-                minutes = parseInt(elapsed / 60, 10);
-                seconds = parseInt(elapsed % 60, 10);
+                var minutes = parseInt(elapsed / 60, 10);
+                var seconds = parseInt(elapsed % 60, 10);
                 minutes = minutes < 10 ? "0" + minutes : minutes;
                 seconds = seconds < 10 ? "0" + seconds : seconds;
-                secondline.textContent = minutes + ":" + seconds;
-                secondline.style.color = slcolor;
+                secondline.setAttribute("style", "fill: "+slcolor);
+                //secondline.style.fill = "#000000";
                 var achieved = 0;
                 if (arrayoffset >= 0) {
                     achieved = elapsed / maxtime;
                 }
-                rect.style.backgroundColor = pSBC(achieved.toFixed(2), bgcolor, endcolor, 1);
+                var newcolor = pSBC(achieved, bgcolor, endcolor, 1);
+                rect.setAttribute('style', "fill: "+newcolor);
+                rectice.setAttribute('style', "fill: "+newcolor);
+                secondline.textContent = minutes + ":" + seconds;
             }, 1000);
         }
         """
@@ -139,8 +149,8 @@ class MyMap(Map):
         for system in self.systems.values():
             system.update()
             if len(system.timerload):
-                onload.append("showTimer({0}, document.querySelector('#{1}'), document.querySelector('#{2}'), '{3}');".format(
-                system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3]))
+                onload.append("showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
+                system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3], system.timerload[4]))
         # Update the marker
         js_onload = self.soup.find("script", attrs={"id": "onload"})
         if not js_onload:
@@ -163,7 +173,8 @@ class MyMap(Map):
                 newValue = "0"
             self.marker["opacity"] = newValue
         content = str(self.soup)
-        # self.debugWriteSoup(content)
+        if not getattr(sys, 'frozen', False):
+            self.debugWriteSoup(content)
         return content
 
     def __init__(self, parent=None):

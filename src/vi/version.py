@@ -22,9 +22,8 @@ import queue
 from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
-from vi.cache.cache import Cache
 
-VERSION = "1.2.3"
+VERSION = "1.2.4"
 SNAPSHOT = True  # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 PROGNAME = "Vintel"
@@ -59,8 +58,14 @@ class NotifyNewVersionThread(Thread, QObject):
         self.active = True
         self.timeout = 60 * 60 * 6
 
+    # to exit Queue-Timeout
+    def addToQueue(self):
+        self.queue.put(0)
+
     def run(self):
         while True:
+            if not self.active:
+                return
             if not self.alerted:
                 # don't spam my server...
                 try:
@@ -71,13 +76,12 @@ class NotifyNewVersionThread(Thread, QObject):
                         self.alerted = True
                 except Exception as e:
                     LOGGER.error("Failed NotifyNewVersionThread: %s", e)
-            if not self.active:
-                return
             try:
                 self.queue.get(timeout=self.timeout)
             except:
                 pass
 
     def quit(self) -> None:
-        self.active = False
         LOGGER.debug("Stopping Version-Thread")
+        self.active = False
+        self.addToQueue()

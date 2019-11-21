@@ -149,6 +149,7 @@ class LogConfigurationThread(threading.Thread):
 
     def quit(self) -> None:
         self.active = False
+        self.queue.put(0)
 
 
 if __name__ == "__main__":

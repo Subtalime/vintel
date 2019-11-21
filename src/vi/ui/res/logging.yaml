@@ -38,13 +38,21 @@ handlers:
 root:
   level: DEBUG
   handlers: [console, file]
+<<<<<<< HEAD
   propagate: yes
+=======
+  propagate: no
+>>>>>>> new_root
 
 loggers:
   vi:
     level: DEBUG
     handlers: [console, file]
+<<<<<<< HEAD
     propagate: yes
+=======
+    propagate: no
+>>>>>>> new_root
 
   root:
     level: INFO

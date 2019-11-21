@@ -39,11 +39,12 @@ class System(object):
         self.mapSoup = mapSoup
         self.origSvgElement = svgElement
         self.rect = svgElement.select("rect")[0]
+        self.firstLine = svgElement.select("text")[0]
         self.secondLine = svgElement.select("text")[1]
         self.lastAlarmTime = 0
         self.messages = []
         self.setStatus(states.UNKNOWN)
-        self.__locatedCharacters = []
+        self._locatedCharacters = []
         self.backgroundColor = "#FFFFFF"
         self.mapCoordinates = mapCoordinates
         self.systemId = systemId
@@ -88,9 +89,9 @@ class System(object):
     def addLocatedCharacter(self, charname):
         idName = self.getSoupId()
         # idName = self.name + u"_loc"
-        wasLocated = bool(self.__locatedCharacters)
-        if charname not in self.__locatedCharacters:
-            self.__locatedCharacters.append(charname)
+        wasLocated = bool(self._locatedCharacters)
+        if charname not in self._locatedCharacters:
+            self._locatedCharacters.append(charname)
         if not wasLocated:
             coords = self.mapCoordinates
             newTag = self.mapSoup.new_tag("ellipse", cx=coords["center_x"] - 2.5, cy=coords["center_y"], id=idName,
@@ -106,7 +107,7 @@ class System(object):
 
     def getLocatedCharacters(self):
         characters = []
-        for char in self.__locatedCharacters:
+        for char in self._locatedCharacters:
             characters.append(char)
         return characters
 
@@ -118,9 +119,9 @@ class System(object):
         idName = self.getSoupId()
         # idName = self.name + u"_loc"
 
-        if charname in self.__locatedCharacters:
-            self.__locatedCharacters.remove(charname)
-            if not self.__locatedCharacters:
+        if charname in self._locatedCharacters:
+            self._locatedCharacters.remove(charname)
+            if not self._locatedCharacters:
                 for element in self.mapSoup.select("#" + idName):
                     element.decompose()
 
@@ -169,22 +170,12 @@ class System(object):
         if newStatus == states.ALARM:
             self.lastAlarmTime = time.time()
             self.secondLine["alarmtime"] = self.lastAlarmTime
-            self.secondLine["style"] = "fill: #FFFFFF;"
-            self.setBackgroundColor(self.ALARM_COLOR)
         elif newStatus == states.CLEAR:
             self.lastAlarmTime = time.time()
-            self.setBackgroundColor(self.CLEAR_COLOR)
             self.secondLine["alarmtime"] = self.lastAlarmTime
-            self.secondLine["style"] = "fill: #000000;"
             self.secondLine.string = "clear"
-        elif newStatus == states.WAS_ALARMED:
-            self.setBackgroundColor(self.UNKNOWN_COLOR)
-            self.secondLine["style"] = "fill: #000000;"
         elif newStatus == states.UNKNOWN:
-            self.setBackgroundColor(self.UNKNOWN_COLOR)
-            # second line in the rects is reserved for the clock
             self.secondLine.string = "?"
-            self.secondLine["style"] = "fill: #000000;"
         if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
             self.status = newStatus
             self.secondLine["state"] = str(self.status)

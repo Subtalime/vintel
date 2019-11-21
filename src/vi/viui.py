@@ -82,12 +82,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.versionCheckThread = None
         self.mapUpdateThread = None
         self.logConfigThread = None
+        self.selfNotify = False
         self.chatparser = None
+        self.systems = None
+        self.character_parser_enabled = True
+        self.ship_parser_enabled = True
+        self.clipboard_check_interval = None
+        self.backgroundColor = backGroundColor
         self.cache = Cache()
         self.setWindowTitle(vi.version.DISPLAY)
-        self.setColor(backGroundColor)
+        self.setColor(self.backgroundColor)
         self.message_expiry = MESSAGE_EXPIRY_SECS
-        self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
+        self.clipboardCheckInterval()
         self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
         self.setConstants()
         self.myMap = MyMap(self)
@@ -164,17 +170,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupThreads()
         self.setupMap(True)
 
-    def setColor(self, color: str = None):
-        if not color:
-            color = self.cache.getFromCache("background_color", True)
+    def setColor(self, color: str = None) -> str:
         if color:
+            self.backgroundColor = color
             # self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
             p = self.palette()
-            backGroundColor = color.lstrip("#")
-            lv = len(backGroundColor)
-            bg = tuple(int(backGroundColor[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+            self.backgroundColor = color.lstrip("#")
+            lv = len(self.backgroundColor)
+            bg = tuple(int(self.backgroundColor[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
             p.setColor(self.backgroundRole(), QColor(bg[0], bg[1], bg[2]))
             self.setPalette(p)
+        return self.backgroundColor
 
     def setConstants(self):
         self.map_update_interval = int(self.cache.getFromCache("map_update_interval", True))
@@ -189,8 +195,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.message_expiry:
             self.message_expiry = MESSAGE_EXPIRY_SECS
             self.cache.putIntoCache("message_expiry", self.message_expiry)
-        backColor = self.cache.getFromCache("background_color")
-        self.setStyleSheet("QWidget { background-color: %s; }" % backColor)
 
     def updateCharacterMenu(self):
         self.menuCharacters.removeItems()
@@ -262,10 +266,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def settings(self):
         setting = SettingsDialog(self)
-        setting.settings_saved.connect(self.setConstants)
-        setting.settings_saved.connect(self.setColor)
-        setting.settings_saved.connect(self.restartClipboardTimer)
+        setting.checkScanCharacter.setChecked(self.character_parser_enabled)
+        setting.checkShipNames.setChecked(self.ship_parser_enabled)
+        setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
+        setting.txtMessageExpiry.setText(str(self.message_expiry))
+        setting.checkNotifyOwn.setChecked(self.selfNotify)
+        setting.color = self.setColor()
         setting.show()
+        if setting.exec_():
+            self.setColor(setting.color)
+            self.enableCharacterParser(setting.checkScanCharacter.isChecked())
+            self.enableShipParser(setting.checkShipNames.isChecked())
+            self.clipboardCheckInterval(int(setting.txtKosInterval.text()) * 1000)
+            self.message_expiry = int(setting.txtMessageExpiry.text())
+            self.enableSelfNotify(setting.checkNotifyOwn.isChecked())
+
+    def enableSelfNotify(self, enable: bool = None) -> bool:
+        if enable is not None:
+            self.selfNotify = enable
+        return self.selfNotify
+
+    def clipboardCheckInterval(self, value: int = None):
+        if value:
+            self.clipboard_check_interval = value
+            self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
+        if self.clipboard_check_interval is None:
+            self.clipboard_check_interval = self.cache.getFromCache("clipboard_check_interval")
+        if self.clipboard_check_interval is None:
+            self.clipboard_check_interval = 4
+
+        return self.clipboard_check_interval
 
     # Menu-Selection of Regions
     def processRegionSelect(self, qAction: 'QAction'):
@@ -368,7 +398,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.systems = self.dotlan.systems
         LOGGER.debug("Creating chat parser")
-        self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems)
+        self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems, self.character_parser_enabled,
+                                     self.ship_parser_enabled)
 
         # Menus - only once
         if initialize:
@@ -389,6 +420,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)
             LOGGER.debug("DONE Initializing contextual menus")
 
+            # update Character-Locations
+            for char in self.knownPlayers:
+                if self.knownPlayers[char].getLocation():
+                    self.setLocation(char, self.knownPlayers[char].getLocation())
             # self.restartMapTimer()
 
         self.mapUpdateThread.activeData = True
@@ -439,9 +474,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     (None, "changeAlwaysOnTop", self.alwaysOnTopAction.isChecked()),
                     (None, "changeShowAvatars", self.showChatAvatarsAction.isChecked()),
                     (None, "changeAlarmDistance", self.alarmDistance),
+                    (None, "enableCharacterParser", self.character_parser_enabled),
+                    (None, "enableShipParser", self.ship_parser_enabled),
+                    (None, "enableSelfNotify", self.selfNotify),
+                    (None, "messageExpiry", self.message_expiry),
                     (None, "changeSound", self.activateSoundAction.isChecked()),
                     (None, "changeChatVisibility", self.showChatAction.isChecked()),
                     (None, "loadInitialMapPositions", self.mapPositionsDict),
+                    (None, "setColor", self.backgroundColor),
                     (None, "setSoundVolume", SoundManager().soundVolume),
                     (None, "changeFrameless", self.framelessWindowAction.isChecked()),
                     (None, "changeUseSpokenNotifications",
@@ -454,17 +494,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Stop the threads
         try:
             SoundManager().quit()
-            self.logConfigThread.quit()
-            self.avatarFindThread.quit()
-            self.filewatcherThread.paused = True
-            self.filewatcherThread.quit()
+            if self.logConfigThread:
+                self.logConfigThread.quit()
+            if self.avatarFindThread:
+                self.avatarFindThread.quit()
+            if self.filewatcherThread:
+                self.filewatcherThread.quit()
             # self.kosRequestThread.quit()
             # self.kosRequestThread.wait()
-            self.versionCheckThread.quit()
-            self.statisticsThread.quit()
-            self.mapUpdateThread.quit()
-            self.esiThread.quit()
-        except Exception:
+            if self.versionCheckThread:
+                self.versionCheckThread.quit()
+            if self.statisticsThread:
+                self.statisticsThread.quit()
+            if self.mapUpdateThread:
+                self.mapUpdateThread.quit()
+            if self.esiThread:
+                self.esiThread.quit()
+        except Exception as e:
             pass
         self.trayIcon.hide()
         if self.logWindow:
@@ -590,6 +636,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def chatLarger(self):
         newSize = ChatEntryWidget.TEXT_SIZE + 1
         self.changeChatFontSize(newSize)
+
+    def messageExpiry(self, seconds: int = None) -> int:
+        if seconds:
+            self.message_expiry = seconds
+        return self.message_expiry
+
+    def enableCharacterParser(self, enable: bool = None) -> bool:
+        if enable is not None:
+            self.character_parser_enabled = enable
+        if self.chatparser:
+            self.chatparser.characterParserEnabled(self.character_parser_enabled)
+        return self.character_parser_enabled
+
+    def enableShipParser(self, enable: bool = None) -> bool:
+        if enable is not None:
+            self.ship_parser_enabled = enable
+        if self.chatparser:
+            self.chatparser.shipParserEnabled(self.ship_parser_enabled)
+        return self.ship_parser_enabled
 
     def changeAlarmDistance(self, distance):
         self.alarmDistance = distance
@@ -963,9 +1028,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         systemList[systemname].setStatus(message.status)
                         activePlayers = self.knownPlayers.getActiveNames()
                         # notify User if we don't have locations for active Players
-                        self.checkPlayerLocations()
                         if message.status in (states.REQUEST,
-                                              states.ALARM) and message.user not in activePlayers:
+                                              states.ALARM) and (message.user not in activePlayers or self.selfNotify):
                             alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
                             for nSystem, data in system.getNeighbours(alarmDistance).items():
                                 distance = data["distance"]

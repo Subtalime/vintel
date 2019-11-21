@@ -55,6 +55,9 @@ class MapUpdateThread(QThread):
             timerInterval = timerInterval / 1000
         self.timeout = timerInterval
 
+    def addToQueue(self, content=None, zoomfactor=None, scrollposition=None):
+        self.queue.put((content, zoomfactor, scrollposition))
+
     def run(self):
         def injectScrollPosition(svg_content: str, scroll: str) -> str:
             soup = BeautifulSoup(svg_content, "html.parser")
@@ -67,7 +70,7 @@ class MapUpdateThread(QThread):
             try:
                 timeout = False
                 content, zoomFactor, scrollPosition = self.queue.get(timeout=self.timeout)
-            except Exception:
+            except Exception as e:
                 timeout  = True
                 pass
             if timeout and not self.activeData: # we don't have initial Map-Data yet
@@ -78,6 +81,8 @@ class MapUpdateThread(QThread):
                                      "If this continues to happen, delete the Cache-File in \"%s\"" % getVintelDir())
                     return
                 continue
+            elif not self.activeData:
+                return
             try:
                 loadMapAttempt = 0
                 if not timeout:  # not based on Timeout
@@ -101,9 +106,9 @@ class MapUpdateThread(QThread):
                 logging.error("Problem with setMapContent: %r", e)
 
     def quit(self):
-        self.activeData = False
         logging.debug("Stopping Map-Thread")
-        # self.queue.put(None)
+        self.activeData = False
+        self.addToQueue()
         QThread.quit(self)
 
 
@@ -117,7 +122,7 @@ class AvatarFindThread(QThread):
         self.active = True
 
 
-    def addChatEntry(self, chatEntry, clearCache=False):
+    def addChatEntry(self, chatEntry=None, clearCache=False):
         try:
             if clearCache:
                 cache = Cache()
@@ -156,9 +161,9 @@ class AvatarFindThread(QThread):
 
 
     def quit(self):
-        self.active = False
         logging.debug("Stopping Avatar-Thread")
-        # self.queue.put(None)
+        self.active = False
+        self.addChatEntry()
         QThread.quit(self)
 
 
@@ -173,7 +178,7 @@ class KOSCheckerThread(QThread):
         self.active = True
 
 
-    def addRequest(self, names, requestType, onlyKos=False):
+    def addRequest(self, names=None, requestType=None, onlyKos=False):
         try:
             # Spam control for multi-client users
             now = time.time()
@@ -218,8 +223,9 @@ class KOSCheckerThread(QThread):
             # self.emit(PYQT_SIGNAL("kos_result"), "ok", text, requestType, hasKos)
 
     def quit(self):
-        self.active = False
         logging.debug("Stopping KOSChecker-Thread")
+        self.active = False
+        self.addRequest()
         # self.queue.put((None, None, None))
         QThread.quit(self)
 
@@ -266,9 +272,9 @@ class MapStatisticsThread(QThread):
 
 
     def quit(self):
-        self.active = False
         logging.debug("Stopping MapStatistics-Thread")
-        # self.queue.put(None)
+        self.active = False
+        self.requestStatistics()
         QThread.quit(self)
 
 class FileWatcherThread(QThread):
@@ -304,7 +310,7 @@ class FileWatcherThread(QThread):
     def quit(self) -> None:
         self.active = False
         logging.debug("Stopping FileWatcher-Thread")
-        # super(__class__, self).quit()
+        QThread.quit(self)
 
     def fileChanged(self, path):
         self.file_change.emit(path)
@@ -363,6 +369,7 @@ class FileWatcherThread(QThread):
                     changed = True
                 # this file now older than wanted
                 elif self.maxAge and (now - pathStat.st_mtime) > self.maxAge:
+                    LOGGER.debug("removing old File from tracking : %s".format(fullPath))
                     filesInDir.pop(fullPath)
                     changed = True
             except Exception:
@@ -371,4 +378,3 @@ class FileWatcherThread(QThread):
             self.filesInFolder[path] = filesInDir
             LOGGER.debug("currently tracking %d files in %s" % (len(self.filesInFolder), path))
             LOGGER.debug("  %r" % self.filesInFolder[path])
-
