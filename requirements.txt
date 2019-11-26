@@ -1,0 +1,16 @@
+EsiPy
+PyQt5>=5.13.2
+pyswagger
+urllib3
+requests
+packaging
+clipboard
+beautifulsoup4
+idna
+pyglet
+rsa
+six
+PyQtWebEngine
+# for creating EXE
+# pywin32
+cx-Freeze

@@ -1,0 +1,58 @@
+version: 1
+disable_existing_loggers: true
+
+formatters:
+  mine:
+    (): vi.logger.logconfig.MyDateFormatter
+    format: '%(asctime)s|%(levelname)s [%(threadName)s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s'
+    datefmt: '%d/%m %H:%M:%S.%f'
+  window:
+    format: '%(asctime)s: %(message)s'
+    datefmt: '%H:%M:%S'
+  error:
+    format: "%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s"
+    datefmt: '$d/%m/%Y %H:%M:%S'
+  standard:
+    format: "%(asctime)s %(name)s.%(funcName)s(): %(levelname)s | %(message)s"
+    datefmt: '%d/%m/%Y %H:%M:%S'
+
+handlers:
+  file:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: mine
+    when: midnight
+    delay: true
+    level: DEBUG
+    filename: !log_path vintel.log
+#    maxBytes: 5242880
+    backupCount: 10
+    encoding: utf8
+
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: standard
+    stream: ext://sys.stdout
+
+
+root:
+  level: DEBUG
+  handlers: [console, file]
+  propagate: no
+
+loggers:
+  vi:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+
+  root:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+
+  vi.MapViewPage:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+
