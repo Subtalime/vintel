@@ -335,7 +335,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.esiThread.requestInstance()
         # self.esiThread.start()
 
-
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
         self.avatarFindThread.avatar_update.connect(self.updateAvatarOnChatEntry)
@@ -346,14 +345,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.start()
 
         self.chatThread = ChatThread(self.roomnames, {})
-        self.chatThread.message_added.connect(self.logFileChangedNew)
-        self.chatThread.message_updated.connect(self.updateMessageDetailsOnChatEntry)
-        self.chatThread.player_added.connect(self.updatePlayers)
+        self.chatThread.message_added_signal.connect(self.logFileChangedNew)
+        self.chatThread.message_updated_signal.connect(self.updateMessageDetailsOnChatEntry)
+        self.chatThread.player_added_signal.connect(self.updatePlayers)
         self.chatThread.start()
 
         self.filewatcherThread = FileWatcherThread(self.pathToLogs)
-        self.filewatcherThread.file_change.connect(self.chatThread.addLogFile)
-        # self.filewatcherThread.file_change.connect(self.logFileChanged)
+        self.filewatcherThread.file_change.connect(self.chatThread.add_log_file)
         self.filewatcherThread.start()
 
         self.versionCheckThread = NotifyNewVersionThread()
@@ -416,7 +414,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.systems = self.dotlan.systems
         self.dotlan_systems.emit(self.systems)
         if self.chatThread:
-            self.chatThread.updateDotlanSystems(self.systems)
+            self.chatThread.update_dotlan_systems(self.systems)
         # LOGGER.debug("Creating chat parser")
         # self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems)
 
@@ -782,7 +780,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             alarm = "'reqeust'"
         else:
             alarm = "'clear'"
-        script = "showTimer(0, {}, document.querySelector('#txt30004726'), document.querySelector('#rect30004726'), document.querySelector('#rect30004726'));".format(alarm)
+        script = "showTimer(0, {}, document.querySelector('#txt30004726'), document.querySelector('#rect30004726'), document.querySelector('#rect30004726'));".format(
+            alarm)
         self.mapView.page().runJavaScript(script)
 
     def updateMapView(self):
@@ -1025,63 +1024,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not check:
             # Alert the User
             pass
-
-    def logFileChanged(self, path):
-        LOGGER.debug("Log file changed: {}".format(path))
-        # wait for Map to be completly loaded
-        while not self.chatparser:
-            continue
-        messages = self.chatparser.fileModified(path)
-        if self.knownPlayers.addNames(self.chatparser.getListeners()):
-            LOGGER.debug("Found new Player")
-            self.updateCharacterMenu()
-        messageLogged = False
-        for message in messages:
-            # If players location has changed
-            if message.status == states.LOCATION:
-                self.knownPlayers[message.user].setLocation(message.systems[0])
-                self.setLocation(message.user, message.systems[0])
-                messageLogged = True
-            elif message.status == states.SOUND_TEST:
-                SoundManager().playSound("alarm", message)
-
-            elif message.status == states.KOS_STATUS_REQUEST:
-                # Do not accept KOS requests from any but monitored intel channels
-                # as we don't want to encourage the use of xxx in those channels.
-                if message.room not in self.roomnames:
-                    text = message.message[4:]
-                    text = text.replace("  ", ",")
-                    parts = (name.strip() for name in text.split(","))
-                    self.trayIcon.setIcon(self.taskbarIconWorking)
-                    self.kosRequestThread.addRequest(parts, "xxx", False)
-                    messageLogged = True
-            # Otherwise consider it a 'normal' chat message
-            elif message.user not in (
-                    "EVE-System", "EVE System") and message.status != states.IGNORE:
-                self.addMessageToIntelChat(message)
-                # For each system that was mentioned in the message, check for alarm distance
-                # to the current system and alarm if within alarm distance.
-                systemList = self.dotlan.systems
-                if message.systems:
-                    messageLogged = True
-                    for system in message.systems:
-                        systemname = system.name
-                        systemList[systemname].setStatus(message.status)
-                        activePlayers = self.knownPlayers.getActiveNames()
-                        # notify User if we don't have locations for active Players
-                        # self.checkPlayerLocations()
-                        if message.status in (states.REQUEST,
-                                              states.ALARM) and (message.user not in activePlayers or self.selfNotify):
-                            alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
-                            for nSystem, data in system.getNeighbours(alarmDistance).items():
-                                distance = data["distance"]
-                                chars = nSystem.getLocatedCharacters()
-                                if len(chars) > 0:
-                                    self.trayIcon.showNotification(message, system.name,
-                                                                   ", ".join(chars), distance)
-
-        if messageLogged:  # stop the flickering
-            self.updateMapView()
 
     def logFileChangedNew(self, message):
         LOGGER.debug("Message received: {}".format(message))
