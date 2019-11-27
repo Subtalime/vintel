@@ -209,7 +209,8 @@ class Cache(object):
     def putJumpbridge(self, regionName: str, data: list):
         with Cache.SQLITE_WRITE_LOCK:
             try:
-                cacheKey = "jumpbridge_data_{}".format(regionName.lower())
+                cacheKey = "jumpbridge_data"
+                # cacheKey = "jumpbridge_data_{}".format(regionName.lower())
                 query = "DELETE FROM cache WHERE key = ?"
                 self.con.execute(query, (cacheKey,))
                 query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
@@ -221,7 +222,8 @@ class Cache(object):
 
     def getJumpbridge(self, regionName: str) -> list:
         try:
-            cacheKey = "jumpbridge_data_{}".format(regionName.lower())
+            cacheKey = "jumpbridge_data"
+            # cacheKey = "jumpbridge_data_{}".format(regionName.lower())
             query = "SELECT data FROM cache WHERE key = ?"
             founds = self.con.execute(query, (cacheKey,)).fetchall()
             if len(founds) > 0:
@@ -233,7 +235,8 @@ class Cache(object):
 
     def delJumpbridge(self, regionName: str):
         try:
-            cacheKey = "jumpbridge_data_{}".format(regionName.lower())
+            cacheKey = "jumpbridge_data"
+            # cacheKey = "jumpbridge_data_{}".format(regionName.lower())
             with Cache.SQLITE_WRITE_LOCK:
                 query = "DELETE FROM cache WHERE key = ?"
                 self.con.execute(query, (cacheKey,))

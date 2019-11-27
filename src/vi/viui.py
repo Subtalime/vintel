@@ -127,7 +127,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.knownPlayers = Characters()
         self.menubar.removeAction(self.menuCharacters.menuAction())
         self.menubar.removeAction(self.menuRegion.menuAction())
-        self.menuCharacters = CharacterMenu("Characters", self, self.knownPlayers)
+        self.menuCharacters = CharacterMenu("Characters", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuCharacters)
         self.updateCharacterMenu()
         self.menuRegion = RegionMenu("Regions", self)
@@ -872,7 +872,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dotlan.setJumpbridges(self, data)
             if url or (data and len(data) > 0):
                 if url:
-                    self.cache.putIntoCache("jumpbridge_url_{}".format(self.dotlan.region.lower()),
+                    self.cache.putIntoCache("jumpbridge_url",
                                             url,
                                             maxAge=Cache.FOREVER)
                 else:
@@ -881,7 +881,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.warning(self, "Loading jumpbridges failed!",
                                 "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)
-            self.cache.delFromCache("jumpbridge_url_{}".format(self.dotlan.region.lower()))
+            self.cache.delFromCache("jumpbridge_url")
             self.cache.delJumpbridge(self.dotlan.region)
         self.checkJumpbridges()
 
