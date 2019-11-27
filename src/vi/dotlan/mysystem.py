@@ -40,13 +40,17 @@ class MySystem(System):
         self.rectIdIce = self.rectIce["id"]
         if not self.secondLine.has_attr("id"):
             self.secondLine["id"] = "watch{}".format(self.name_label)
+        # set default to White
+        for rect in self.svgElement.select("rect"):
+            # if rect.has_attr("style"):
+            rect["style"] = "fill: #ffffff"
 
     def setStatus(self, newStatus):
         super(MySystem, self).setStatus(newStatus)
         self.setStatusTime = time.time()
 
     def update(self):
-        super(MySystem, self).update()
+        # super(MySystem, self).update()
         if self.status != states.UNKNOWN:
             # calc the new timer for injecting into JS
             diff = time.time() - self.lastAlarmTime

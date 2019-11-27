@@ -24,6 +24,7 @@ from vi.resources import getVintelMap
 import sys
 import time
 import logging
+import math
 import os
 import datetime
 
@@ -66,7 +67,7 @@ class MyMap(Map):
         var ALARM_COLORS = [60 * 4,  "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#000000", 
                             60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000", 
                             60 * 60 * 24, "#FFFFFF", "#000000"];
-        var REQUEST_COLORS = [60 * 2, "#2989d8", "#000000",
+        var REQUEST_COLORS = [60 * 2, "#ffaaff", "#000000",
                               60 * 60 * 24, "#FFFFFF", "#000000"];
         var CLEAR_COLORS =  [60 * 2, "#59FF6C", "#000000",
                              60 * 60 * 24, "#FFFFFF", "#000000"];
@@ -209,7 +210,7 @@ class MyMap(Map):
         dir, file = os.path.split(os.path.abspath(__file__))
         ts = datetime.datetime.fromtimestamp(time.time()).strftime("%H_%M_%S")
         try:
-            with open(os.path.join(dir, "output_{}.svg".format(ts)), "w+") as svgFile:
+            with open(os.path.join(dir, "zoutput_{}.svg".format(ts)), "w+") as svgFile:
                 svgFile.write(svgData)
         except Exception as e:
             LOGGER.error(e)
@@ -259,12 +260,20 @@ class MyMap(Map):
                 systemOne.setJumpbridgeColor(jbColor)
                 systemTwo.setJumpbridgeColor(jbColor)
 
-                # Construct the line, color it and add it to the jumps
-                line = soup.new_tag("line", x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
-                                    y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
-                                    x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
-                                    y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1], visibility="hidden",
-                                    style="stroke:#{0}".format(jbColor))
+                # Construct the arc, color it and add it to the jumps
+                x1 = systemOneCoords["center_x"] + systemOneOffsetPoint[0]
+                y1 = systemOneCoords["center_y"] + systemOneOffsetPoint[1]
+                x2 = systemTwoCoords["center_x"] + systemTwoOffsetPoint[0]
+                y2 = systemTwoCoords["center_y"] + systemTwoOffsetPoint[1]
+                cx = (x1 + x2) / 2
+                cy = (y1 + y2) / 2
+                dx = (x2 - x1) / 2
+                dy = (y2 - y1) / 2
+                dd = math.sqrt(dx * dx + dy * dy)
+                ex = cx + dy/dd * 40
+                ey = cy - dx/dd * 40
+                line = soup.new_tag("path", d="M{} {}Q{} {} {} {}".format(x1, y1, ex, ey, x2, y2), visibility="hidden",
+                                    style="stroke:#{0}; fill: none".format(jbColor))
                 line["stroke-width"] = 2
                 line["class"] = ["jumpbridge", ]
                 if "<" in connection:

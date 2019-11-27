@@ -176,7 +176,11 @@ class System(object):
             self.secondLine.string = "clear"
         elif newStatus == states.UNKNOWN:
             self.secondLine.string = "?"
-        if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
+        elif newStatus == states.REQUEST:
+            self.lastAlarmTime = time.time()
+            self.secondLine.string = "status"
+        # if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
+        if newStatus not in (states.NOT_CHANGE):  # unknown not affect system status
             self.status = newStatus
             self.secondLine["state"] = str(self.status)
 

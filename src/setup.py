@@ -45,6 +45,8 @@ move_files = ((os.path.join('mapdata', 'Delve.svg'),),
               (os.path.join('sound', 'warning.wav'),),
               (os.path.join('sound', 'request.wav'),),
               (os.path.join('sound', 'alert.wav'),),
+              (os.path.join('docs', 'jumpbridgeformat.txt'),),
+              (os.path.join('docs', 'regionselect.txt'),),
               ('logo.png',),
               ('logo_small_green.png',),
               ('logo_small.png',),
@@ -56,7 +58,7 @@ include_files = [
     os.path.join(sys.base_prefix, 'DLLs', "tcl86t.dll"),
     os.path.join(sys.base_prefix, 'DLLs', "tk86t.dll"),
     ("vi/ui/res/logging.yaml", "logging.yaml.example"),
-    # ("docs/regionselect.txt", "docs/regionselect.txt"),
+    ("docs/regionselect.txt", "docs/regionselect.txt"),
     ("docs/jumpbridgeformat.txt", "docs/jumpbridgeformat.txt"),
 ]
 for pack in move_files:
@@ -76,7 +78,9 @@ requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 's
             'pyswagger', 'PyYAML']
 packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
 replace_paths = [(os.path.join(resourcePath(), "mapdata"), "mapdata"),
-                 (os.path.join(resourcePath(), "sound"), "sound")]
+                 (os.path.join(resourcePath(), "sound"), "sound"),
+                 (os.path.join(resourcePath(), "docs"), "docs"),
+                 ]
 
 build_exe_options = {
     'build_exe': "{}/Vintel-{}".format(package_dir, str(VERSION)),
@@ -109,8 +113,6 @@ setup(
     url=URL,
 )
 
-replace_paths = [(os.path.join(resourcePath(), "mapdata"), "mapdata"),
-                 (os.path.join(resourcePath(), "sound"), "sound")]
 try:
     setup(
         name=PROGNAME,

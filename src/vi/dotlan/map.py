@@ -21,12 +21,11 @@ import logging
 import requests
 import six
 from bs4 import BeautifulSoup
-from vi.esi import esiinterface
+from vi.esi import EsiInterface
 from vi.dotlan.mysystem import MySystem as System
 from vi.dotlan.exception import DotlanException
 from vi.cache.cache import Cache
 from vi.version import URL
-
 
 LOGGER = logging.getLogger(__name__)
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
@@ -71,7 +70,7 @@ class Map(object):
             try:
                 svg = self._getSvgFromDotlan(self.region)
                 cache.putIntoCache("map_" + self.region, svg,
-                                   esiinterface().secondsTillDowntime() + 60 * 60)
+                                   EsiInterface().secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
                 svg = cache.getFromCache("map_" + self.region, True)
@@ -179,7 +178,7 @@ class Map(object):
         """
         for jump in self.soup.select("#jumps")[0].select(".j"):
             if "jumpbridge" in jump["class"]:
-                ontinue
+                continue
             parts = jump["id"].split("-")
             if parts[0] == "j":
                 startSystem = self.systemsById[int(parts[1])]

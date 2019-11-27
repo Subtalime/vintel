@@ -38,5 +38,8 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     # TODO: save the settings and create a Trigger for listeners
     def saveSettings(self):
+        # self.cache.putIntoCache("clipboard_check_interval", str(int(self.txtClipboardInterval.text()) * 1000))
+        # self.cache.putIntoCache("message_expiry", self.txtMessageExpiry.text())
+        # self.cache.putIntoCache("chatparser_enabled", self.checkScanCharacter.isChecked())
         self.settings_saved.emit()
         self.accept()

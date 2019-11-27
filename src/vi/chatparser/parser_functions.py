@@ -120,7 +120,7 @@ def parseShips(rtext: Tag) -> bool:
                     return True
 
 
-def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
+def parseSystems(systems: list, rtext: Tag, foundSystems: list) -> bool:
     """
     check for any System-Names or Gates mentioned in the Chat-Entry
     :param systems:
@@ -162,14 +162,14 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
             upperWord = word.upper()
             if upperWord != word and upperWord in WORDS_TO_IGNORE: continue
             if upperWord in systemNames:  # - direct hit on name
-                foundSystems.add(systems[upperWord])  # of the system?
+                foundSystems.append(systems[upperWord])  # of the system?
                 formattedText = formatSystem(text, word, upperWord)
                 textReplace(text, formattedText)
                 return True
             elif 1 < len(upperWord) < 5:  # - upperWord < 4 chars.
                 for system in systemNames:  # system begins with?
                     if system.startswith(upperWord):
-                        foundSystems.add(systems[system])
+                        foundSystems.append(systems[system])
                         formattedText = formatSystem(text, word, system)
                         textReplace(text, formattedText)
                         return True
@@ -183,7 +183,7 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
                             and len(upperWordParts) == len(systemParts)
                             and upperWordParts[0][0] == systemParts[0][0]
                             and upperWordParts[1][0] == systemParts[1][0]):
-                        foundSystems.add(systems[system])
+                        foundSystems.append(systems[system])
                         formattedText = formatSystem(text, word, system)
                         textReplace(text, formattedText)
                         return True
@@ -191,7 +191,7 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: bool) -> bool:
                 for system in systemNames:
                     clearedSystem = system.replace("-", "")
                     if clearedSystem.startswith(upperWord):
-                        foundSystems.add(systems[system])
+                        foundSystems.append(systems[system])
                         formattedText = formatSystem(text, word, system)
                         textReplace(text, formattedText)
                         return True
@@ -258,6 +258,7 @@ def parseCharnames(rtext: Tag) -> bool:
             for pairs in range(MAX_WORDS_FOR_CHARACTERNAME,0,-1):
                 checklist = chunks(words, pairs)
                 for checkname in checklist:
+                    origname = checkname
                     for char in CHARS_TO_IGNORE:
                         checkname = checkname.replace(char, "")
                     if checkname.upper() in WORDS_TO_IGNORE:
@@ -274,7 +275,7 @@ def parseCharnames(rtext: Tag) -> bool:
                             char = EsiHelper().checkPlayerName(checkname)
                             if char is not None:
                                 LOGGER.debug("ESI found the character \"{}\"".format(checkname))
-                                names[checkname] = char
+                                names[origname] = char
             LOGGER.debug("Found names: {}".format(names))
         except Exception as e:
             LOGGER.error("Error parsing Names", e)

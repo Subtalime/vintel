@@ -324,6 +324,7 @@ class FileWatcherThread(QThread):
 
     def _checkChanges(self, checkList):
         fileList = {}
+
         for file, fstat in checkList:
             # might be tidying up..., so try
             try:
@@ -352,7 +353,7 @@ class FileWatcherThread(QThread):
             folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True)
         except:
             # might be tidying up in the background
-            pass
+            folderContent = ()
         if self.maxFiles and len(folderContent) > self.maxFiles:
             self._sendWarning(path, len(folderContent))
         for fullPath in folderContent:
@@ -369,12 +370,12 @@ class FileWatcherThread(QThread):
                     changed = True
                 # this file now older than wanted
                 elif self.maxAge and (now - pathStat.st_mtime) > self.maxAge:
-                    LOGGER.debug("removing old File from tracking : %s".format(fullPath))
+                    LOGGER.debug("removing old File from tracking (older than %d seconds): %s", self.maxAge, fullPath)
                     filesInDir.pop(fullPath)
                     changed = True
             except Exception:
                 pass
         if changed:
             self.filesInFolder[path] = filesInDir
-            LOGGER.debug("currently tracking %d files in %s" % (len(self.filesInFolder), path))
+            LOGGER.debug("currently tracking %d files in %s" % (len(filesInDir), path))
             LOGGER.debug("  %r" % self.filesInFolder[path])

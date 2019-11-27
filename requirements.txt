@@ -1,4 +1,3 @@
-packaging
 EsiPy
 PyQt5>=5.13.2
 pyswagger
@@ -14,4 +13,4 @@ six
 PyQtWebEngine
 # for creating EXE
 # pywin32
-# cx-Freeze
+cx-Freeze

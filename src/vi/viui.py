@@ -40,7 +40,9 @@ from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
 from vi.systemtray import TrayContextMenu
-from vi.chatparser import ChatParser
+from vi.chatparser.chatthread import ChatThread
+from vi.chatparser.chatmessage import Message
+# from vi.chatparser import ChatParser
 from vi.esi import EsiInterface
 from vi.esihelper import EsiHelper
 from vi.chatentrywidget import ChatEntryWidget
@@ -71,6 +73,7 @@ LOGGER = logging.getLogger(__name__)
 class MainWindow(QMainWindow, Ui_MainWindow):
     chat_message_added = pyqtSignal(ChatEntryWidget)
     avatar_loaded = pyqtSignal(str, bytes)
+    dotlan_systems = pyqtSignal(dict)
 
     def __init__(self, pathToLogs, trayIcon, backGroundColor):
         super(self.__class__, self).__init__()
@@ -84,7 +87,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.logConfigThread = None
         self.selfNotify = False
         self.chatparser = None
-        self.systems = None
+        self.chatThread = None
         self.character_parser_enabled = True
         self.ship_parser_enabled = True
         self.clipboard_check_interval = None
@@ -254,7 +257,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.frameButton.clicked.connect(self.changeFrameless)
         self.actionQuit.triggered.connect(self.close)
         self.trayIcon.quit_me.connect(self.close)
-        self.menuRegion.triggered[QAction].connect(self.processRegionSelect)
+        self.menuRegion.triggered[QAction].connect(self.processRegionSelectMenu)
         self.mapView.page().scroll_detected.connect(self.mapPositionChanged)
         self.actionSettings.triggered.connect(self.settings)
         self.actionSettings.setEnabled(True)
@@ -298,7 +301,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return self.clipboard_check_interval
 
     # Menu-Selection of Regions
-    def processRegionSelect(self, qAction: 'QAction'):
+    def processRegionSelectMenu(self, qAction: 'QAction'):
         if qAction.objectName() == "region_select":
             LOGGER.debug("Opened Region-Selector Dialog")
             self.showRegionChooser()
@@ -320,6 +323,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         chooser.new_region_range_chosen.connect(handleRegionsChosen)
         chooser.show()
 
+    def updatePlayers(self, player_list: list):
+        self.knownPlayers.addNames(player_list)
+        self.updateCharacterMenu()
+
     def setupThreads(self):
         LOGGER.debug("Creating threads")
 
@@ -337,8 +344,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.kos_result.connect(self.showKosResult)
         # self.kosRequestThread.start()
 
+        self.chatThread = ChatThread(self.roomnames, {})
+        self.chatThread.message_added_signal.connect(self.logFileChangedNew)
+        self.chatThread.message_updated_signal.connect(self.updateMessageDetailsOnChatEntry)
+        self.chatThread.player_added_signal.connect(self.updatePlayers)
+        self.chatThread.start()
+
         self.filewatcherThread = FileWatcherThread(self.pathToLogs)
-        self.filewatcherThread.file_change.connect(self.logFileChanged)
+        self.filewatcherThread.file_change.connect(self.chatThread.add_log_file)
         self.filewatcherThread.start()
 
         self.versionCheckThread = NotifyNewVersionThread()
@@ -363,8 +376,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # TODO: therefore if we switch Region, we can update with previously found data
     # TODO: when clicking on System in Chat, scroll to the position within the Map
     def setupMap(self, initialize=False):
-        self.filewatcherThread.paused = True
-        self.mapUpdateThread.activeData = False
+        if self.filewatcherThread:
+            self.filewatcherThread.paused = True
+        if self.mapUpdateThread:
+            self.mapUpdateThread.activeData = False
         LOGGER.debug("Finding map file")
         regionName = self.cache.getFromCache("region_name")
         if not regionName:
@@ -397,9 +412,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         LOGGER.debug("Load jump bridges done")
 
         self.systems = self.dotlan.systems
-        LOGGER.debug("Creating chat parser")
-        self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems, self.character_parser_enabled,
-                                     self.ship_parser_enabled)
+        self.dotlan_systems.emit(self.systems)
+        if self.chatThread:
+            self.chatThread.update_dotlan_systems(self.systems)
+        # LOGGER.debug("Creating chat parser")
+        # self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems)
 
         # Menus - only once
         if initialize:
@@ -426,14 +443,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.setLocation(char, self.knownPlayers[char].getLocation())
             # self.restartMapTimer()
 
-        self.mapUpdateThread.activeData = True
+        if self.mapUpdateThread:
+            self.mapUpdateThread.activeData = True
         self.setInitialMapPositionForRegion(regionName)
         self.checkJumpbridges()
         self.updateMapView()
         self.refreshContent = self.dotlan.svg
         self.setInitialMapPositionForRegion(regionName)
         # Allow the file watcher to run now that all else is set up
-        self.filewatcherThread.paused = False
+        if self.filewatcherThread:
+            self.filewatcherThread.paused = False
         LOGGER.debug("Map setup complete")
 
     def startClipboardTimer(self):
@@ -496,6 +515,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             SoundManager().quit()
             if self.logConfigThread:
                 self.logConfigThread.quit()
+            if self.chatThread:
+                self.chatThread.quit()
             if self.avatarFindThread:
                 self.avatarFindThread.quit()
             if self.filewatcherThread:
@@ -701,8 +722,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
         try:
             system = self.systems[str(systemName)]
+            # sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
+            #                 list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
             sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
-                            list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
+                            list(self.knownPlayers))
             self.chat_message_added.connect(sc.addChatEntry)
             self.avatar_loaded.connect(sc.newAvatarAvailable)
             sc.location_set.connect(self.setLocation)
@@ -752,6 +775,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.trayIcon.showMessage("Loading statstics failed", text, 3)
             LOGGER.error("updateStatisticsOnMap, error: %s" % text)
 
+    def inject(self, on):
+        if on:
+            alarm = "'reqeust'"
+        else:
+            alarm = "'clear'"
+        script = "showTimer(0, {}, document.querySelector('#txt30004726'), document.querySelector('#rect30004726'), document.querySelector('#rect30004726'));".format(
+            alarm)
+        self.mapView.page().runJavaScript(script)
+
     def updateMapView(self):
         scrollPosition = self.mapView.page().scrollPosition()
         zoom = self.mapView.page().zoomFactor()
@@ -763,9 +795,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def zoomMapIn(self):
         self.mapView.setZoomFactor(self.mapView.zoomFactor + 0.1)
+        # self.inject(True)
 
     def zoomMapOut(self):
         self.mapView.setZoomFactor(self.mapView.zoomFactor - 0.1)
+        # self.inject(False)
 
     def loadInitialMapPositions(self, newDictionary):
         self.mapPositionsDict = newDictionary
@@ -860,11 +894,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             Cache().putIntoCache("region_name", regionName, 60 * 60 * 24 * 365)
             self.setupMap()
 
-    def addMessageToIntelChat(self, message):
+    def addMessageToIntelChat(self, message: Message):
+        LOGGER.debug("Adding message to Intel: %r", message)
         scrollToBottom = False
         if self.chatListWidget.verticalScrollBar().value() == self.chatListWidget.verticalScrollBar().maximum():
             scrollToBottom = True
         chatEntryWidget = ChatEntryWidget(message)
+        message.widgets.append(chatEntryWidget)
         listWidgetItem = QtWidgets.QListWidgetItem(self.chatListWidget)
         listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
         self.chatListWidget.addItem(listWidgetItem)
@@ -903,8 +939,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.chatEntries.remove(chatEntryWidget)
                     self.chatListWidget.takeItem(0)
 
-                    for widgetInMessage in message.widgets:
-                        widgetInMessage.removeItemWidget(chatListWidgetItem)
+                    # for widgetInMessage in message.widgets:
+                    #     widgetInMessage.removeItemWidget(chatListWidgetItem)
                 else:
                     break
         except Exception as e:
@@ -973,6 +1009,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.avatar_loaded.emit(chatEntry.message.user, avatarData)
 
+    def updateMessageDetailsOnChatEntry(self, message: Message):
+        for widget in message.widgets:
+            widget.updateText()
+
     def checkPlayerLocations(self):
         if len(self.knownPlayers) == 0:
             # this is worth an Alert
@@ -985,58 +1025,50 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Alert the User
             pass
 
-    def logFileChanged(self, path):
-        LOGGER.debug("Log file changed: {}".format(path))
+    def logFileChangedNew(self, message):
+        LOGGER.debug("Message received: {}".format(message))
         # wait for Map to be completly loaded
-        while not self.chatparser:
-            continue
-        messages = self.chatparser.fileModified(path)
-        if self.knownPlayers.addNames(self.chatparser.getListeners()):
-            LOGGER.debug("Found new Player")
-            self.updateCharacterMenu()
         messageLogged = False
-        for message in messages:
-            # If players location has changed
-            if message.status == states.LOCATION:
-                self.knownPlayers[message.user].setLocation(message.systems[0])
-                self.setLocation(message.user, message.systems[0])
+        if message.status == states.LOCATION:
+            self.knownPlayers[message.user].setLocation(message.systems[0])
+            self.setLocation(message.user, message.systems[0])
+            messageLogged = True
+        elif message.status == states.SOUND_TEST:
+            SoundManager().playSound("alarm", message)
+
+        elif message.status == states.KOS_STATUS_REQUEST:
+            # Do not accept KOS requests from any but monitored intel channels
+            # as we don't want to encourage the use of xxx in those channels.
+            if message.room not in self.roomnames:
+                text = message.message[4:]
+                text = text.replace("  ", ",")
+                parts = (name.strip() for name in text.split(","))
+                self.trayIcon.setIcon(self.taskbarIconWorking)
+                self.kosRequestThread.addRequest(parts, "xxx", False)
                 messageLogged = True
-            elif message.status == states.SOUND_TEST:
-                SoundManager().playSound("alarm", message)
+        # Otherwise consider it a 'normal' chat message
+        elif message.user not in (
+                "EVE-System", "EVE System") and message.status != states.IGNORE:
+            self.addMessageToIntelChat(message)
+            # For each system that was mentioned in the message, check for alarm distance
+            # to the current system and alarm if within alarm distance.
+            systemList = self.dotlan.systems
+            if message.systems:
+                messageLogged = True
+                for system in message.systems:
+                    systemname = system.name
+                    systemList[systemname].setStatus(message.status)
+                    activePlayers = self.knownPlayers.getActiveNames()
+                    # notify User if we don't have locations for active Players
+                    self.checkPlayerLocations()
+                    if message.status in (states.REQUEST,
+                                          states.ALARM) and message.user not in activePlayers:
+                        alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
+                        for nSystem, data in system.getNeighbours(alarmDistance).items():
+                            distance = data["distance"]
+                            chars = nSystem.getLocatedCharacters()
+                            if len(chars) > 0:
+                                self.trayIcon.showNotification(message, system.name,
+                                                               ", ".join(chars), distance)
 
-            elif message.status == states.KOS_STATUS_REQUEST:
-                # Do not accept KOS requests from any but monitored intel channels
-                # as we don't want to encourage the use of xxx in those channels.
-                if message.room not in self.roomnames:
-                    text = message.message[4:]
-                    text = text.replace("  ", ",")
-                    parts = (name.strip() for name in text.split(","))
-                    self.trayIcon.setIcon(self.taskbarIconWorking)
-                    self.kosRequestThread.addRequest(parts, "xxx", False)
-                    messageLogged = True
-            # Otherwise consider it a 'normal' chat message
-            elif message.user not in (
-                    "EVE-System", "EVE System") and message.status != states.IGNORE:
-                self.addMessageToIntelChat(message)
-                # For each system that was mentioned in the message, check for alarm distance
-                # to the current system and alarm if within alarm distance.
-                systemList = self.dotlan.systems
-                if message.systems:
-                    messageLogged = True
-                    for system in message.systems:
-                        systemname = system.name
-                        systemList[systemname].setStatus(message.status)
-                        activePlayers = self.knownPlayers.getActiveNames()
-                        # notify User if we don't have locations for active Players
-                        if message.status in (states.REQUEST,
-                                              states.ALARM) and (message.user not in activePlayers or self.selfNotify):
-                            alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
-                            for nSystem, data in system.getNeighbours(alarmDistance).items():
-                                distance = data["distance"]
-                                chars = nSystem.getLocatedCharacters()
-                                if len(chars) > 0:
-                                    self.trayIcon.showNotification(message, system.name,
-                                                                   ", ".join(chars), distance)
-
-        if messageLogged:  # stop the flickering
-            self.updateMapView()
+        self.updateMapView()
