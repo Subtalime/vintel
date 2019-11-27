@@ -1062,7 +1062,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     # notify User if we don't have locations for active Players
                     self.checkPlayerLocations()
                     if message.status in (states.REQUEST,
-                                          states.ALARM) and message.user not in activePlayers:
+                                          states.ALARM) and (message.user not in activePlayers or self.selfNotify):
                         alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
                         for nSystem, data in system.getNeighbours(alarmDistance).items():
                             distance = data["distance"]

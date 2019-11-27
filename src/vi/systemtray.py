@@ -167,7 +167,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             icon = 2
             speechText = (
                 u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
-            text = (u"Text: %s\n" % message.plainText) + speechText
+            text = (u"%s\n" % message.plainText) + speechText
             if soundFile:
                 SoundManager().playSoundFile(soundFile, text, speechText)
                 SoundManager().setSoundVolume(orgSoundVolume)
