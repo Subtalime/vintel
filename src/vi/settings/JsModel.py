@@ -15,61 +15,70 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
-from PyQt5.QtCore import QAbstractTableModel, Qt, QModelIndex, QVariant, pyqtSignal
-from PyQt5.QtGui import QBrush, QFont
-from PyQt5.QtWidgets import QTableView
+from PyQt5.QtCore import QAbstractTableModel, Qt, QModelIndex, QVariant
+from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtWidgets import QTableView, QAbstractItemView, QColorDialog
+
+
+def stringToColor(sQColor: str = None) -> QColor:
+    if str(sQColor).startswith("#"):
+        color = str(sQColor).lstrip("#")
+        lv = len(color)
+        cs = tuple(int(color[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+    else:
+        cs = [0, 0, 0]
+    return QColor(cs[0], cs[1], cs[2])
+
+
+def dialogColor(color=QColor()):
+    return QColorDialog().getColor(initial=color)
 
 
 class JsModel(QAbstractTableModel):
-    m_gridData = []
-    maxRows = 2
-    maxCols = 3
-    edit_complete = pyqtSignal(str)
 
-    def __init__(self, parent=None):
-        super(JsModel, self).__init__(parent)
-
-    # resolve from dataset
-    def rowCount(self, parent=None, *args, **kwargs):
-        return 2
+    def __init__(self, dataset=None, header=None):
+        super(JsModel, self).__init__()
+        self.m_header = header
+        self.m_grid_data = dataset
+        self.m_header = header
 
     # resolve from dataset
-    def columnCount(self, parent=None, *args, **kwargs):
-        return 3
+    def rowCount(self, index=QModelIndex(), *args, **kwargs):
+        if index.isValid():
+            return 0
+        length = len(self.m_grid_data)
+        return length
+
+    # resolve from dataset
+    def columnCount(self, index=QModelIndex(), *args, **kwargs):
+        if index.isValid():
+            return 0
+
+        length = len(self.m_grid_data[0])
+        return length
 
     # Table-Column headers
-    def headerData(self, section: int, Qt_Orientation, role=None):
+    def headerData(self, column: int, Qt_Orientation, role: int = Qt.DisplayRole):
         if role == Qt.DisplayRole and Qt_Orientation == Qt.Horizontal:
-            if section == 0:
-                return "first"
-            if section == 1:
-                return "second"
-            if section == 2:
-                return "third"
+            return QVariant(self.m_header[column])
         return QVariant()
 
     # this returns the data to the Viewer
     def data(self, index: QModelIndex, role=None):
+        if not index.isValid() or not (
+                0 <= index.row() < self.rowCount() and 0 <= index.column() < self.columnCount()):
+            return QVariant()
+
         row = index.row()
         col = index.column()
         if role == Qt.DisplayRole:
-            if row == 0 and col == 1:
-                return "<--left"
-            if row == 1 and col == 1:
-                return "right-->"
-            return "Row%d, Column%d" % (index.row() + 1, index.column() + 1)
-        elif role == Qt.FontRole:
-            if row == 0 and col == 0:
-                return QFont().setBold(True)
+            data = self.m_grid_data[row][col]
+            return data
         elif role == Qt.BackgroundRole:
-            if row == 1 and col == 2:
-                return QBrush(Qt.red)
-        elif role == Qt.TextAlignmentRole:
-            if row == 1 and col == 1:
-                return Qt.AlignRight + Qt.AlignVCenter
-        elif role == Qt.CheckStateRole:
-            if row == 1 and col == 0:
-                return Qt.Checked
+            if col == 1:
+                qColor = stringToColor(self.m_grid_data[row][col])
+                return QBrush(qColor)
+
         return QVariant()
 
     """
@@ -79,16 +88,16 @@ class JsModel(QAbstractTableModel):
     were present and user permissions are set to allow the checkbox to be selected, calls 
     would also be made with the role set to Qt::CheckStateRole.
     """
-    def setData(self, index: QModelIndex, data: QVariant, role: int=None):
-        if role == Qt.EditRole:
+
+    def setData(self, index: QModelIndex, data: QVariant, role: int = None):
+        if role == Qt.EditRole and index.isValid():
             row = index.row()
             col = index.column()
-            if index.row >= self.maxRows or index.column >= self.maxCols:
-                return False
-            self.m_gridData[row][col] = str(data)
-            result = ""
-            self.edit_complete.emit(result)
-            return True
+            if col > 0 and str(data).startswith("#") and len(str(data)) == 7 and QColor(
+                    data).isValid() or col == 0 and isinstance(data, int):
+                self.m_grid_data[row][col] = str(data)
+                self.dataChanged.emit(index, index, (Qt.DisplayRole,))
+                return True
         return False
 
     """
@@ -99,17 +108,87 @@ class JsModel(QAbstractTableModel):
     If editing one cell modifies more data than the data in that particular cell, the model
     must emit a dataChanged() signal in order for the data that has been changed to be read.
     """
-    def flags(self, QModelIndex):
-        return Qt.ItemIsEditable or super(JsModel, self).flags(QModelIndex)
+
+    def flags(self, flags: QModelIndex):
+        fl = super(self.__class__, self).flags(flags)
+        fl |= Qt.ItemIsEditable
+        fl |= Qt.ItemIsSelectable
+        fl |= Qt.ItemIsEnabled
+        fl |= Qt.ItemIsUserCheckable
+        return fl
+
+    def insertRow(self, p_int, parent=None, *args, **kwargs):
+        self.m_grid_data.append([86400, "#FFFFFF", "#FFFFFF"])
+
+    def removeRow(self, p_int, parent=None, *args, **kwargs):
+        self.m_grid_data.pop(p_int)
+
+    def sort(self, Ncol: int, order=None):
+        if Ncol != 0:
+            return
+        self.layoutAboutToBeChanged.emit()
+        self.m_grid_data = sorted(self.m_grid_data, key=lambda operator: operator[Ncol])
+        if order == Qt.DescendingOrder:
+            self.m_grid_data.reverse()
+        self.layoutChanged.emit()
+
+
+class JsTableView(QTableView):
+    def __init__(self, parent=None, dataset=None, headerset=None):
+        super(JsTableView, self).__init__(parent)
+        if dataset and headerset:
+            self.setModel(JsModel(dataset, headerset))
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.resizeColumnsToContents()
+        self.setSortingEnabled(True)
+        self.sortByColumn(0, Qt.AscendingOrder)
+        self.doubleClicked.connect(self.fn_clickAction)
+        self.clicked.connect(self.fn_clickAction)
+
+    def fn_clickAction(self, sQModelIndex: QModelIndex):
+        if not sQModelIndex.isValid():
+            return False
+        if sQModelIndex.column() > 0:  # Color column
+            color = stringToColor(sQModelIndex.data())
+            color = dialogColor(color)
+            if color.isValid():
+                self.model().setData(sQModelIndex, color.name(), Qt.EditRole)
+                return True
+            return False
+        return True
 
 
 if __name__ == "__main__":
+    def setTableModel(index):
+        idx = combo.itemText(index)
+        tableView.setModel(JsModel(js_lst[idx], js_header))
+
+
     import sys
     from PyQt5.Qt import QApplication
+    from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QComboBox
 
+    ALARM_COLORS = [[60 * 4, "#FF0000", "#FFFFFF"], [60 * 10, "#FF9B0F", "#000000"],
+                    [60 * 15, "#FFFA0F", "#000000"], [60 * 25, "#FFFDA2", "#000000"],
+                    [60 * 60 * 24, "#FFFFFF", "#000000"]]
+    REQUEST_COLORS = [[60 * 2, "#ffaaff", "#000000"],
+                      [60 * 60 * 24, "#FFFFFF", "#000000"]]
+    CLEAR_COLORS = [[60 * 2, "#59FF6C", "#000000"],
+                    [60 * 60 * 24, "#FFFFFF", "#000000"]]
+    js_lst = {"Alarm": ALARM_COLORS, "Request": REQUEST_COLORS, "Clear": CLEAR_COLORS}
+    js_header = ["Duration", "Background", "Text"]
     a = QApplication(sys.argv)
-    tableView = QTableView()
-    myModel = JsModel()
-    tableView.setModel(myModel)
-    tableView.show()
-    a.exec_()
+
+    main = QWidget()
+    main.resize(400, 400)
+    layout = QVBoxLayout()
+    combo = QComboBox()
+    combo.addItems(js_lst.keys())
+    combo.currentIndexChanged.connect(setTableModel)
+    tableView = JsTableView(dataset=js_lst[combo.currentText()], headerset=js_header)
+    layout.addWidget(combo)
+    layout.addWidget(tableView)
+    main.setLayout(layout)
+    main.show()
+    # tableView.show()
+    sys.exit(a.exec_())
