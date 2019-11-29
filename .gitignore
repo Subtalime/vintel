@@ -1,0 +1,17 @@
+*.pyc
+.vs/*
+*.pyproj
+/.idea/
+/venv/
+/.idea/
+/Output/
+/releases/packages/
+/src/build/
+/src/dist/
+/releases/setup/*.exe
+/eve/
+/build/
+*.sqlite3
+/src/vi/dotlan/*.svg
+/src/*.html
+

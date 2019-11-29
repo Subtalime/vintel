@@ -134,6 +134,7 @@ class ChatThread(QThread):
             self.player_added_signal.emit(self.known_players)
 
     def update_dotlan_systems(self, dotlan_systems: systems):
+        LOGGER.debug("Informing Chat-Threads of new System")
         self.dotlan_systems = dotlan_systems
         for thread in self.process_pool.keys():
             self.process_pool[thread].update_dotlan_systems(self.dotlan_systems)
@@ -153,11 +154,13 @@ class ChatThread(QThread):
         self.message_updated_signal.emit(message)
 
     def ship_parser_enabled(self, value):
+        LOGGER.debug("Informing Chat-Threads of new Ship-Parser %r", value)
         self.ship_parser = value
         for thread in self.process_pool.keys():
             self.process_pool[thread].ship_parser_enabled(value)
 
     def char_parser_enabled(self, value):
+        LOGGER.debug("Informing Chat-Threads of new Character-Parser %r", value)
         self.char_parser = value
         for thread in self.process_pool.keys():
             self.process_pool[thread].char_parser_enabled(value)
