@@ -117,11 +117,22 @@ class JsModel(QAbstractTableModel):
         fl |= Qt.ItemIsUserCheckable
         return fl
 
-    def insertRow(self, p_int, parent=None, *args, **kwargs):
-        self.m_grid_data.append([86400, "#FFFFFF", "#FFFFFF"])
+    def removeRows(self, position: int, rows: int = 1, parent=None, *args, **kwargs):
+        self.beginRemoveRows(QModelIndex(), position, position+rows)
+        self.m_grid_data = self.m_grid_data[:position] + self.m_grid_data[position+rows:]
+        self.endRemoveRows()
+        return True
 
-    def removeRow(self, p_int, parent=None, *args, **kwargs):
-        self.m_grid_data.pop(p_int)
+    def insertRows(self, position: int, rows: int=1, parent=None, *args, **kwargs):
+        self.beginInsertRows(QModelIndex(), position, position+rows-1)
+        if position >= self.rowCount()-1:
+            for row in range(rows):
+                self.m_grid_data.append([86400, "#FFFFFF", "#FFFFFF"])
+        else:
+            for row in range(rows):
+                self.m_grid_data.insert(position+1+row, [86400, "#FFFFFF", "#FFFFFF"])
+        self.endInsertRows()
+        return True
 
     def sort(self, Ncol: int, order=None):
         if Ncol != 0:
@@ -145,6 +156,18 @@ class JsTableView(QTableView):
         self.doubleClicked.connect(self.fn_clickAction)
         self.clicked.connect(self.fn_clickAction)
 
+
+    def addRow(self):
+        index = self.selectionModel().currentIndex()
+        if index.isValid():
+            self.model().insertRows(index.row())
+
+    def deleteRow(self):
+        index = self.selectionModel().currentIndex()
+        if index.isValid():
+            self.model().removeRows(index.row())
+
+
     def fn_clickAction(self, sQModelIndex: QModelIndex):
         if not sQModelIndex.isValid():
             return False
@@ -162,11 +185,14 @@ if __name__ == "__main__":
     def setTableModel(index):
         idx = combo.itemText(index)
         tableView.setModel(JsModel(js_lst[idx], js_header))
-
+    def addRow():
+        tableView.addRow()
+    def remRow():
+        tableView.deleteRow()
 
     import sys
     from PyQt5.Qt import QApplication
-    from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QComboBox
+    from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QComboBox, QPushButton
 
     ALARM_COLORS = [[60 * 4, "#FF0000", "#FFFFFF"], [60 * 10, "#FF9B0F", "#000000"],
                     [60 * 15, "#FFFA0F", "#000000"], [60 * 25, "#FFFDA2", "#000000"],
@@ -186,8 +212,14 @@ if __name__ == "__main__":
     combo.addItems(js_lst.keys())
     combo.currentIndexChanged.connect(setTableModel)
     tableView = JsTableView(dataset=js_lst[combo.currentText()], headerset=js_header)
+    buttadd = QPushButton("Add Row")
+    buttadd.clicked.connect(addRow)
+    buttrem = QPushButton("Delete Row")
+    buttrem.clicked.connect(remRow)
     layout.addWidget(combo)
     layout.addWidget(tableView)
+    layout.addWidget(buttadd)
+    layout.addWidget(buttrem)
     main.setLayout(layout)
     main.show()
     # tableView.show()
