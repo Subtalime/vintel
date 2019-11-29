@@ -22,10 +22,9 @@ import six
 import os
 import asyncio
 import threading
-import math
 from vi.dotlan import mysystem as systems
 from bs4 import BeautifulSoup
-from PyQt5.QtCore import QThread, pyqtSignal, QObject
+from PyQt5.QtCore import QThread, pyqtSignal
 from queue import Queue
 from threading import Thread
 from vi.chatparser.chatmessage import Message
@@ -102,14 +101,17 @@ class ChatThread(QThread):
     message_added_signal = pyqtSignal(Message)
     message_updated_signal = pyqtSignal(Message)
 
-    def __init__(self, room_names: list, dotlan_systems: systems = {}, known_players: list = [], ship_parser=None,
-                 character_parser=None):
+    def __init__(self, parent, room_names: list, dotlan_systems: systems = {}, known_players: list = []):
         super(__class__, self).__init__()
         LOGGER.debug("Creating ChatThread")
         self.queue = Queue()
         self.active = True
         self.room_names = room_names
         self.dotlan_systems = dotlan_systems
+        self.ship_parser = parent.enableShipParser()
+        self.char_parser = parent.enableCharacterParser()
+        parent.ship_parser.connect(self.ship_parser_enabled)
+        parent.character_parser.connect(self.char_parser_enabled)
         # ship_parser.connect(self._shipParser)
         # character_parser.connect(self._charParser)
         self.process_pool = {}
@@ -150,11 +152,15 @@ class ChatThread(QThread):
         # chat_thread_all_messages_add(message)
         self.message_updated_signal.emit(message)
 
-    def _shipParser(self, value):
-        pass
+    def ship_parser_enabled(self, value):
+        self.ship_parser = value
+        for thread in self.process_pool.keys():
+            self.process_pool[thread].ship_parser_enabled(value)
 
-    def _charParser(self, value):
-        pass
+    def char_parser_enabled(self, value):
+        self.char_parser = value
+        for thread in self.process_pool.keys():
+            self.process_pool[thread].char_parser_enabled(value)
 
     def run(self):
         while self.active:
@@ -165,7 +171,8 @@ class ChatThread(QThread):
                     if roomname not in self.room_names and roomname not in LOCAL_NAMES:
                         LOGGER.debug("Not interested in \"%s\" since not in monitored rooms", logfile)
                         continue
-                    self.process_pool[logfile] = ChatThreadProcess(logfile, self.dotlan_systems)
+                    self.process_pool[logfile] = ChatThreadProcess(logfile, self.ship_parser, self.char_parser,
+                                                                   self.dotlan_systems)
                     self.process_pool[logfile].message_added_s.connect(self.message_added)
                     self.process_pool[logfile].message_updated_s.connect(self.message_updated)
                     self.process_pool[logfile].new_player_s.connect(self.add_character)
@@ -190,10 +197,13 @@ class ChatThreadProcess(QThread):
     message_added_s = pyqtSignal(Message)
     message_updated_s = pyqtSignal(Message)
 
-    def __init__(self, log_file_path: str, dotlan_systems: systems = ()):
+    def __init__(self, log_file_path: str, ship_scanner: bool, char_scanner: bool, dotlan_systems: systems = ()):
         super(__class__, self).__init__()
         self.queue = Queue()
         self.log_file = log_file_path
+        self.ship_scanner = ship_scanner
+        self.character_scanner = char_scanner
+        self.dotlan_systems = dotlan_systems
         # any messages older than this will be ignored
         self.message_age = 60
         self.active = True
@@ -202,27 +212,30 @@ class ChatThreadProcess(QThread):
         self.session_start = None
         self.parsed_lines = 0
         self.local_room = False
-        self.dotlan_systems = dotlan_systems
         self.knownMessages = []
         # locations of this character
         self.locations = []
-        self.ship_scanner_enabled = True
-        self.character_scanner_enabled = True
         self.worker_loop = asyncio.new_event_loop()
         self.worker = Thread(target=self._runLoop)
         self.worker.start()
+
+    def ship_parser_enabled(self, value: bool):
+        self.ship_scanner = value
+
+    def char_parser_enabled(self, value: bool):
+        self.character_scanner = value
 
     def update_dotlan_systems(self, dotlan_systems: systems):
         self.dotlan_systems = dotlan_systems
 
     def _refineMessage(self, message: Message):
         LOGGER.debug("%s/%s: Start refining message: %r", self.roomname, self.charname, message)
-        if self.ship_scanner_enabled:
+        if self.ship_scanner:
             while parseShips(message.rtext):
                 continue
         while parseUrls(message.rtext):
             continue
-        if self.character_scanner_enabled:
+        if self.character_scanner:
             while parseCharnames(message.rtext):
                 continue
 

@@ -71,7 +71,7 @@ class MapUpdateThread(QThread):
             try:
                 timeout = False
                 content, zoom_factor, scroll_position = self.queue.get(timeout=self.timeout)
-            except TimeoutError:
+            except Exception:
                 timeout = True
                 pass
             if timeout and not self.activeData:  # we don't have initial Map-Data yet

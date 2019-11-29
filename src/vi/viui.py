@@ -74,6 +74,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     chat_message_added = pyqtSignal(ChatEntryWidget)
     avatar_loaded = pyqtSignal(str, bytes)
     dotlan_systems = pyqtSignal(dict)
+    character_parser = pyqtSignal(bool)
+    ship_parser = pyqtSignal(bool)
 
     def __init__(self, pathToLogs, trayIcon, backGroundColor):
         super(self.__class__, self).__init__()
@@ -344,7 +346,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.kos_result.connect(self.showKosResult)
         # self.kosRequestThread.start()
 
-        self.chatThread = ChatThread(self.roomnames, {})
+        self.chatThread = ChatThread(self, self.roomnames, {})
         self.chatThread.message_added_signal.connect(self.logFileChangedNew)
         self.chatThread.message_updated_signal.connect(self.updateMessageDetailsOnChatEntry)
         self.chatThread.player_added_signal.connect(self.updatePlayers)
@@ -666,15 +668,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def enableCharacterParser(self, enable: bool = None) -> bool:
         if enable is not None:
             self.character_parser_enabled = enable
-        if self.chatparser:
-            self.chatparser.characterParserEnabled(self.character_parser_enabled)
+            self.character_parser.emit(enable)
         return self.character_parser_enabled
 
     def enableShipParser(self, enable: bool = None) -> bool:
         if enable is not None:
             self.ship_parser_enabled = enable
-        if self.chatparser:
-            self.chatparser.shipParserEnabled(self.ship_parser_enabled)
+            self.ship_parser.emit(enable)
         return self.ship_parser_enabled
 
     def changeAlarmDistance(self, distance):
@@ -946,30 +946,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except Exception as e:
             LOGGER.error(e)
 
-    def showKosResult(self, state, text, requestType, hasKos):
-        if not self.scanIntelForKosRequestsEnabled:
-            return
-        try:
-            if hasKos:
-                SoundManager().playSound("kos", text)
-            if state == "ok":
-                if requestType == "xxx":  # An xxx request out of the chat
-                    self.trayIcon.showMessage("Player KOS-Check", text, 1)
-                elif requestType == "clipboard":  # request from clipboard-change
-                    if len(text) <= 0:
-                        text = "None KOS"
-                    self.trayIcon.showMessage("Your KOS-Check", text, 1)
-                text = text.replace("\n\n", "<br>")
-                message = ChatParser.chatparser.Message("Vintel KOS-Check", text,
-                                                        EsiInterface().currentEveTime(), "VINTEL",
-                                                        [], states.NOT_CHANGE, text.upper(), text)
-                self.addMessageToIntelChat(message)
-            elif state == "error":
-                self.trayIcon.showMessage("KOS Failure", text, 3)
-        except Exception:
-            pass
-        self.trayIcon.setIcon(self.taskbarIconQuiescent)
-
+    # def showKosResult(self, state, text, requestType, hasKos):
+    #     if not self.scanIntelForKosRequestsEnabled:
+    #         return
+    #     try:
+    #         if hasKos:
+    #             SoundManager().playSound("kos", text)
+    #         if state == "ok":
+    #             if requestType == "xxx":  # An xxx request out of the chat
+    #                 self.trayIcon.showMessage("Player KOS-Check", text, 1)
+    #             elif requestType == "clipboard":  # request from clipboard-change
+    #                 if len(text) <= 0:
+    #                     text = "None KOS"
+    #                 self.trayIcon.showMessage("Your KOS-Check", text, 1)
+    #             text = text.replace("\n\n", "<br>")
+    #             message = ChatParser.chatparser.Message("Vintel KOS-Check", text,
+    #                                                     EsiInterface().currentEveTime(), "VINTEL",
+    #                                                     [], states.NOT_CHANGE, text.upper(), text)
+    #             self.addMessageToIntelChat(message)
+    #         elif state == "error":
+    #             self.trayIcon.showMessage("KOS Failure", text, 3)
+    #     except Exception:
+    #         pass
+    #     self.trayIcon.setIcon(self.taskbarIconQuiescent)
+    #
     def changedRoomnames(self, newRoomnames):
         self.cache.putIntoCache("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
         self.chatparser.setRooms(newRoomnames)
