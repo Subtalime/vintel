@@ -1,5 +1,5 @@
 EsiPy
-PyQt5>=5.13.2
+PyQt5>=5.13.0
 pyswagger
 urllib3
 requests

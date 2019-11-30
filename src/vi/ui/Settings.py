@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'Settings.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.0
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -84,6 +84,12 @@ class Ui_Dialog(object):
         self.checkNotifyOwn = QtWidgets.QCheckBox(self.groupBox_4)
         self.checkNotifyOwn.setGeometry(QtCore.QRect(140, 20, 70, 17))
         self.checkNotifyOwn.setObjectName("checkNotifyOwn")
+        self.checkPopupNotification = QtWidgets.QCheckBox(self.groupBox_4)
+        self.checkPopupNotification.setGeometry(QtCore.QRect(140, 50, 70, 17))
+        self.checkPopupNotification.setObjectName("checkPopupNotification")
+        self.label_7 = QtWidgets.QLabel(self.groupBox_4)
+        self.label_7.setGeometry(QtCore.QRect(10, 50, 121, 16))
+        self.label_7.setObjectName("label_7")
         self.tabWidget.addTab(self.tab_1, "")
         self.tab = QtWidgets.QWidget()
         self.tab.setObjectName("tab")
@@ -130,6 +136,8 @@ class Ui_Dialog(object):
         self.groupBox_4.setTitle(_translate("Dialog", "Other"))
         self.label_6.setText(_translate("Dialog", "Notify on own Message:"))
         self.checkNotifyOwn.setText(_translate("Dialog", "enabled"))
+        self.checkPopupNotification.setText(_translate("Dialog", "enabled"))
+        self.label_7.setText(_translate("Dialog", "Pop-Up notification:"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_1), _translate("Dialog", "General"))
         self.groupBox_3.setTitle(_translate("Dialog", "Alert Settings"))
         self.tableWidget.setSortingEnabled(True)

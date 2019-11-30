@@ -90,6 +90,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.selfNotify = False
         self.chatparser = None
         self.chatThread = None
+        self.popup_notification = True
         self.character_parser_enabled = True
         self.ship_parser_enabled = True
         self.clipboard_check_interval = None
@@ -276,12 +277,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
         setting.txtMessageExpiry.setText(str(self.message_expiry))
         setting.checkNotifyOwn.setChecked(self.selfNotify)
+        setting.checkPopupNotification.setChecked(self.popup_notification)
         setting.color = self.setColor()
         setting.show()
         if setting.exec_():
             self.setColor(setting.color)
             self.enableCharacterParser(setting.checkScanCharacter.isChecked())
             self.enableShipParser(setting.checkShipNames.isChecked())
+            self.enablePopupNotification(setting.checkPopupNotification.isChecked())
             self.clipboardCheckInterval(int(setting.txtKosInterval.text()) * 1000)
             self.message_expiry = int(setting.txtMessageExpiry.text())
             self.enableSelfNotify(setting.checkNotifyOwn.isChecked())
@@ -290,6 +293,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if enable is not None:
             self.selfNotify = enable
         return self.selfNotify
+
+    def enablePopupNotification(self, enable: bool = None) -> bool:
+        if enable is not None:
+            self.popup_notification = enable
+        return self.popup_notification
 
     def clipboardCheckInterval(self, value: int = None):
         if value:
@@ -498,6 +506,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     (None, "enableCharacterParser", self.character_parser_enabled),
                     (None, "enableShipParser", self.ship_parser_enabled),
                     (None, "enableSelfNotify", self.selfNotify),
+                    (None, "enablePopupNotification", self.popup_notification),
                     (None, "messageExpiry", self.message_expiry),
                     (None, "changeSound", self.activateSoundAction.isChecked()),
                     (None, "changeChatVisibility", self.showChatAction.isChecked()),
@@ -1067,7 +1076,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         for nSystem, data in system.getNeighbours(alarmDistance).items():
                             distance = data["distance"]
                             chars = nSystem.getLocatedCharacters()
-                            if len(chars) > 0:
+                            if len(chars) > 0 and self.popup_notification:
                                 self.trayIcon.showNotification(message, system.name,
                                                                ", ".join(chars), distance)
 
