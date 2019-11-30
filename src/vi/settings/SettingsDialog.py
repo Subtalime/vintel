@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDialog, QColorDialog
 from PyQt5.QtCore import pyqtSignal
-
+from vi.settings.JsModel import JsTableView, stringToColor, dialogColor
 from vi.ui.Settings import Ui_Dialog
 from vi.cache.cache import Cache
 
