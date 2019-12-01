@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>679</width>
-    <height>423</height>
+    <width>688</width>
+    <height>425</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,241 +23,193 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
-        <widget class="QWidget" name="tab_1">
+        <widget class="QWidget" name="tab_general">
          <attribute name="title">
           <string>General</string>
          </attribute>
-         <widget class="QGroupBox" name="groupBox">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>10</y>
-            <width>270</width>
-            <height>79</height>
-           </rect>
-          </property>
-          <property name="title">
-           <string>in Seconds</string>
-          </property>
-          <property name="flat">
-           <bool>true</bool>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_3">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label">
-             <property name="text">
-              <string>Message expiry :</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLineEdit" name="txtMessageExpiry"/>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>KOS Clipboard interval:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLineEdit" name="txtKosInterval"/>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QFrame" name="frame">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>280</y>
-            <width>611</width>
-            <height>43</height>
-           </rect>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Raised</enum>
-          </property>
-          <layout class="QFormLayout" name="formLayout_2">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_4">
-             <property name="text">
-              <string>Window Background Color :</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="btnColor">
-             <property name="text">
-              <string>Color...</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QGroupBox" name="groupBox_2">
-          <property name="geometry">
-           <rect>
-            <x>310</x>
-            <y>10</y>
-            <width>231</width>
-            <height>81</height>
-           </rect>
-          </property>
-          <property name="title">
-           <string>Chat-Filter</string>
-          </property>
-          <property name="flat">
-           <bool>true</bool>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_2">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_3">
-             <property name="text">
-              <string>Scan for Character-Names:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QCheckBox" name="checkScanCharacter">
-             <property name="text">
-              <string>enable</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>Scan for Ship-Names</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QCheckBox" name="checkShipNames">
-             <property name="text">
-              <string>enable</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QGroupBox" name="groupBox_4">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>110</y>
-            <width>391</width>
-            <height>91</height>
-           </rect>
-          </property>
-          <property name="title">
-           <string>Other</string>
-          </property>
-          <property name="flat">
-           <bool>true</bool>
-          </property>
-          <widget class="QLabel" name="label_6">
-           <property name="geometry">
-            <rect>
-             <x>10</x>
-             <y>20</y>
-             <width>141</width>
-             <height>16</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Notify on own Message:</string>
-           </property>
-          </widget>
-          <widget class="QCheckBox" name="checkNotifyOwn">
-           <property name="geometry">
-            <rect>
-             <x>140</x>
-             <y>20</y>
-             <width>70</width>
-             <height>17</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>enabled</string>
-           </property>
-          </widget>
-          <widget class="QCheckBox" name="checkPopupNotification">
-           <property name="geometry">
-            <rect>
-             <x>140</x>
-             <y>50</y>
-             <width>70</width>
-             <height>17</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>enabled</string>
-           </property>
-          </widget>
-          <widget class="QLabel" name="label_7">
-           <property name="geometry">
-            <rect>
-             <x>10</x>
-             <y>50</y>
-             <width>121</width>
-             <height>16</height>
-            </rect>
-           </property>
-           <property name="text">
-            <string>Pop-Up notification:</string>
-           </property>
-          </widget>
-         </widget>
+         <layout class="QGridLayout" name="gridLayout_6">
+          <item row="3" column="0">
+           <widget class="QFrame" name="frame">
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QFormLayout" name="formLayout_2">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Window Background Color :</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QPushButton" name="btnColor">
+               <property name="text">
+                <string>Color...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QGroupBox" name="groupBox_2">
+            <property name="title">
+             <string>Chat-Filter</string>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_2">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Scan for Character-Names:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QCheckBox" name="checkScanCharacter">
+               <property name="text">
+                <string>enable</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>Scan for Ship-Names</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QCheckBox" name="checkShipNames">
+               <property name="text">
+                <string>enable</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QGroupBox" name="groupBox_4">
+            <property name="title">
+             <string>Other</string>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="1" column="1">
+              <widget class="QCheckBox" name="checkNotifyOwn">
+               <property name="text">
+                <string>enabled</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>Notify on own Message:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="text">
+                <string>Pop-Up notification:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QCheckBox" name="checkPopupNotification">
+               <property name="text">
+                <string>enabled</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QGroupBox" name="groupBox">
+            <property name="title">
+             <string>in Seconds</string>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>Message expiry :</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="txtMessageExpiry"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>KOS Clipboard interval:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLineEdit" name="txtKosInterval"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
         </widget>
-        <widget class="QWidget" name="tab">
+        <widget class="QWidget" name="tab_map_display">
          <attribute name="title">
           <string>Map-Display</string>
          </attribute>
-         <widget class="QGroupBox" name="groupBox_3">
-          <property name="geometry">
-           <rect>
-            <x>10</x>
-            <y>10</y>
-            <width>611</width>
-            <height>280</height>
-           </rect>
-          </property>
-          <property name="title">
-           <string>Alert Settings</string>
-          </property>
-          <property name="flat">
-           <bool>true</bool>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_4">
-           <item row="0" column="0">
-            <widget class="QComboBox" name="cmbAlertType"/>
-           </item>
-           <item row="1" column="0" colspan="2">
-            <widget class="QTableView" name="tableViewMap"/>
-           </item>
-           <item row="2" column="0">
-            <widget class="QPushButton" name="pbMapAddTime">
-             <property name="text">
-              <string>add Time</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QPushButton" name="pbMapDelTime">
-             <property name="text">
-              <string>delete Time</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <widget class="QGroupBox" name="groupBoxMap">
+            <property name="title">
+             <string>Alert Settings</string>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="2" column="0">
+              <widget class="QPushButton" name="btnMapAddTime">
+               <property name="text">
+                <string>add Time</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QComboBox" name="cmbAlertType"/>
+             </item>
+             <item row="2" column="1">
+              <widget class="QPushButton" name="btnMapDelTime">
+               <property name="text">
+                <string>delete Time</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QTableView" name="tableViewMap"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
         </widget>
-        <widget class="QWidget" name="tab_2">
+        <widget class="QWidget" name="tab_sound">
          <attribute name="title">
           <string>Sound</string>
          </attribute>

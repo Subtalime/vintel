@@ -38,7 +38,6 @@ class JsModel(QAbstractTableModel):
 
     def __init__(self, dataset=None, header=None):
         super(JsModel, self).__init__()
-        self.m_header = header
         self.m_grid_data = dataset
         self.m_header = header
 
@@ -48,6 +47,7 @@ class JsModel(QAbstractTableModel):
             return 0
         length = len(self.m_grid_data)
         return length
+
 
     # resolve from dataset
     def columnCount(self, index=QModelIndex(), *args, **kwargs):
@@ -94,7 +94,7 @@ class JsModel(QAbstractTableModel):
             row = index.row()
             col = index.column()
             if col > 0 and str(data).startswith("#") and len(str(data)) == 7 and QColor(
-                    data).isValid() or col == 0 and isinstance(data, int):
+                    data).isValid() or col == 0 and isinstance(data, int) and 0 <= int(data) <= 86400:
                 self.m_grid_data[row][col] = str(data)
                 self.dataChanged.emit(index, index, (Qt.DisplayRole,))
                 return True
@@ -113,24 +113,26 @@ class JsModel(QAbstractTableModel):
         fl = super(self.__class__, self).flags(flags)
         fl |= Qt.ItemIsEditable
         fl |= Qt.ItemIsSelectable
-        fl |= Qt.ItemIsEnabled
-        fl |= Qt.ItemIsUserCheckable
+        # fl |= Qt.ItemIsEnabled
+        # fl |= Qt.ItemIsUserCheckable
         return fl
 
-    def removeRows(self, position: int, rows: int = 1, parent=None, *args, **kwargs):
-        self.beginRemoveRows(QModelIndex(), position, position+rows)
-        self.m_grid_data = self.m_grid_data[:position] + self.m_grid_data[position+rows:]
+    def removeRows(self, position: int, rows: int = 1, parent=QModelIndex(), *args, **kwargs):
+        self.beginRemoveRows(parent, position, position+rows-1)
+        del self.m_grid_data[position:position+rows]
         self.endRemoveRows()
         return True
 
-    def insertRows(self, position: int, rows: int=1, parent=None, *args, **kwargs):
-        self.beginInsertRows(QModelIndex(), position, position+rows-1)
-        if position >= self.rowCount()-1:
-            for row in range(rows):
-                self.m_grid_data.append([86400, "#FFFFFF", "#FFFFFF"])
-        else:
-            for row in range(rows):
-                self.m_grid_data.insert(position+1+row, [86400, "#FFFFFF", "#FFFFFF"])
+    def insertRows(self, position: int, rows: int = 1, parent=QModelIndex(), *args, **kwargs):
+        self.beginInsertRows(parent, position, position+rows-1)
+        # if position >= self.rowCount()-1:
+        #     for row in range(rows):
+        #         self.m_grid_data.append([86400, "#FFFFFF", "#FFFFFF"])
+        # else:
+        #     for row in range(rows):
+        #         self.m_grid_data.insert(position+1+row, [86400, "#FFFFFF", "#FFFFFF"])
+        for row in range(rows):
+            self.m_grid_data.insert(position + 1 + row, [86400, "#FFFFFF", "#FFFFFF"])
         self.endInsertRows()
         return True
 
