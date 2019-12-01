@@ -85,7 +85,7 @@ if __name__ == "__main__":
     import sys
     from PyQt5.Qt import QApplication
     from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QComboBox, QPushButton
-
+    str = JavaScript().getJs()
     a = QApplication(sys.argv)
     d = SettingsDialog()
     d.show()

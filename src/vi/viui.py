@@ -197,10 +197,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.clipboard_check_interval:
             self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
             self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
-        self.message_expiry = int(self.cache.getFromCache("message_expiry", True))
-        if not self.message_expiry:
-            self.message_expiry = MESSAGE_EXPIRY_SECS
-            self.cache.putIntoCache("message_expiry", self.message_expiry)
 
     def updateCharacterMenu(self):
         self.menuCharacters.removeItems()
@@ -275,7 +271,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.checkScanCharacter.setChecked(self.character_parser_enabled)
         setting.checkShipNames.setChecked(self.ship_parser_enabled)
         setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
-        setting.txtMessageExpiry.setText(str(self.message_expiry))
+        setting.txtMessageExpiry.setText(str(self.messageExpiry()))
         setting.checkNotifyOwn.setChecked(self.selfNotify)
         setting.checkPopupNotification.setChecked(self.popup_notification)
         setting.color = self.setColor()
@@ -286,8 +282,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.enableShipParser(setting.checkShipNames.isChecked())
             self.enablePopupNotification(setting.checkPopupNotification.isChecked())
             self.clipboardCheckInterval(int(setting.txtKosInterval.text()) * 1000)
-            self.message_expiry = int(setting.txtMessageExpiry.text())
+            self.messageExpiry(int(setting.txtMessageExpiry.text()))
             self.enableSelfNotify(setting.checkNotifyOwn.isChecked())
+
 
     def enableSelfNotify(self, enable: bool = None) -> bool:
         if enable is not None:
@@ -355,7 +352,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.start()
 
         self.chatThread = ChatThread(self, self.roomnames, {})
-        self.chatThread.message_added_signal.connect(self.logFileChangedNew)
+        self.chatThread.message_added_signal.connect(self.logFileChanged)
         self.chatThread.message_updated_signal.connect(self.updateMessageDetailsOnChatEntry)
         self.chatThread.player_added_signal.connect(self.updatePlayers)
         self.chatThread.start()
@@ -460,6 +457,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.updateMapView()
         self.refreshContent = self.dotlan.svg
         self.setInitialMapPositionForRegion(regionName)
+        # here is a good spot to update the Map with current Chat-Entries
+        
         # Allow the file watcher to run now that all else is set up
         if self.filewatcherThread:
             self.filewatcherThread.paused = False
@@ -672,6 +671,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def messageExpiry(self, seconds: int = None) -> int:
         if seconds:
             self.message_expiry = seconds
+        self.chatbox.setTitle("All intel (past {} minutes)".format(int(self.message_expiry / 60)))
         return self.message_expiry
 
     def enableCharacterParser(self, enable: bool = None) -> bool:
@@ -1034,7 +1034,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Alert the User
             pass
 
-    def logFileChangedNew(self, message):
+    def logFileChanged(self, message):
         LOGGER.debug("Message received: {}".format(message))
         # wait for Map to be completly loaded
         messageLogged = False

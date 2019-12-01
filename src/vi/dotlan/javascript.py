@@ -27,6 +27,16 @@ class JavaScript(six.with_metaclass(Singleton)):
         self.js_header = ["Set Color at (seconds)", "Background Color", "Text Color"]
         self.load_settings()
 
+    def getJs(self):
+        return_str = ""
+        for p, val in self.js_lst.items():
+            return_str += "var {}_COLORS = [".format(str(p).upper())
+            for a, b, c in val:
+                return_str += "{}, '{}', '{}',".format(a, b, c)
+            return_str = return_str.rstrip(",")
+            return_str += "];\n"
+        return return_str
+
     def load_settings(self):
         content = self.cache.getFromCache("js_alarms")
         if content:

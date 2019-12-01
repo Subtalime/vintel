@@ -6,9 +6,9 @@
 /.idea/
 /Output/
 /releases/packages/
+/releases/setup/
 /src/build/
 /src/dist/
-/releases/setup/*.exe
 /eve/
 /build/
 *.sqlite3
