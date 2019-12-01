@@ -24,18 +24,22 @@ from vi.version import VERSION, DISPLAY, AUTHOR, AUTHOR_EMAIL, URL, PROGNAME
 from vi.resources import resourcePath
 
 destination = "../releases/packages"
+setup_dir = "../releases/setup"
 
 if not os.path.exists(destination):
     os.makedirs(destination)
+if not os.path.exists(setup_dir):
+    os.makedirs(setup_dir)
 
 if sys.platform == "win32":
     base = "Win32GUI"
 
-package_dir = "../releases/packages"
-setup_dir = "../releases/setup"
-
-for file in os.listdir("dist"):
-    os.remove(os.path.join("dist", file))
+if os.path.exists("dist"):
+    try:
+        for file in os.listdir("dist"):
+            os.remove(os.path.join("dist", file))
+    except FileNotFoundError:
+        pass
 
 executables = [Executable("vintel.py", base=base, icon="icon.ico")]
 
@@ -69,21 +73,17 @@ for pack in move_files:
         dest = pack[1]
     include_files.append((os.path.join(resourcePath(), src), dest))
 
-requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging',
-            'clipboard', 'esipy',
-            'pyswagger',
-            'PyYAML']
-packages = []
 requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy',
             'pyswagger', 'PyYAML']
 packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
+
 replace_paths = [(os.path.join(resourcePath(), "mapdata"), "mapdata"),
                  (os.path.join(resourcePath(), "sound"), "sound"),
                  (os.path.join(resourcePath(), "docs"), "docs"),
                  ]
 
 build_exe_options = {
-    'build_exe': "{}/Vintel-{}".format(package_dir, str(VERSION)),
+    'build_exe': "{}/Vintel-{}".format(destination, str(VERSION)),
     'packages': packages,
     'include_files': include_files,
     'replace_paths': replace_paths,
@@ -98,21 +98,6 @@ bdist_msi_options = {
     'initial_target_dir': r'[ProgramFilesFolder]\%s\%s' % (PROGNAME, PROGNAME),
 }
 
-setup(
-    name=PROGNAME,
-    version=VERSION,
-    description=DISPLAY,
-    executables=executables,
-    options={
-        'build_exe': build_exe_options,
-        'bdist_msi': bdist_msi_options,
-    },
-    requires=requires,
-    author=AUTHOR,
-    author_email=AUTHOR_EMAIL,
-    url=URL,
-)
-
 try:
     setup(
         name=PROGNAME,
@@ -120,12 +105,8 @@ try:
         description=DISPLAY,
         executables=executables,
         options={
-            'build_exe': {
-                'build_exe': os.path.join(destination, "Vintel-" + str(VERSION)),
-                'packages': packages,
-                'include_files': include_files,
-                'replace_paths': replace_paths,
-            }
+            # 'build_exe': build_exe_options,
+            'bdist_msi': bdist_msi_options,
         },
         requires=requires,
         author=AUTHOR,
@@ -135,6 +116,30 @@ try:
 except Exception as e:
     print(e)
 
-for file in os.listdir("dist"):
-    shutil.copy(os.path.join("dist", file), setup_dir)
-    # shutil.move(os.path.join("dist", file), setup_dir)
+# try:
+#     setup(
+#         name=PROGNAME,
+#         version=VERSION,
+#         description=DISPLAY,
+#         executables=executables,
+#         options={
+#             'build_exe': {
+#                 'build_exe': os.path.join(destination, "Vintel-" + str(VERSION)),
+#                 'packages': packages,
+#                 'include_files': include_files,
+#                 'replace_paths': replace_paths,
+#             }
+#         },
+#         requires=requires,
+#         author=AUTHOR,
+#         author_email=AUTHOR_EMAIL,
+#         url=URL,
+#     )
+# except Exception as e:
+#     print(e)
+#
+try:
+    for file in os.listdir("dist"):
+        shutil.copy(os.path.join("dist", file), setup_dir)
+except FileNotFoundError:
+    pass

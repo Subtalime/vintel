@@ -21,6 +21,7 @@ from bs4.element import  CData
 from PyQt5 import  QtWidgets
 from vi.dotlan.map import Map
 from vi.resources import getVintelMap
+from vi.dotlan.javascript import JavaScript
 import sys
 import time
 import logging
@@ -35,6 +36,16 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MyMap(Map):
+    # var
+    # ALARM_COLORS = [60 * 4, "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#000000",
+    #                 60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000",
+    #                 60 * 60 * 24, "#FFFFFF", "#000000"];
+    # var
+    # REQUEST_COLORS = [60 * 2, "#ffaaff", "#000000",
+    #                   60 * 60 * 24, "#FFFFFF", "#000000"];
+    # var
+    # CLEAR_COLORS = [60 * 2, "#59FF6C", "#000000",
+    #                 60 * 60 * 24, "#FFFFFF", "#000000"];
 
     def addTimerJs(self):
         realtime_js = """
@@ -64,13 +75,9 @@ class MyMap(Map):
         }
 
         // max time for alarm, rect color, secondLine color
-        var ALARM_COLORS = [60 * 4,  "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#000000", 
-                            60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000", 
-                            60 * 60 * 24, "#FFFFFF", "#000000"];
-        var REQUEST_COLORS = [60 * 2, "#ffaaff", "#000000",
-                              60 * 60 * 24, "#FFFFFF", "#000000"];
-        var CLEAR_COLORS =  [60 * 2, "#59FF6C", "#000000",
-                             60 * 60 * 24, "#FFFFFF", "#000000"];
+        """
+        realtime_js += JavaScript().getJs()
+        realtime_js += """
         var UNKNOWN_COLOR = "#FFFFFF";
         var CLEAR_COLOR = "#59FF6C";
         var STATE = ['alarm', 'was alarmed', 'clear', 'unknown', 'ignore', 'no change', 'request', 'location'];
@@ -138,12 +145,15 @@ class MyMap(Map):
         }
         """
 
-        js = self.soup.new_tag("script", attrs={"id": "timer", "type": "text/javascript"})
+        js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
+        if not js:
+            js = self.soup.new_tag("script", attrs={"id": "timer", "type": "text/javascript"})
         js.string = CData(realtime_js)
         self.soup.svg.append(js)
 
     @property
     def svg(self):
+        self.addTimerJs()
         # Re-render all systems
         onload = []
         # for system in self.mySystems.values():
@@ -198,7 +208,7 @@ class MyMap(Map):
                 self.progress.setModal(False)
 
         super(MyMap, self).__init__(regionName, self.svgData)
-        self.addTimerJs()
+        # self.addTimerJs()
         if self.parent:
             # this closes...
             self.progress.setValue(1)
@@ -207,10 +217,11 @@ class MyMap(Map):
 
     def debugWriteSoup(self, svgData):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
+        from vi.resources import getVintelLogDir
         dir, file = os.path.split(os.path.abspath(__file__))
         ts = datetime.datetime.fromtimestamp(time.time()).strftime("%H_%M_%S")
         try:
-            with open(os.path.join(dir, "zoutput_{}.svg".format(ts)), "w+") as svgFile:
+            with open(os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+") as svgFile:
                 svgFile.write(svgData)
         except Exception as e:
             LOGGER.error(e)

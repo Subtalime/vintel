@@ -19,12 +19,12 @@ from vi import states
 from bs4 import NavigableString
 import datetime
 
+
 class Message(object):
     def __init__(self, room: str, message: str, timestamp: datetime.datetime, user: str,
-                 plainText: str=None, status: states=states.ALARM, rtext: NavigableString=None, currsystems: list=None,
-                 upperText: str=None):
-        if currsystems is None:
-            currsystems = []
+                 plainText: str = None, status: states = states.ALARM, rtext: NavigableString = None,
+                 currsystems: list = [],
+                 upperText: str = None):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
