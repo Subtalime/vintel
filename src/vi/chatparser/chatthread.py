@@ -36,13 +36,18 @@ LOGGER = logging.getLogger(__name__)
 __all_known_messages = {}
 
 
+chat_thread_lock = threading.RLock()
+
 def chat_thread_all_messages_tidy_up():
+    global __all_known_messages, chat_thread_lock
+    chat_thread_lock.aquire()
     # 2 minutes storage is enough
     message_age = 120
     ts = datetime.datetime.now()
     for key in list(__all_known_messages.keys()):
         if (ts - key).total_seconds() > message_age:
             del __all_known_messages[key]
+    chat_thread_lock.release()
 
 
 def chat_thread_all_messages_contains(message: Message):
@@ -52,24 +57,27 @@ def chat_thread_all_messages_contains(message: Message):
     :param message:
     :return:
     """
+    global __all_known_messages, chat_thread_lock
+    chat_thread_lock.aquire()
     search = message.room + message.message
     for k, v in __all_known_messages.items():
         age = (k - message.timestamp).total_seconds()
         if v[0] == search and age <= 1:
+            chat_thread_lock.release()
             return True
+    chat_thread_lock.release()
     return False
 
 
-chat_thread_lock = threading.Lock()
-
-
 def chat_thread_all_messages_add(message: Message) -> bool:
-    global chat_thread_lock
-    with chat_thread_lock:
-        if chat_thread_all_messages_contains(message):
-            return False
-        __all_known_messages[message.timestamp] = (message.room + message.message, message.user)
-        chat_thread_all_messages_tidy_up()
+    global __all_known_messages, chat_thread_lock
+    chat_thread_lock.aquire()
+    if chat_thread_all_messages_contains(message):
+        chat_thread_lock.release()
+        return False
+    __all_known_messages[message.timestamp] = (message.room + message.message, message.user)
+    chat_thread_all_messages_tidy_up()
+    chat_thread_lock.release()
     return True
 
 
@@ -112,8 +120,6 @@ class ChatThread(QThread):
         self.char_parser = parent.enableCharacterParser()
         parent.ship_parser.connect(self.ship_parser_enabled)
         parent.character_parser.connect(self.char_parser_enabled)
-        # ship_parser.connect(self._shipParser)
-        # character_parser.connect(self._charParser)
         self.process_pool = {}
         self.known_players = known_players
 
