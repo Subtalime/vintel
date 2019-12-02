@@ -3,7 +3,6 @@
 *.pyproj
 /.idea/
 /venv/
-/.idea/
 /Output/
 /releases/packages/
 /releases/setup/
