@@ -61,6 +61,7 @@ from vi.ui.MainWindow import Ui_MainWindow
 from vi.logger.logconfig import LogConfigurationThread
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
+from vi.settings.JsModel import stringToColor
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -179,12 +180,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setColor(self, color: str = None) -> str:
         if color:
             self.backgroundColor = color
-            # self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
+            color = stringToColor(self.backgroundColor)
             p = self.palette()
-            self.backgroundColor = color.lstrip("#")
-            lv = len(self.backgroundColor)
-            bg = tuple(int(self.backgroundColor[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
-            p.setColor(self.backgroundRole(), QColor(bg[0], bg[1], bg[2]))
+            p.setColor(self.backgroundRole(), color)
             self.setPalette(p)
         return self.backgroundColor
 
@@ -336,11 +334,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def setupThreads(self):
         LOGGER.debug("Creating threads")
-
-        # ESI loaded in vintel.py
-        # self.esiThread = EsiThread(cache_directory=getVintelDir())
-        # self.esiThread.requestInstance()
-        # self.esiThread.start()
 
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
