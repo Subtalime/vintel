@@ -23,13 +23,13 @@ import datetime
 class Message(object):
     def __init__(self, room: str, message: str, timestamp: datetime.datetime, user: str,
                  plainText: str = None, status: states = states.ALARM, rtext: NavigableString = None,
-                 currsystems: list = [],
+                 currsystems: list = None,
                  upperText: str = None):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
         self.user = user  # user who posted the message
-        self.systems = currsystems  # list of systems mentioned in the message
+        self.systems = currsystems if currsystems is not None else [] # list of systems mentioned in the message
         self.status = status  # status related to the message
         self.upperText = upperText if upperText else message.upper()  # the text in UPPER CASE
         self.plainText = plainText if plainText else message  # plain text of the message, as posted
