@@ -449,7 +449,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.refreshContent = self.dotlan.svg
         self.setInitialMapPositionForRegion(regionName)
         # here is a good spot to update the Map with current Chat-Entries
-        
+
         # Allow the file watcher to run now that all else is set up
         if self.filewatcherThread:
             self.filewatcherThread.paused = False
@@ -662,7 +662,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def messageExpiry(self, seconds: int = None) -> int:
         if seconds:
             self.message_expiry = seconds
-        self.chatbox.setTitle("All intel (past {} minutes)".format(self.message_expiry / 60))
+        self.chatbox.setTitle("All intel (past {} minutes)".format(int(self.message_expiry / 60)))
         return self.message_expiry
 
     def enableCharacterParser(self, enable: bool = None) -> bool:

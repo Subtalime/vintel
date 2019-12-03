@@ -40,7 +40,7 @@ chat_thread_lock = threading.RLock()
 
 def chat_thread_all_messages_tidy_up():
     global __all_known_messages, chat_thread_lock
-    chat_thread_lock.aquire()
+    chat_thread_lock.acquire()
     # 2 minutes storage is enough
     message_age = 120
     ts = datetime.datetime.now()
@@ -58,7 +58,7 @@ def chat_thread_all_messages_contains(message: Message):
     :return:
     """
     global __all_known_messages, chat_thread_lock
-    chat_thread_lock.aquire()
+    chat_thread_lock.acquire()
     search = message.room + message.message
     for k, v in __all_known_messages.items():
         age = (k - message.timestamp).total_seconds()
@@ -71,7 +71,7 @@ def chat_thread_all_messages_contains(message: Message):
 
 def chat_thread_all_messages_add(message: Message) -> bool:
     global __all_known_messages, chat_thread_lock
-    chat_thread_lock.aquire()
+    chat_thread_lock.acquire()
     if chat_thread_all_messages_contains(message):
         chat_thread_lock.release()
         return False
@@ -156,7 +156,6 @@ class ChatThread(QThread):
             self.message_added_signal.emit(message)
 
     def message_updated(self, message: Message):
-        # chat_thread_all_messages_add(message)
         self.message_updated_signal.emit(message)
 
     def ship_parser_enabled(self, value):
