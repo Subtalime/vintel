@@ -1,18 +1,20 @@
 import os
 import pickle
 from ast import literal_eval
-from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog
+from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
 from vi.settings.JsModel import stringToColor, dialogColor, JsModel
 from vi.dotlan.javascript import JavaScript
 from vi.ui.Settings import Ui_Dialog
 from vi.cache.cache import Cache
-from vi.resources import soundPath
+from vi.dotlan.regions import Regions
+from vi.resources import soundPath, resourcePath, getVintelMap
 from vi.sound.soundmanager import SoundManager
 
 
 class SettingsDialog(QDialog, Ui_Dialog):
     settings_saved = pyqtSignal()
+    new_region_range_chosen = pyqtSignal(str)
 
     class SoundTableModel(QAbstractTableModel):
         layout_to_be_changed = pyqtSignal()
@@ -106,6 +108,77 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.txtKosInterval.setEnabled(False)
         # all Sound Settings
         self.setupSound()
+        # all Region Settings
+        self.setupRegions()
+
+    def setupRegions(self):
+        self.btnRegionHelp.clicked.connect(self.regionHelpClicked)
+        regionNames = []
+        cacheRegions = Cache().getFromCache("region_name_range")
+        if cacheRegions:
+            regionNames = cacheRegions.split(",")
+            for name in regionNames:
+                if name is None or name == "":
+                    regionNames.pop()
+
+        allRegions = Regions()
+        for region in allRegions.getNames():
+            item = QListWidgetItem(region)
+            self.listWidget.addItem(item)
+        for region in regionNames:
+            items = self.listWidget.findItems(region, Qt.MatchExactly)
+            if items:
+                items[0].setSelected(True)
+            else:
+                if len(self.txtRegions.text()) > 0:
+                    self.txtRegions.setText(self.txtRegions.text() + ",")
+                self.txtRegions.setText(self.txtRegions.text() + region)
+
+    def regionCheckMapFiles(self) -> bool:
+        if self.txtRegions.text():
+            self.txtRegions.setText(self.txtRegions.text().replace(" ", ""))
+            regions = self.txtRegions.text().split(",")
+            for region in regions:
+                if not region.endswith(".svg"):
+                    return False
+                from os.path import isfile
+                if not isfile(getVintelMap(region)):
+                    return False
+        return True
+
+    def regionHelpClicked(self):
+        # open a Help-Dialog
+        try:
+            with open(resourcePath("docs/regionselect.txt")) as f:
+                content = f.read()
+                content = content.replace("<mapdir>", getVintelMap())
+                QMessageBox.information(self, "Region-Help", content)
+        except FileNotFoundError:
+            QMessageBox.warning(self, "Help-File",
+                                "Unable to find Help-File \n{}".format(
+                                    resourcePath("docs/regionselect.txt")))
+
+    def regionSave(self) -> bool:
+        if not self.checkMapFiles():
+            resPath = getVintelMap()
+            QMessageBox.critical(self, "Region selection",
+                                 "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(
+                                     resPath, self.txtRegions.text()))
+            self.tabWidget.setCurrentIndex(self.tabWidget.indexOf(self.tab_regions))
+            self.txtRegions.setFocus()
+            return False
+
+        items = self.listWidget.selectedItems()
+        litems = []
+        for item in items:
+            if len(item.text()) > 0:
+                litems.append(item.text())
+        saveCache = ",".join(litems)
+        if len(litems) > 0 and self.txtRegions.text():
+            saveCache += "," + self.txtRegions.text()
+        Cache().putIntoCache("region_name_range", saveCache, 60 * 60 * 24 * 365)
+        self.new_region_range_chosen.emit(saveCache)
+        return True
 
     def setupSound(self):
         self.soundset = Cache().getFromCache("sound_setting_list")
@@ -208,6 +281,8 @@ class SettingsDialog(QDialog, Ui_Dialog):
             self.color = color.name()
 
     def saveSettings(self):
+        if not self.regionSave():
+            return
         self.settings_saved.emit()
         # dirty, but make sure the latest Model is copied to our data
         self.setTableModel(0)
