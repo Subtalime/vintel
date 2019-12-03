@@ -10,6 +10,7 @@ from vi.cache.cache import Cache
 from vi.resources import soundPath
 from vi.sound.soundmanager import SoundManager
 
+
 class SettingsDialog(QDialog, Ui_Dialog):
     settings_saved = pyqtSignal()
 
@@ -101,7 +102,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         # all General settings
         self.btnColor.clicked.connect(self.colorChooser)
         self.buttonBox.accepted.connect(self.saveSettings)
-        self.buttonBox.rejected.connect(self.reject)
+        self.buttonBox.rejected.connect(self.cancelSettings)
         self.txtKosInterval.setEnabled(False)
         # all Sound Settings
         self.setupSound()
@@ -140,7 +141,6 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.sliderVolume.setValue(model.getData(model.index(rowIndex.row(), 2)))
         self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
 
-
     def setSoundVolume(self, val):
         if self.current_rowIndex:
             model = self.current_rowIndex.model()
@@ -169,7 +169,6 @@ class SettingsDialog(QDialog, Ui_Dialog):
             if file[0] != '':
                 self.txtSound.setText(file[0])
 
-
     def addMapColorRow(self):
         index = self.tableViewMap.selectionModel().currentIndex()
         if index.isValid():
@@ -179,7 +178,6 @@ class SettingsDialog(QDialog, Ui_Dialog):
         index = self.tableViewMap.selectionModel().currentIndex()
         if index.isValid():
             self.tableViewMap.model().removeRows(index.row(), 1)
-
 
     def mapSelectColor(self, sQModelIndex: QModelIndex):
         if not sQModelIndex.isValid():
@@ -195,7 +193,8 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     def setTableModel(self, index):
         # dirty... but somehow the Model doesn't update the dataset...
-        self.mapColorList[self.cmbAlertType.itemText(self.mapColorIndex)] = self.model.m_grid_data
+        self.mapColorList[
+            self.cmbAlertType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
         self.mapColorIndex = index
         idx = self.cmbAlertType.itemText(index)
         # self.tableViewMap.model().submitAll()
@@ -210,7 +209,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     def saveSettings(self):
         self.settings_saved.emit()
-        # make sure the latest Model is copied to our data
+        # dirty, but make sure the latest Model is copied to our data
         self.setTableModel(0)
         self.java_script.js_lst = self.mapColorList.copy()
         self.java_script.save_settings()
@@ -219,11 +218,15 @@ class SettingsDialog(QDialog, Ui_Dialog):
         Cache().putIntoCache("sound_setting_list", str(soundset))
         self.accept()
 
+    def cancelSettings(self):
+        self.reject()
+
+
 if __name__ == "__main__":
     import sys
     from PyQt5.Qt import QApplication
     from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QComboBox, QPushButton
-    string = JavaScript().getJs()
+
     a = QApplication(sys.argv)
     d = SettingsDialog()
     d.show()
