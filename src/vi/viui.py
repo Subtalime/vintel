@@ -27,7 +27,6 @@ import logging
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
-from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
 from PyQt5.uic import loadUi
@@ -42,7 +41,6 @@ from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, F
 from vi.systemtray import TrayContextMenu
 from vi.chatparser.chatthread import ChatThread
 from vi.chatparser.chatmessage import Message
-# from vi.chatparser import ChatParser
 from vi.esi import EsiInterface
 from vi.esihelper import EsiHelper
 from vi.chatentrywidget import ChatEntryWidget
@@ -56,7 +54,7 @@ from vi.dotlan.regions import Regions
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
 # from vi.sound.SoundSettingDialog import SoundSettingDialog
-from vi.sound.SoundSetupList import SoundSettingDialog
+# from vi.sound.SoundSetupList import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.logger.logconfig import LogConfigurationThread
 from vi.settings.SettingsDialog import SettingsDialog
@@ -89,7 +87,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapUpdateThread = None
         self.logConfigThread = None
         self.selfNotify = False
-        self.chatparser = None
         self.chatThread = None
         self.popup_notification = True
         self.character_parser_enabled = True
@@ -264,7 +261,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
 
-    def settings(self):
+    def settings(self, tabIndex: int=None):
         setting = SettingsDialog(self)
         setting.checkScanCharacter.setChecked(self.character_parser_enabled)
         setting.checkShipNames.setChecked(self.ship_parser_enabled)
@@ -273,6 +270,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.checkNotifyOwn.setChecked(self.selfNotify)
         setting.checkPopupNotification.setChecked(self.popup_notification)
         setting.color = self.setColor()
+        # presets for Sound-Settings
+        if tabIndex:
+            setting.tabWidget.setCurrentIndex(tabIndex)
         setting.show()
         if setting.exec_():
             self.setColor(setting.color)
@@ -415,8 +415,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dotlan_systems.emit(self.systems)
         if self.chatThread:
             self.chatThread.update_dotlan_systems(self.systems)
-        # LOGGER.debug("Creating chat parser")
-        # self.chatparser = ChatParser(self.pathToLogs, self.roomnames, self.systems)
 
         # Menus - only once
         if initialize:
@@ -451,7 +449,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.refreshContent = self.dotlan.svg
         self.setInitialMapPositionForRegion(regionName)
         # here is a good spot to update the Map with current Chat-Entries
-        
+
         # Allow the file watcher to run now that all else is set up
         if self.filewatcherThread:
             self.filewatcherThread.paused = False
@@ -664,7 +662,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def messageExpiry(self, seconds: int = None) -> int:
         if seconds:
             self.message_expiry = seconds
-        self.chatbox.setTitle("All intel (past {} minutes)".format(self.message_expiry / 60))
+        self.chatbox.setTitle("All intel (past {} minutes)".format(int(self.message_expiry / 60)))
         return self.message_expiry
 
     def enableCharacterParser(self, enable: bool = None) -> bool:
@@ -708,12 +706,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Limit redundant kos checks
         if contentTuple != self.oldClipboardContent:
             parts = tuple(content.split("\n"))
-            knownPlayers = set().union(self.knownPlayers.getActiveNames(),
-                                       self.chatparser.getListeners())
             for part in parts:
                 # Make sure user is in the content (this is a check of the local system in Eve).
                 # also, special case for when you have no knonwnPlayers (initial use)
-                if not knownPlayers or part in knownPlayers:
+                if not self.knownPlayers or part in self.knownPlayers:
                     self.trayIcon.setIcon(self.taskbarIconWorking)
                     self.kosRequestThread.addRequest(parts, "clipboard", True)
                     break
@@ -724,8 +720,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
         try:
             system = self.systems[str(systemName)]
-            # sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
-            #                 list(set().union(self.chatparser.getListeners(), self.knownPlayers)))
             sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
                             list(self.knownPlayers))
             self.chat_message_added.connect(sc.addChatEntry)
@@ -974,10 +968,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #
     def changedRoomnames(self, newRoomnames):
         self.cache.putIntoCache("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
-        self.chatparser.setRooms(newRoomnames)
+        if self.chatThread:
+            self.chatThread.update_room_names(newRoomnames)
         # TODO: this is new (ST) to update the Rooms after changes
         # TODO: otherwise it wont have effect until restart of program
-        self.chatparser.collectInitFileData()
+        # self.chatparser.collectInitFileData()
 
     def showInfo(self):
         LOGGER.debug("Opening About-Dialog")
@@ -991,8 +986,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         LOGGER.debug("Closed About-Dialog")
 
     def showSoundSetup(self):
-        sd = SoundSettingDialog(self)
-        sd.show()
+        self.settings(2)
+        # sd = SoundSettingDialog(self)
+        # sd.show()
 
     def systemTrayActivated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
