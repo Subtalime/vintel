@@ -262,7 +262,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionLogging.triggered.connect(self.showLoggingWindow)
 
     def settings(self, tabIndex: int=None):
+        def handleRegionsChosen(regionList):
+            LOGGER.debug("Chosen new Regions to monitor")
+            self.menuRegion.addItems()
+
         setting = SettingsDialog(self)
+        setting.new_region_range_chosen.connect(handleRegionsChosen)
         setting.checkScanCharacter.setChecked(self.character_parser_enabled)
         setting.checkShipNames.setChecked(self.ship_parser_enabled)
         setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
@@ -320,13 +325,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     # Dialog to select Regions to monitor
     def showRegionChooser(self):
-        def handleRegionsChosen(regionList):
-            LOGGER.debug("Chosen new Regions to monitor")
-            self.menuRegion.addItems()
-
-        chooser = RegionChooserList(self)
-        chooser.new_region_range_chosen.connect(handleRegionsChosen)
-        chooser.show()
+        self.settings(3)
+        # def handleRegionsChosen(regionList):
+        #     LOGGER.debug("Chosen new Regions to monitor")
+        #     self.menuRegion.addItems()
+        #
+        # chooser = RegionChooserList(self)
+        # chooser.new_region_range_chosen.connect(handleRegionsChosen)
+        # chooser.show()
 
     def updatePlayers(self, player_list: list):
         self.knownPlayers.addNames(player_list)
@@ -379,7 +385,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.filewatcherThread:
             self.filewatcherThread.paused = True
         if self.mapUpdateThread:
-            self.mapUpdateThread.activeData = False
+            self.mapUpdateThread.active = False
         LOGGER.debug("Finding map file")
         regionName = self.cache.getFromCache("region_name")
         if not regionName:
@@ -442,7 +448,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # self.restartMapTimer()
 
         if self.mapUpdateThread:
-            self.mapUpdateThread.activeData = True
+            self.mapUpdateThread.active = True
         self.setInitialMapPositionForRegion(regionName)
         self.checkJumpbridges()
         self.updateMapView()
@@ -1055,7 +1061,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 messageLogged = True
                 for system in message.systems:
                     systemname = system.name
-                    systemList[systemname].setStatus(message.status)
+                    systemList[systemname].setStatus(message.status, message.timestamp)
                     activePlayers = self.knownPlayers.getActiveNames()
                     # notify User if we don't have locations for active Players
                     self.checkPlayerLocations()

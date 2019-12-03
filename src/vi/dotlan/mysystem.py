@@ -27,7 +27,6 @@ class MySystem(System):
     def __init__(self, name, svgElement, mapSoup, mapCoordinates, transform, systemId):
         super(MySystem, self).__init__(name, svgElement, mapSoup, mapCoordinates, transform,
                                        systemId)
-        self.setStatusTime = None
         self.timerload = ()
         self.name_label = self.name.replace("-", "_").lower()
         self.rectId = self.svgElement.select("rect")[0]["id"]
@@ -45,9 +44,6 @@ class MySystem(System):
             # if rect.has_attr("style"):
             rect["style"] = "fill: #ffffff"
 
-    def setStatus(self, newStatus):
-        super(MySystem, self).setStatus(newStatus)
-        self.setStatusTime = time.time()
 
     def update(self):
         # super(MySystem, self).update()

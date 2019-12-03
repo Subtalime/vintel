@@ -50,7 +50,7 @@ class MapUpdateThread(QThread):
         QThread.__init__(self)
         logging.debug("Starting Map-Thread {}".format(timerInterval))
         self.queue = queue.Queue()
-        self.activeData = False
+        self.active = False
         if timerInterval > 1000:
             timerInterval = timerInterval / 1000
         self.timeout = timerInterval
@@ -74,7 +74,7 @@ class MapUpdateThread(QThread):
             except Exception:
                 timeout = True
                 pass
-            if timeout and not self.activeData:  # we don't have initial Map-Data yet
+            if timeout and not self.active:  # we don't have initial Map-Data yet
                 load_map_attempt += 1
                 logging.debug("Map-Content update attempt, but not active")
                 if load_map_attempt > 10:
@@ -82,11 +82,12 @@ class MapUpdateThread(QThread):
                                      "If this continues to happen, delete the Cache-File in \"%s\"" % getVintelDir())
                     return
                 continue
-            elif not self.activeData:
+            elif not self.active and not content:
+                logging.debug("Ending MapUpdate Thread")
                 return
             try:
                 load_map_attempt = 0
-                if not timeout:  # not based on Timeout
+                if not timeout and content:  # not based on Timeout
                     logging.debug("Setting Map-Content start")
                     zoom_factor = zoom_factor if zoom_factor else 1.
                     # zoom_factor = float(zoom_factor)
@@ -104,7 +105,7 @@ class MapUpdateThread(QThread):
 
     def quit(self):
         logging.debug("Stopping Map-Thread")
-        self.activeData = False
+        self.active = False
         self.addToQueue()
         QThread.quit(self)
 

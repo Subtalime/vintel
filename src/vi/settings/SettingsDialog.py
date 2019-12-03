@@ -1,6 +1,6 @@
 import os
-import pickle
 from ast import literal_eval
+from os.path import isfile
 from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
 from vi.settings.JsModel import stringToColor, dialogColor, JsModel
@@ -113,20 +113,20 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     def setupRegions(self):
         self.btnRegionHelp.clicked.connect(self.regionHelpClicked)
-        regionNames = []
-        cacheRegions = Cache().getFromCache("region_name_range")
-        if cacheRegions:
-            regionNames = cacheRegions.split(",")
-            for name in regionNames:
-                if name is None or name == "":
-                    regionNames.pop()
 
-        allRegions = Regions()
-        for region in allRegions.getNames():
+        region_names = []
+        cache_regions = Cache().getFromCache("region_name_range")
+        if cache_regions:
+            region_names = cache_regions.split(",")
+            for name in region_names:
+                if name is None or name == "":
+                    region_names.pop()
+
+        for region in Regions().getNames():
             item = QListWidgetItem(region)
-            self.listWidget.addItem(item)
-        for region in regionNames:
-            items = self.listWidget.findItems(region, Qt.MatchExactly)
+            self.listRegion.addItem(item)
+        for region in region_names:
+            items = self.listRegion.findItems(region, Qt.MatchExactly)
             if items:
                 items[0].setSelected(True)
             else:
@@ -141,7 +141,6 @@ class SettingsDialog(QDialog, Ui_Dialog):
             for region in regions:
                 if not region.endswith(".svg"):
                     return False
-                from os.path import isfile
                 if not isfile(getVintelMap(region)):
                     return False
         return True
@@ -152,32 +151,34 @@ class SettingsDialog(QDialog, Ui_Dialog):
             with open(resourcePath("docs/regionselect.txt")) as f:
                 content = f.read()
                 content = content.replace("<mapdir>", getVintelMap())
-                QMessageBox.information(self, "Region-Help", content)
+                QMessageBox.information(None, "Region-Help", content)
         except FileNotFoundError:
-            QMessageBox.warning(self, "Help-File",
+            QMessageBox.warning(None, "Help-File",
                                 "Unable to find Help-File \n{}".format(
                                     resourcePath("docs/regionselect.txt")))
 
     def regionSave(self) -> bool:
-        if not self.checkMapFiles():
-            resPath = getVintelMap()
-            QMessageBox.critical(self, "Region selection",
+        if not self.regionCheckMapFiles():
+            QMessageBox.critical(None, "Region selection",
                                  "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(
-                                     resPath, self.txtRegions.text()))
-            self.tabWidget.setCurrentIndex(self.tabWidget.indexOf(self.tab_regions))
+                                     getVintelMap(),
+                                     self.txtRegions.text()))
             self.txtRegions.setFocus()
             return False
 
-        items = self.listWidget.selectedItems()
+        items = self.listRegion.selectedItems()
         litems = []
         for item in items:
             if len(item.text()) > 0:
                 litems.append(item.text())
-        saveCache = ",".join(litems)
-        if len(litems) > 0 and self.txtRegions.text():
-            saveCache += "," + self.txtRegions.text()
-        Cache().putIntoCache("region_name_range", saveCache, 60 * 60 * 24 * 365)
-        self.new_region_range_chosen.emit(saveCache)
+        save_cache = ",".join(litems)
+        if self.txtRegions.text():
+            save_cache += "," + self.txtRegions.text()
+        # just to make sure
+        save_cache = save_cache.lstrip(",")
+        Cache().putIntoCache("region_name_range", save_cache, 60 * 60 * 24 * 365)
+        self.new_region_range_chosen.emit(save_cache)
+
         return True
 
     def setupSound(self):
@@ -209,21 +210,21 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     def soundRowClicked(self, rowIndex):
         model = rowIndex.model()
-        self.current_rowIndex = rowIndex
+        self.sound_current_rowIndex = rowIndex
         self.txtSound.setText(model.getData(model.index(rowIndex.row(), 1)))
         self.sliderVolume.setValue(model.getData(model.index(rowIndex.row(), 2)))
         self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
 
     def setSoundVolume(self, val):
-        if self.current_rowIndex:
-            model = self.current_rowIndex.model()
-            row = self.current_rowIndex.row()
+        if self.sound_current_rowIndex:
+            model = self.sound_current_rowIndex.model()
+            row = self.sound_current_rowIndex.row()
             model.setData(model.index(row, 2), val)
 
     def setSoundFile(self, val):
-        if self.current_rowIndex:
-            model = self.current_rowIndex.model()
-            row = self.current_rowIndex.row()
+        if self.sound_current_rowIndex:
+            model = self.sound_current_rowIndex.model()
+            row = self.sound_current_rowIndex.row()
             model.setData(model.index(row, 1), self.txtSound.text())
             self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
 
@@ -234,7 +235,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
             SoundManager().setSoundVolume(self.orgVolume)
 
     def browseSoundFile(self):
-        if self.current_rowIndex:
+        if self.sound_current_rowIndex:
             soundFile = self.txtSound.text()
             if not os.path.exists(soundFile):
                 soundFile = os.path.join(soundPath(), os.path.basename(soundFile))

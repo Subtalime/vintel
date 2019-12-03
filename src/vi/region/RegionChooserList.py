@@ -86,12 +86,14 @@ class RegionChooserList(QtWidgets.QDialog, Ui_Dialog):
         for item in items:
             if len(item.text()) > 0:
                 litems.append(item.text())
-        saveCache = ",".join(litems)
+        save_cache = ",".join(litems)
         if len(litems) > 0 and self.txtRegions.text():
-            saveCache += "," + self.txtRegions.text()
-        Cache().putIntoCache("region_name_range", saveCache, 60 * 60 * 24 * 365)
-        LOGGER.info("New list of Regions selected: {}".format(saveCache))
-        self.new_region_range_chosen.emit(saveCache)
+            save_cache += "," + self.txtRegions.text()
+        else:
+            save_cache = self.txtRegions.text()
+        Cache().putIntoCache("region_name_range", save_cache, 60 * 60 * 24 * 365)
+        LOGGER.info("New list of Regions selected: {}".format(save_cache))
+        self.new_region_range_chosen.emit(save_cache)
         self.accept()
 
     def helpClicked(self):

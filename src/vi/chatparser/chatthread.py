@@ -35,19 +35,8 @@ LOGGER = logging.getLogger(__name__)
 
 __all_known_messages = {}
 
-
 chat_thread_lock = threading.RLock()
 
-def chat_thread_all_messages_tidy_up():
-    global __all_known_messages, chat_thread_lock
-    chat_thread_lock.acquire()
-    # 2 minutes storage is enough
-    message_age = 120
-    ts = datetime.datetime.now()
-    for key in list(__all_known_messages.keys()):
-        if (ts - key).total_seconds() > message_age:
-            del __all_known_messages[key]
-    chat_thread_lock.release()
 
 
 def chat_thread_all_messages_contains(message: Message):
@@ -59,14 +48,25 @@ def chat_thread_all_messages_contains(message: Message):
     """
     global __all_known_messages, chat_thread_lock
     chat_thread_lock.acquire()
-    search = message.room + message.message
-    for k, v in __all_known_messages.items():
-        age = (k - message.timestamp).total_seconds()
-        if v[0] == search and age <= 1:
-            chat_thread_lock.release()
-            return True
+    hit = False
+    search = message.room + message.plainText
+    if search in __all_known_messages.keys():
+        if (__all_known_messages[search] - message.timestamp).total_seconds() <= 1:
+            LOGGER.info("chat_message_contains: HIT Search \"{}\"".format(search))
+            hit = True
     chat_thread_lock.release()
-    return False
+    return hit
+
+
+def _chat_thread_all_messages_tidy_up():
+    global __all_known_messages
+    # 20 minutes storage is enough
+    # remember to adjust if increasing in ChatThreadProcess.__init__
+    message_age = 1200
+    ts = datetime.datetime.now()
+    for key, mtime in list(__all_known_messages.items()):
+        if (ts - mtime).total_seconds() > message_age:
+            del __all_known_messages[key]
 
 
 def chat_thread_all_messages_add(message: Message) -> bool:
@@ -75,8 +75,8 @@ def chat_thread_all_messages_add(message: Message) -> bool:
     if chat_thread_all_messages_contains(message):
         chat_thread_lock.release()
         return False
-    __all_known_messages[message.timestamp] = (message.room + message.message, message.user)
-    chat_thread_all_messages_tidy_up()
+    __all_known_messages[message.room + message.plainText] = message.timestamp
+    _chat_thread_all_messages_tidy_up()
     chat_thread_lock.release()
     return True
 
@@ -213,7 +213,8 @@ class ChatThreadProcess(QThread):
         self.character_scanner = char_scanner
         self.dotlan_systems = dotlan_systems
         # any messages older than this will be ignored
-        self.message_age = 60
+        # this is if Vintal has started AFTER the EVE-Client started
+        self.message_age = 300
         self.active = True
         self.charname = None
         self.roomname = None
@@ -249,7 +250,7 @@ class ChatThreadProcess(QThread):
 
         # If message says clear and no system? Maybe an answer to a request?
         if message.status == states.CLEAR and not message.systems:
-            maxSearch = 2  # we search only max_search messages in the room
+            maxSearch = 4  # we search only max_search messages in the room
             for count, oldMessage in enumerate(oldMessage for oldMessage in
                                                self.knownMessages[-1::-1]
                                                if oldMessage.room == self.roomname):
@@ -400,17 +401,19 @@ class ChatThreadProcess(QThread):
         # KOS request
         if upperText.startswith("XXX "):
             message = Message(self.roomname, text, timestamp, username, rtext=rtext,
-                              status=states.KOS_STATUS_REQUEST)
+                              status=states.KOS_STATUS_REQUEST, plainText=originalText, upperText=upperText)
         elif self.roomname.startswith("="):
             message = Message(self.roomname, "xxx " + text, timestamp, username,
-                              status=states.KOS_STATUS_REQUEST, rtext=rtext)
+                              status=states.KOS_STATUS_REQUEST, rtext=rtext, plainText=originalText,
+                              upperText=upperText)
         elif upperText.startswith("VINTELSOUND_TEST"):
             message = Message(self.roomname, text, timestamp, username,
-                              status=states.SOUND_TEST, rtext=rtext)
+                              status=states.SOUND_TEST, rtext=rtext, plainText=originalText, upperText=upperText)
         else:
             parsedStatus = parseStatus(rtext)
             status = parsedStatus if parsedStatus is not None else states.ALARM
-            message = Message(self.roomname, text, timestamp, username, status=status, rtext=rtext)
+            message = Message(self.roomname, text, timestamp, username, status=status, rtext=rtext,
+                              plainText=originalText, upperText=upperText)
             while parseSystems(self.dotlan_systems, message.rtext, message.systems):
                 continue
         LOGGER.debug("%s/%s: Message created: %r", self.roomname, self.charname, message)

@@ -18,6 +18,7 @@
 #
 
 import time
+import datetime
 import math
 from vi import states
 
@@ -72,7 +73,8 @@ class System(object):
         x = coords["x"] - 3 + offsetPoint[0]
         y = coords["y"] + offsetPoint[1]
         style = "fill:{0};stroke:{0};stroke-width:2;fill-opacity:0.4"
-        tag = self.mapSoup.new_tag("rect", x=x, y=y, width=coords["width"] + 1.5, height=coords["height"], id=idName, style=style.format(color), visibility="hidden")
+        tag = self.mapSoup.new_tag("rect", x=x, y=y, width=coords["width"] + 1.5, height=coords["height"], id=idName,
+                                   style=style.format(color), visibility="hidden")
         tag["class"] = ["jumpbridge", ]
         jumps = self.mapSoup.select("#jumps")[0]
         jumps.insert(0, tag)
@@ -95,8 +97,8 @@ class System(object):
         if not wasLocated:
             coords = self.mapCoordinates
             newTag = self.mapSoup.new_tag("ellipse", cx=coords["center_x"] - 2.5, cy=coords["center_y"], id=idName,
-                    rx=coords["width"] / 2 + 4, ry=coords["height"] / 2 + 4, style="fill:#8b008d",
-                    transform=self.transform)
+                                          rx=coords["width"] / 2 + 4, ry=coords["height"] / 2 + 4, style="fill:#8b008d",
+                                          transform=self.transform)
             jumps = self.mapSoup.select("#jumps")[0]
             jumps.insert(0, newTag)
 
@@ -113,7 +115,7 @@ class System(object):
 
     def getSoupId(self):
         name_id = str(self.name)
-        return "loc_"+name_id.replace("-", "_").lower()
+        return "loc_" + name_id.replace("-", "_").lower()
 
     def removeLocatedCharacter(self, charname):
         idName = self.getSoupId()
@@ -166,18 +168,21 @@ class System(object):
         if self in system._neighbours:
             system._neigbours.remove(self)
 
-    def setStatus(self, newStatus):
+    def setStatus(self, newStatus, alarmtime: float = time.time()):
+        if not isinstance(alarmtime, float):
+            if isinstance(alarmtime, datetime.datetime):
+                alarmtime = (alarmtime - datetime.datetime(1970, 1,1)).total_seconds()
         if newStatus == states.ALARM:
-            self.lastAlarmTime = time.time()
+            self.lastAlarmTime = alarmtime
             self.secondLine["alarmtime"] = self.lastAlarmTime
         elif newStatus == states.CLEAR:
-            self.lastAlarmTime = time.time()
+            self.lastAlarmTime = alarmtime
             self.secondLine["alarmtime"] = self.lastAlarmTime
             self.secondLine.string = "clear"
         elif newStatus == states.UNKNOWN:
             self.secondLine.string = "?"
         elif newStatus == states.REQUEST:
-            self.lastAlarmTime = time.time()
+            self.lastAlarmTime = alarmtime
             self.secondLine.string = "status"
         # if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
         if newStatus not in (states.NOT_CHANGE):  # unknown not affect system status
