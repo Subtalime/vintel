@@ -116,6 +116,11 @@ class Ui_Dialog(object):
         self.tableViewMap = QtWidgets.QTableView(self.groupBoxMap)
         self.tableViewMap.setObjectName("tableViewMap")
         self.gridLayout_4.addWidget(self.tableViewMap, 1, 0, 1, 2)
+        self.label_12 = QtWidgets.QLabel(self.groupBoxMap)
+        self.label_12.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_12.setWordWrap(True)
+        self.label_12.setObjectName("label_12")
+        self.gridLayout_4.addWidget(self.label_12, 0, 1, 1, 1)
         self.verticalLayout_3.addWidget(self.groupBoxMap)
         self.tabWidget.addTab(self.tab_map_display, "")
         self.tab_sound = QtWidgets.QWidget()
@@ -194,7 +199,7 @@ class Ui_Dialog(object):
         self.gridLayout.addWidget(self.widget, 0, 0, 1, 1)
 
         self.retranslateUi(Dialog)
-        self.tabWidget.setCurrentIndex(4)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
@@ -219,6 +224,7 @@ class Ui_Dialog(object):
         self.groupBoxMap.setTitle(_translate("Dialog", "Alert Settings"))
         self.btnMapAddTime.setText(_translate("Dialog", "add Time"))
         self.btnMapDelTime.setText(_translate("Dialog", "delete Time"))
+        self.label_12.setText(_translate("Dialog", "Colors will blend over from the lowest timeline to the next highest."))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_map_display), _translate("Dialog", "Map-Display"))
         self.label_8.setText(_translate("Dialog", "Sound File:"))
         self.btnSoundSearch.setText(_translate("Dialog", "..."))
