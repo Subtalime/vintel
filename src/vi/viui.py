@@ -44,17 +44,13 @@ from vi.chatparser.chatmessage import Message
 from vi.esi import EsiInterface
 from vi.esihelper import EsiHelper
 from vi.chatentrywidget import ChatEntryWidget
-from vi.chatroomschooser import ChatroomChooser
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
-from vi.region.RegionChooserList import RegionChooserList
 from vi.systemchat import SystemChat
 from vi.character.CharacterMenu import CharacterMenu, Characters
 from vi.region.RegionMenu import RegionMenu
 from vi.dotlan.regions import Regions
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
-# from vi.sound.SoundSettingDialog import SoundSettingDialog
-# from vi.sound.SoundSetupList import SoundSettingDialog
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.logger.logconfig import LogConfigurationThread
 from vi.settings.SettingsDialog import SettingsDialog
