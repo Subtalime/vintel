@@ -20,6 +20,7 @@ from cx_Freeze import setup, Executable
 import os
 import sys
 import shutil
+import zipfile
 from vi.version import VERSION, DISPLAY, AUTHOR, AUTHOR_EMAIL, URL, PROGNAME
 from vi.resources import resourcePath
 
@@ -105,7 +106,7 @@ try:
         description=DISPLAY,
         executables=executables,
         options={
-            # 'build_exe': build_exe_options,
+            'build_exe': build_exe_options,
             'bdist_msi': bdist_msi_options,
         },
         requires=requires,
@@ -116,30 +117,28 @@ try:
 except Exception as e:
     print(e)
 
-# try:
-#     setup(
-#         name=PROGNAME,
-#         version=VERSION,
-#         description=DISPLAY,
-#         executables=executables,
-#         options={
-#             'build_exe': {
-#                 'build_exe': os.path.join(destination, "Vintel-" + str(VERSION)),
-#                 'packages': packages,
-#                 'include_files': include_files,
-#                 'replace_paths': replace_paths,
-#             }
-#         },
-#         requires=requires,
-#         author=AUTHOR,
-#         author_email=AUTHOR_EMAIL,
-#         url=URL,
-#     )
-# except Exception as e:
-#     print(e)
-#
 try:
     for file in os.listdir("dist"):
         shutil.copy(os.path.join("dist", file), setup_dir)
 except FileNotFoundError:
     pass
+
+
+# create ZIP archive
+def zipdir(path, zipf):
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            zipf.write(os.path.join(root, file))
+
+
+try:
+    prog_name = "{}-{}".format(PROGNAME, VERSION)
+    if os.path.isfile(os.path.join(destination, prog_name + ".zip")):
+        os.remove(os.path.join(destination, prog_name + ".zip"))
+    package_path = os.path.join(destination, prog_name)
+    zip_path = package_path + ".zip"
+    zip_file = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
+    zipdir(package_path, zip_file)
+    zip_file.close()
+except Exception as e:
+    raise e
