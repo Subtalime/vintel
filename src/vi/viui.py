@@ -180,7 +180,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             color = stringToColor(self.backgroundColor)
             p = self.palette()
             p.setColor(self.backgroundRole(), color)
+            self.setAutoFillBackground(True)
             self.setPalette(p)
+            self.setStyleSheet("QWidget { background-color: %s; }" % self.backgroundColor)
+
         return self.backgroundColor
 
     def setConstants(self):
@@ -261,13 +264,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
 
-    def settings(self, tabIndex: int=None):
+    def settings(self, tabIndex: int=0):
         def handleRegionsChosen(regionList):
             LOGGER.debug("Chosen new Regions to monitor")
             self.menuRegion.addItems()
 
         setting = SettingsDialog(self)
         setting.new_region_range_chosen.connect(handleRegionsChosen)
+        setting.rooms_changed.connect(self.changedRoomnames)
         setting.checkScanCharacter.setChecked(self.character_parser_enabled)
         setting.checkShipNames.setChecked(self.ship_parser_enabled)
         setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
@@ -275,9 +279,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.checkNotifyOwn.setChecked(self.selfNotify)
         setting.checkPopupNotification.setChecked(self.popup_notification)
         setting.color = self.setColor()
-        # presets for Sound-Settings
-        if tabIndex:
-            setting.tabWidget.setCurrentIndex(tabIndex)
+        setting.tabWidget.setCurrentIndex(tabIndex)
+
         setting.show()
         if setting.exec_():
             self.setColor(setting.color)
@@ -830,9 +833,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.logWindow.activateWindow()
 
     def showChatroomChooser(self):
-        chooser = ChatroomChooser(self)
-        chooser.rooms_changed.connect(self.changedRoomnames)
-        chooser.show()
+        self.settings(4)
 
     def showJumpBridgeChooser(self):
         url = self.cache.getFromCache("jumpbridge_url")
@@ -972,7 +973,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #         pass
     #     self.trayIcon.setIcon(self.taskbarIconQuiescent)
     #
-    def changedRoomnames(self, newRoomnames):
+    def changedRoomnames(self, newRoomnames: list):
         self.cache.putIntoCache("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
         if self.chatThread:
             self.chatThread.update_room_names(newRoomnames)

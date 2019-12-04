@@ -21,7 +21,7 @@ from bs4.element import  CData
 from PyQt5 import  QtWidgets
 from vi.dotlan.map import Map
 from vi.resources import getVintelMap
-from vi.dotlan.javascript import JavaScript
+from vi.dotlan.colorjavascript import ColorJavaScript
 import sys
 import time
 import logging
@@ -76,7 +76,7 @@ class MyMap(Map):
 
         // max time for alarm, rect color, secondLine color
         """
-        realtime_js += JavaScript().getJs()
+        realtime_js += ColorJavaScript().getJs()
         realtime_js += """
         var UNKNOWN_COLOR = "#FFFFFF";
         var CLEAR_COLOR = "#59FF6C";

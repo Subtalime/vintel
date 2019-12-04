@@ -1,10 +1,28 @@
+#     Vintel - Visual Intel Chat Analyzer
+#     Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
+
 import os
 from ast import literal_eval
 from os.path import isfile
 from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
 from vi.settings.JsModel import stringToColor, dialogColor, JsModel
-from vi.dotlan.javascript import JavaScript
+from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.ui.Settings import Ui_Dialog
 from vi.cache.cache import Cache
 from vi.dotlan.regions import Regions
@@ -15,6 +33,7 @@ from vi.sound.soundmanager import SoundManager
 class SettingsDialog(QDialog, Ui_Dialog):
     settings_saved = pyqtSignal()
     new_region_range_chosen = pyqtSignal(str)
+    rooms_changed = pyqtSignal(list)
 
     class SoundTableModel(QAbstractTableModel):
         layout_to_be_changed = pyqtSignal()
@@ -86,7 +105,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.color = None
         self.setWindowTitle("Vintel Settings")
         # Everything to do with Map-Colors
-        self.java_script = JavaScript()
+        self.java_script = ColorJavaScript()
         self.mapColorList = self.java_script.js_lst.copy()
         self.mapColorIndex = 0
         self.model = JsModel(self.mapColorList['Alarm'], self.java_script.js_header)
@@ -95,24 +114,32 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.tableViewMap.resizeColumnsToContents()
         self.tableViewMap.setSortingEnabled(True)
         self.tableViewMap.sortByColumn(0, Qt.AscendingOrder)
-        self.tableViewMap.doubleClicked.connect(self.mapSelectColor)
-        self.tableViewMap.clicked.connect(self.mapSelectColor)
+        self.tableViewMap.doubleClicked.connect(self.map_select_color)
+        self.tableViewMap.clicked.connect(self.map_select_color)
         self.cmbAlertType.addItems(self.mapColorList.keys())
-        self.cmbAlertType.currentIndexChanged.connect(self.setTableModel)
-        self.btnMapAddTime.clicked.connect(self.addMapColorRow)
-        self.btnMapDelTime.clicked.connect(self.removeMapColorRow)
+        self.cmbAlertType.currentIndexChanged.connect(self.set_map_table_model)
+        self.btnMapAddTime.clicked.connect(self.map_add_color_row)
+        self.btnMapDelTime.clicked.connect(self.map_remove_color_row)
         # all General settings
-        self.btnColor.clicked.connect(self.colorChooser)
-        self.buttonBox.accepted.connect(self.saveSettings)
-        self.buttonBox.rejected.connect(self.cancelSettings)
+        self.btnColor.clicked.connect(self.color_chooser)
+        self.buttonBox.accepted.connect(self.save_settings)
+        self.buttonBox.rejected.connect(self.cancel_setting)
         self.txtKosInterval.setEnabled(False)
         # all Sound Settings
-        self.setupSound()
+        self.sound_setup()
         # all Region Settings
-        self.setupRegions()
+        self.region_setup()
+        # Chatroom Settings
+        self.chatroom_setup()
 
-    def setupRegions(self):
-        self.btnRegionHelp.clicked.connect(self.regionHelpClicked)
+    def chatroom_setup(self):
+        roomnames = Cache().getFromCache("room_names")
+        if not roomnames:
+            roomnames = u"querius.imperium,delve.imperium"
+        self.txtChatrooms.setPlainText(roomnames)
+
+    def region_setup(self):
+        self.btnRegionHelp.clicked.connect(self.region_help_clicked)
 
         region_names = []
         cache_regions = Cache().getFromCache("region_name_range")
@@ -134,7 +161,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
                     self.txtRegions.setText(self.txtRegions.text() + ",")
                 self.txtRegions.setText(self.txtRegions.text() + region)
 
-    def regionCheckMapFiles(self) -> bool:
+    def region_check_mapfile(self) -> bool:
         if self.txtRegions.text():
             self.txtRegions.setText(self.txtRegions.text().replace(" ", ""))
             regions = self.txtRegions.text().split(",")
@@ -145,7 +172,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
                     return False
         return True
 
-    def regionHelpClicked(self):
+    def region_help_clicked(self):
         # open a Help-Dialog
         try:
             with open(resourcePath("docs/regionselect.txt")) as f:
@@ -157,8 +184,8 @@ class SettingsDialog(QDialog, Ui_Dialog):
                                 "Unable to find Help-File \n{}".format(
                                     resourcePath("docs/regionselect.txt")))
 
-    def regionSave(self) -> bool:
-        if not self.regionCheckMapFiles():
+    def region_save(self) -> bool:
+        if not self.region_check_mapfile():
             QMessageBox.critical(None, "Region selection",
                                  "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(
                                      getVintelMap(),
@@ -181,7 +208,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
         return True
 
-    def setupSound(self):
+    def sound_setup(self):
         self.soundset = Cache().getFromCache("sound_setting_list")
         if self.soundset:
             self.soundset = literal_eval(self.soundset)
@@ -202,39 +229,39 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.sound_data_changed = False
         self.sound_current_rowIndex = None
         self.orgVolume = SoundManager().soundVolume
-        self.lstSound.clicked.connect(self.soundRowClicked)
-        self.sliderVolume.valueChanged.connect(self.setSoundVolume)
-        self.txtSound.textChanged.connect(self.setSoundFile)
-        self.btnSoundSearch.clicked.connect(self.browseSoundFile)
-        self.btnPlay.clicked.connect(self.playSound)
+        self.lstSound.clicked.connect(self.sound_row_clicked)
+        self.sliderVolume.valueChanged.connect(self.sound_set_volume)
+        self.txtSound.textChanged.connect(self.sound_set_file)
+        self.btnSoundSearch.clicked.connect(self.sound_browse_file)
+        self.btnPlay.clicked.connect(self.sound_play)
 
-    def soundRowClicked(self, rowIndex):
+    def sound_row_clicked(self, rowIndex):
         model = rowIndex.model()
         self.sound_current_rowIndex = rowIndex
         self.txtSound.setText(model.getData(model.index(rowIndex.row(), 1)))
         self.sliderVolume.setValue(model.getData(model.index(rowIndex.row(), 2)))
         self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
 
-    def setSoundVolume(self, val):
+    def sound_set_volume(self, val):
         if self.sound_current_rowIndex:
             model = self.sound_current_rowIndex.model()
             row = self.sound_current_rowIndex.row()
             model.setData(model.index(row, 2), val)
 
-    def setSoundFile(self, val):
+    def sound_set_file(self, val):
         if self.sound_current_rowIndex:
             model = self.sound_current_rowIndex.model()
             row = self.sound_current_rowIndex.row()
             model.setData(model.index(row, 1), self.txtSound.text())
             self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
 
-    def playSound(self):
+    def sound_play(self):
         if self.sound_current_rowIndex:
             SoundManager().setSoundVolume(self.sliderVolume.value())
             SoundManager().playSoundFile(self.txtSound.text())
             SoundManager().setSoundVolume(self.orgVolume)
 
-    def browseSoundFile(self):
+    def sound_browse_file(self):
         if self.sound_current_rowIndex:
             soundFile = self.txtSound.text()
             if not os.path.exists(soundFile):
@@ -243,17 +270,17 @@ class SettingsDialog(QDialog, Ui_Dialog):
             if file[0] != '':
                 self.txtSound.setText(file[0])
 
-    def addMapColorRow(self):
+    def map_add_color_row(self):
         index = self.tableViewMap.selectionModel().currentIndex()
         if index.isValid():
             self.tableViewMap.model().insertRows(index.row(), 1)
 
-    def removeMapColorRow(self):
+    def map_remove_color_row(self):
         index = self.tableViewMap.selectionModel().currentIndex()
         if index.isValid():
             self.tableViewMap.model().removeRows(index.row(), 1)
 
-    def mapSelectColor(self, sQModelIndex: QModelIndex):
+    def map_select_color(self, sQModelIndex: QModelIndex):
         if not sQModelIndex.isValid():
             return False
         if sQModelIndex.column() > 0:  # Color column
@@ -265,7 +292,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
             return False
         return False
 
-    def setTableModel(self, index):
+    def set_map_table_model(self, index):
         # dirty... but somehow the Model doesn't update the dataset...
         self.mapColorList[
             self.cmbAlertType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
@@ -275,26 +302,30 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.model = JsModel(self.mapColorList[idx], self.java_script.js_header)
         self.tableViewMap.setModel(self.model)
 
-    def colorChooser(self):
+    def color_chooser(self):
         color = stringToColor(self.color)
         color = dialogColor(color)
         if color.isValid():
             self.color = color.name()
 
-    def saveSettings(self):
-        if not self.regionSave():
+    def save_settings(self):
+        if not self.region_save():
             return
         self.settings_saved.emit()
         # dirty, but make sure the latest Model is copied to our data
-        self.setTableModel(0)
+        self.set_map_table_model(0)
         self.java_script.js_lst = self.mapColorList.copy()
         self.java_script.save_settings()
         mod = self.lstSound.model()
-        soundset = mod.getDataSet().copy()
-        Cache().putIntoCache("sound_setting_list", str(soundset))
+        sound_set = mod.getDataSet().copy()
+        Cache().putIntoCache("sound_setting_list", str(sound_set))
+        text = self.txtChatrooms.toPlainText()
+        rooms = [name.strip() for name in text.split(",")]
+        if u",".join(rooms) != Cache().getFromCache("room_names"):
+            self.rooms_changed.emit(rooms)
         self.accept()
 
-    def cancelSettings(self):
+    def cancel_setting(self):
         self.reject()
 
 

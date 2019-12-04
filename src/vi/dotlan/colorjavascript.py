@@ -21,10 +21,11 @@ import pickle
 import six
 
 
-class JavaScript(six.with_metaclass(Singleton)):
+class ColorJavaScript(six.with_metaclass(Singleton)):
     def __init__(self):
         self.cache = Cache()
-        self.js_header = ["Set Color at (seconds)", "Background Color", "Text Color"]
+        self.js_header = ["Starting Color for... (seconds)", "Background Color", "Text Color"]
+        self.js_lst = None
         self.load_settings()
 
     def getJs(self):
