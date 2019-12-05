@@ -93,7 +93,7 @@ class LogConfiguration:
             fmt='%(asctime)s|%(levelname)s [%(threadName)s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s',
             datefmt='%d/%m %H:%M:%S.%f')
 
-        logFilename = os.path.join(log_folder, "output.log")
+        logFilename = os.path.join(log_folder, "vintel_default.log")
         fileHandler = RotatingFileHandler(maxBytes=self.MAX_FILE_SIZE,
                                           backupCount=self.MAX_FILE_COUNT, filename=logFilename,
                                           mode='a')
@@ -103,10 +103,13 @@ class LogConfiguration:
         rootLogger.addHandler(fileHandler)
 
         # stdout
+        # TODO: only if running from Dev-Environment
         consoleHandler = logging.StreamHandler()
         consoleHandler.setFormatter(formatter)
         consoleHandler.setLevel(log_level)
         rootLogger.addHandler(consoleHandler)
+
+        # TODO: Add a message to Log-Window, that no configuration has been found
 
 
 class LogConfigurationThread(threading.Thread):

@@ -20,7 +20,12 @@
 
 import os
 import logging
+import sys
+import traceback
+import ftplib
+import time
 
+from vi.version import VERSION, PROGNAME, AUTHOR, AUTHOR_EMAIL
 from PyQt5 import QtGui, QtWidgets
 from vi import version, systemtray, viui
 from vi.cache import cache
@@ -93,6 +98,7 @@ class Application(QApplication):
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
 
+        # TODO: shouldn't this be loaded much earlier?
         try:
             LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
         except:
@@ -115,16 +121,9 @@ class Application(QApplication):
         splash.finish(self.mainWindow)
 
 
-import sys
-import traceback
-from vi.version import VERSION, PROGNAME, AUTHOR, AUTHOR_EMAIL
-
 __name__ = PROGNAME
 __author__ = AUTHOR + " (" + AUTHOR_EMAIL + ")"
 __version__ = VERSION
-
-import ftplib
-import time
 
 LOGGER = logging.getLogger(__name__)
 
