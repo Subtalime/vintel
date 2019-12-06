@@ -22,10 +22,11 @@ import threading
 import queue
 from logging.config import dictConfig
 from logging.handlers import RotatingFileHandler
-from .logwindow import LogWindowHandler, LOG_WINDOW_HANDLER_NAME
-from vi.resources import getVintelLogDir
+from vi.logger.logwindow import LogWindowHandler, LOG_WINDOW_HANDLER_NAME
+from vi.resources import getVintelLogDir, resourcePath
 
 LOGGER = logging.getLogger(__name__)
+
 
 class MyDateFormatter(logging.Formatter):
     import datetime as dt
@@ -54,9 +55,10 @@ class LogConfiguration:
 
     def __init__(self, config_file=LOG_CONFIG, log_folder="."):
 
+
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                    config_file) if not os.path.exists(config_file) else config_file
-
+        config_path = os.path.join(resourcePath(), config_file)
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
@@ -112,8 +114,9 @@ class LogConfiguration:
         # TODO: Add a message to Log-Window, that no configuration has been found
 
 
+
 class LogConfigurationThread(threading.Thread):
-    def __init__(self, log_window = None, **kwargs):
+    def __init__(self, log_window=None, **kwargs):
         threading.Thread.__init__(self, *kwargs)
         self.queue = queue.Queue()
         self.timeout = 5

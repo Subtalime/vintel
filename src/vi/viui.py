@@ -52,7 +52,7 @@ from vi.dotlan.regions import Regions
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
 from vi.ui.MainWindow import Ui_MainWindow
-from vi.logger.logconfig import LogConfigurationThread
+from vi.logger.logconfig import LogConfigurationThread, LogConfiguration
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
 from vi.settings.JsModel import stringToColor
@@ -119,7 +119,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapPositionsDict = {}
         self.content = None
         self.logWindow = LogWindow()
-
+        if LogConfiguration.LOG_FILE_PATH is None:
+            LOGGER.warning(
+                "Logging is set to default. Please adjust {}".format(resourcePath(LogConfiguration.LOG_CONFIG)))
         # Load user's toon names
         self.knownPlayers = Characters()
         self.menubar.removeAction(self.menuCharacters.menuAction())
@@ -260,7 +262,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
 
-    def settings(self, tabIndex: int=0):
+    def settings(self, tabIndex: int = 0):
         def handleRegionsChosen(regionList):
             LOGGER.debug("Chosen new Regions to monitor")
             self.menuRegion.addItems()
@@ -286,7 +288,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.clipboardCheckInterval(int(setting.txtKosInterval.text()) * 1000)
             self.messageExpiry(int(setting.txtMessageExpiry.text()))
             self.enableSelfNotify(setting.checkNotifyOwn.isChecked())
-
 
     def enableSelfNotify(self, enable: bool = None) -> bool:
         if enable is not None:
