@@ -26,6 +26,8 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QActionGroup, QMenu
 from vi.resources import resourcePath
 from vi import states
+from ast import literal_eval
+from vi.cache.cache import Cache
 from vi.sound.soundmanager import SoundManager
 
 LOGGER = logging.getLogger(__name__)
@@ -151,6 +153,13 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         text = ""
         soundFile = None
         orgSoundVolume = None
+        if soundlist is None:
+            try:
+                soundlist = Cache().getFromCache("sound_setting_list")
+                soundlist = literal_eval(soundlist)
+            except Exception as e:
+                LOGGER.error("Error while unpacking Cache", e)
+                soundlist = None
         if soundlist:
             # set the sound which has been preconfigured
             orgSoundVolume = SoundManager().soundVolume

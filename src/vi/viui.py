@@ -37,7 +37,7 @@ from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
-from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread
+from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread, ChatTidyThread
 from vi.systemtray import TrayContextMenu
 from vi.chatparser.chatthread import ChatThread
 from vi.chatparser.chatmessage import Message
@@ -72,12 +72,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     character_parser = pyqtSignal(bool)
     ship_parser = pyqtSignal(bool)
 
-    def __init__(self, pathToLogs, trayIcon, backGroundColor):
+    def __init__(self, path_to_logs: str, tray_icon: QSystemTrayIcon, background_color: str):
         super(self.__class__, self).__init__()
         self.setupUi(self)
         self.avatarFindThread = None
         self.esiThread = None
         self.filewatcherThread = None
+        self.chatTidyThread = None
         self.statisticsThread = None
         self.versionCheckThread = None
         self.mapUpdateThread = None
@@ -88,7 +89,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.character_parser_enabled = True
         self.ship_parser_enabled = True
         self.clipboard_check_interval = None
-        self.backgroundColor = backGroundColor
+        self.backgroundColor = background_color
         self.cache = Cache()
         self.setWindowTitle(vi.version.DISPLAY)
         self.setColor(self.backgroundColor)
@@ -101,10 +102,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        self.pathToLogs = pathToLogs
+        self.pathToLogs = path_to_logs
         self.clipboardTimer = QtCore.QTimer(self)
         self.oldClipboardContent = ""
-        self.trayIcon = trayIcon
+        self.trayIcon = tray_icon
         self.trayIcon.activated.connect(self.systemTrayActivated)
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
@@ -119,9 +120,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapPositionsDict = {}
         self.content = None
         self.logWindow = LogWindow()
-        if LogConfiguration.LOG_FILE_PATH is None:
+        if LogConfiguration().LOG_FILE_PATH is None:
             LOGGER.warning(
-                "Logging is set to default. Please adjust {}".format(resourcePath(LogConfiguration.LOG_CONFIG)))
+                "Logging is set to default. Please adjust {}".format(LogConfiguration().getLogFilePath()))
         # Load user's toon names
         self.knownPlayers = Characters()
         self.menubar.removeAction(self.menuCharacters.menuAction())
@@ -360,6 +361,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.filewatcherThread.file_change.connect(self.chatThread.add_log_file)
         self.filewatcherThread.start()
 
+        self.chatTidyThread = ChatTidyThread(self.message_expiry)
+        self.chatTidyThread.time_up.connect(self.pruneMessages)
+        self.chatTidyThread.start()
+
         self.versionCheckThread = NotifyNewVersionThread()
         self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
         self.versionCheckThread.start()
@@ -526,6 +531,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.chatThread.quit()
             if self.avatarFindThread:
                 self.avatarFindThread.quit()
+            if self.chatTidyThread:
+                self.chatTidyThread.quit()
             if self.filewatcherThread:
                 self.filewatcherThread.quit()
             # self.kosRequestThread.quit()
@@ -614,6 +621,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.activateSoundAction.setChecked(newValue)
             self.soundSetupAction.setEnabled(newValue)
             SoundManager().soundActive = newValue
+            LOGGER.info("Sound activation changed to %r", newValue)
 
     def changeAlwaysOnTop(self, newValue=None):
         if newValue is None:
@@ -980,13 +988,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def showInfo(self):
         LOGGER.debug("Opening About-Dialog")
-        infoDialog = QDialog(self)
-        loadUi("vi/ui/Info.ui", infoDialog)
-        infoDialog.setModal(True)
-        infoDialog.versionLabel.setText(u"Version: {0}".format(vi.version.DISPLAY))
-        infoDialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("logo.png")))
-        infoDialog.closeButton.clicked.connect(infoDialog.accept)
-        infoDialog.exec()
+        info_dialog = QDialog(self)
+        loadUi("vi/ui/Info.ui", info_dialog)
+        info_dialog.setModal(True)
+        info_dialog.versionLabel.setText(u"Version: {0}".format(vi.version.DISPLAY))
+        info_dialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("logo.png")))
+        info_dialog.closeButton.clicked.connect(info_dialog.accept)
+        info_dialog.exec()
         LOGGER.debug("Closed About-Dialog")
 
     def showSoundSetup(self):
@@ -1030,11 +1038,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def logFileChanged(self, message):
         LOGGER.debug("Message received: {}".format(message))
         # wait for Map to be completly loaded
-        messageLogged = False
         if message.status == states.LOCATION:
             self.knownPlayers[message.user].setLocation(message.systems[0])
             self.setLocation(message.user, message.systems[0])
-            messageLogged = True
         elif message.status == states.SOUND_TEST:
             SoundManager().playSound("alarm", message)
 
@@ -1047,7 +1053,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 parts = (name.strip() for name in text.split(","))
                 self.trayIcon.setIcon(self.taskbarIconWorking)
                 self.kosRequestThread.addRequest(parts, "xxx", False)
-                messageLogged = True
         # Otherwise consider it a 'normal' chat message
         elif message.user not in (
                 "EVE-System", "EVE System") and message.status != states.IGNORE:
@@ -1056,7 +1061,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # to the current system and alarm if within alarm distance.
             systemList = self.dotlan.systems
             if message.systems:
-                messageLogged = True
                 for system in message.systems:
                     systemname = system.name
                     systemList[systemname].setStatus(message.status, message.timestamp)

@@ -38,7 +38,7 @@ handlers:
 root:
   level: DEBUG
   handlers: [console, file]
-  propagate: no
+  propagate: yes
 
 loggers:
   vi:

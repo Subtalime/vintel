@@ -20,10 +20,12 @@ import logging
 import yaml
 import threading
 import queue
+import six
 from logging.config import dictConfig
 from logging.handlers import RotatingFileHandler
 from vi.logger.logwindow import LogWindowHandler, LOG_WINDOW_HANDLER_NAME
 from vi.resources import getVintelLogDir, resourcePath
+from vi.singleton import Singleton
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,18 +49,16 @@ def construct_logfilepath(loader, node):
     return os.path.join(getVintelLogDir(), value)
 
 
-class LogConfiguration:
+class LogConfiguration(six.with_metaclass(Singleton)):
     LOG_CONFIG = "logging.yaml"
     MAX_FILE_SIZE = 1024 * 1024 * 5
     MAX_FILE_COUNT = 7
     LOG_FILE_PATH = None
 
     def __init__(self, config_file=LOG_CONFIG, log_folder="."):
-
-
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                    config_file) if not os.path.exists(config_file) else config_file
-        config_path = os.path.join(resourcePath(), config_file)
+        config_path = self.getLogFilePath(config_file)
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
@@ -82,6 +82,11 @@ class LogConfiguration:
                     raise
         else:
             self.default(log_folder=log_folder)
+
+
+    def getLogFilePath(self, config_file: str=LOG_CONFIG) -> str:
+        return os.path.join(resourcePath(), config_file)
+
 
     def default(self, log_level=logging.INFO, log_folder="."):
         # just in case any loggers are currently active
@@ -168,4 +173,11 @@ if __name__ == "__main__":
     except:
         raise
 
-    log = LogConfiguration()
+    LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
+    # log = LogConfiguration()
+
+    LOGGER.critical("Test")
+    LOGGER.error("Test")
+    LOGGER.warning("Test")
+    LOGGER.info("Test")
+    LOGGER.debug("Test")

@@ -269,16 +269,39 @@ class MapStatisticsThread(QThread):
         QThread.quit(self)
 
 
+class ChatTidyThread(QThread):
+    time_up = pyqtSignal()
+
+    def __init__(self, max_age: int = 20 * 60, interval: float = 60):
+        super(__class__, self).__init__()
+        logging.debug("Starting ChatTidy-Thread")
+        self.active = True
+        self.interval = interval
+        self.max_age = max_age
+        self.queue = SixQueue.Queue(maxsize=1)
+
+    def run(self):
+        while self.active:
+            self.queue.get(True, self.interval)
+            self.time_up.emit()
+
+    def quit(self):
+        logging.debug("Stopping ChatTidy-Thread")
+        self.active = False
+        QThread.quit()
+
+
 class FileWatcherThread(QThread):
     file_change = pyqtSignal(str)
 
-    def __init__(self, folder, maxAge=FILE_DEFAULT_MAX_AGE):
+    def __init__(self, folder, maxAge=FILE_DEFAULT_MAX_AGE, scan_interval: float = 0.5):
         super(__class__, self).__init__()
         logging.debug("Starting FileWatcher-Thread")
         self.folder = folder
         self.active = True
         self._warned = False
         self.maxAge = maxAge
+        self.scanInterval = scan_interval
         self.maxFiles = 200
         # index = Folder, content = {path, os.stat}
         self.filesInFolder = {}
@@ -290,7 +313,7 @@ class FileWatcherThread(QThread):
     def run(self):
         while True:
             # don't overload the disk scanning
-            time.sleep(0.5)
+            time.sleep(self.scanInterval)
             # here, periodically, we check if any files have been added to the folder
             if self.active:
                 self._scanPaths()

@@ -36,12 +36,11 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 
-LOGGER = logging.getLogger(__name__)
-
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
         backGroundColor = "#c6d9ec"
+
 
         if not sys.platform.startswith("darwin"):
             # this may set the Window-Icon in the Taskbar too
@@ -70,11 +69,11 @@ class Application(QApplication):
                                  QMessageBox.Ok)
             sys.exit(1)
 
-        logLevel = logging.DEBUG
-        logging.getLogger().setLevel(logLevel)
+        # logLevel = logging.DEBUG
+        # logging.getLogger().setLevel(logLevel)
 
         # Setting local directory for cache, resources and logging
-        createResourceDirs()
+        createResourceDirs(True)
 
         try:
             splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("logo.png")))
@@ -97,12 +96,6 @@ class Application(QApplication):
         if backColor:
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
-
-        # TODO: shouldn't this be loaded much earlier?
-        try:
-            LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
-        except:
-            LOGGER.critical("Error in Logging-Configuration!")
 
         LOGGER.info("------------------- %s %s starting up -------------------", version.PROGNAME,
                     version.VERSION)
@@ -164,4 +157,11 @@ def myExceptionHook(exceptionType, exceptionValue, tracebackObject):
 sys.excepthook = myExceptionHook
 
 app = Application(sys.argv)
+try:
+    LogConfiguration(log_folder=getVintelLogDir())
+except:
+    LOGGER.critical("Error in Logging-Configuration!")
+LOGGER = logging.getLogger(__name__)
+
+
 sys.exit(app.exec_())
