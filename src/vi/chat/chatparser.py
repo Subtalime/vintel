@@ -24,7 +24,7 @@ import logging
 import six
 from bs4 import BeautifulSoup
 from vi import states
-from vi.chatparser.parser_functions import parseStatus, parseUrls, parseShips, \
+from vi.chat.parser_functions import parseStatus, parseUrls, parseShips, \
     parseSystems, parseCharnames
 
 # Names the local chatlogs could start with (depends on l10n of the client)

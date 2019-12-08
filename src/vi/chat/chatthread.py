@@ -27,8 +27,8 @@ from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, pyqtSignal
 from queue import Queue
 from threading import Thread
-from vi.chatparser.chatmessage import Message
-from vi.chatparser.parser_functions import parseCharnames, parseShips, parseStatus, parseSystems, parseUrls
+from vi.chat.chatmessage import Message
+from vi.chat.parser_functions import parseCharnames, parseShips, parseStatus, parseSystems, parseUrls
 from vi import states
 
 LOGGER = logging.getLogger(__name__)

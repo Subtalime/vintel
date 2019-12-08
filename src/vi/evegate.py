@@ -20,7 +20,7 @@
 import logging
 
 from vi.cache.cache import Cache
-from vi.esihelper import EsiHelper
+from vi.esi.esihelper import EsiHelper
 
 # TODO: only used by KOS-Checker now... so obsolete?
 class EveGate:

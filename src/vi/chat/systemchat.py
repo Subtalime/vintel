@@ -22,7 +22,7 @@ import logging
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QListWidgetItem
 from PyQt5.QtCore import pyqtSignal, QObject
-from vi.chatentrywidget import ChatEntryWidget
+from vi.chat.chatentrywidget import ChatEntryWidget
 from vi import states
 from vi.character.Characters import Characters
 import vi.ui.SystemChat

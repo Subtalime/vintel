@@ -25,11 +25,11 @@
 	can only work and analyze those text, that is still not on tags, because
 	all the text in tags was allready identified.
 	f.e. the ship_parser:
-		we call it from the chatparser and give them the rtext (richtext).
+		we call it from the chat and give them the rtext (richtext).
 		if the parser hits a shipname, it will modifiy the tree by creating
 		a new tag and replace the old text with it (calls tet_replace),
 		than it returns True.
-		The chatparser will call the function again until it return False
+		The chat will call the function again until it return False
 		(None is False) otherwise.
 		We have to call the parser again after a hit, because a hit will change
 		the tree and so the original generator is not longer stable.
@@ -41,7 +41,7 @@ import logging
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from vi import states
-from vi.esihelper import EsiHelper
+from vi.esi.esihelper import EsiHelper
 LOGGER = logging.getLogger(__name__)
 
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")

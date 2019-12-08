@@ -332,4 +332,4 @@ class Ui_MainWindow(object):
         self.actionSettings.setText(_translate("MainWindow", "Settings..."))
 
 
-from vi.PanningWebView import PanningWebView
+from vi.map.PanningWebView import PanningWebView

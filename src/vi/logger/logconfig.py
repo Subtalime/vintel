@@ -21,6 +21,7 @@ import yaml
 import threading
 import queue
 import six
+import sys
 from logging.config import dictConfig
 from logging.handlers import RotatingFileHandler
 from vi.logger.logwindow import LogWindowHandler, LOG_WINDOW_HANDLER_NAME
@@ -34,10 +35,10 @@ class MyDateFormatter(logging.Formatter):
     import datetime as dt
     converter = dt.datetime.fromtimestamp
 
-    def formatTime(self, record, datefmt=None):
+    def formatTime(self, record, date_format=None):
         ct = self.converter(record.created)
-        if datefmt:
-            s = ct.strftime(datefmt)
+        if date_format:
+            s = ct.strftime(date_format)
         else:
             t = ct.strftime("%Y-%m-%d %H:%M:%S")
             s = "%s,%03d" % (t, record.msecs)
@@ -83,10 +84,8 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         else:
             self.default(log_folder=log_folder)
 
-
-    def getLogFilePath(self, config_file: str=LOG_CONFIG) -> str:
+    def getLogFilePath(self, config_file: str = LOG_CONFIG) -> str:
         return os.path.join(resourcePath(), config_file)
-
 
     def default(self, log_level=logging.INFO, log_folder="."):
         # just in case any loggers are currently active
@@ -110,14 +109,12 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         rootLogger.addHandler(fileHandler)
 
         # stdout
-        # TODO: only if running from Dev-Environment
-        consoleHandler = logging.StreamHandler()
-        consoleHandler.setFormatter(formatter)
-        consoleHandler.setLevel(log_level)
-        rootLogger.addHandler(consoleHandler)
-
-        # TODO: Add a message to Log-Window, that no configuration has been found
-
+        # only if running from Dev-Environment
+        if not getattr(sys, 'frozen', False):
+            consoleHandler = logging.StreamHandler()
+            consoleHandler.setFormatter(formatter)
+            consoleHandler.setLevel(log_level)
+            rootLogger.addHandler(consoleHandler)
 
 
 class LogConfigurationThread(threading.Thread):
@@ -126,7 +123,7 @@ class LogConfigurationThread(threading.Thread):
         self.queue = queue.Queue()
         self.timeout = 5
         self.active = True
-        self.filestat = None
+        self.file_stat = None
         self._logWindow = log_window
 
     def run(self) -> None:
@@ -137,15 +134,15 @@ class LogConfigurationThread(threading.Thread):
                 pass
             # LOG_FILEPATH is real... but still catch, in case it has been moved/deleted
             if LogConfiguration.LOG_FILE_PATH:
-                if not self.filestat:
+                if not self.file_stat:
                     try:
-                        self.filestat = os.stat(LogConfiguration.LOG_FILE_PATH)
+                        self.file_stat = os.stat(LogConfiguration.LOG_FILE_PATH)
                     except:
                         pass
-                if self.filestat:
+                if self.file_stat:
                     newstat = os.stat(LogConfiguration.LOG_FILE_PATH)
-                    if newstat != self.filestat:
-                        self.filestat = newstat
+                    if newstat != self.file_stat:
+                        self.file_stat = newstat
                         try:
                             LOGGER.debug("Configuration-Change in \"{}\"".format(LogConfiguration.LOG_FILE_PATH))
                             LogConfiguration(LogConfiguration.LOG_FILE_PATH)
@@ -173,7 +170,7 @@ if __name__ == "__main__":
     except:
         raise
 
-    LogConfiguration(config_file=resourcePath("logging.yaml"), log_folder=getVintelLogDir())
+    LogConfiguration(config_file="logging.yaml", log_folder=getVintelLogDir())
     # log = LogConfiguration()
 
     LOGGER.critical("Test")

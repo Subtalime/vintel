@@ -39,13 +39,13 @@ from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
 from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread, ChatTidyThread
 from vi.systemtray import TrayContextMenu
-from vi.chatparser.chatthread import ChatThread
-from vi.chatparser.chatmessage import Message
+from vi.chat.chatthread import ChatThread
+from vi.chat.chatmessage import Message
 from vi.esi import EsiInterface
-from vi.esihelper import EsiHelper
-from vi.chatentrywidget import ChatEntryWidget
+from vi.esi.esihelper import EsiHelper
+from vi.chat.chatentrywidget import ChatEntryWidget
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
-from vi.systemchat import SystemChat
+from vi.chat.systemchat import SystemChat
 from vi.character.CharacterMenu import CharacterMenu, Characters
 from vi.region.RegionMenu import RegionMenu
 from vi.dotlan.regions import Regions
@@ -968,7 +968,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #                     text = "None KOS"
     #                 self.trayIcon.showMessage("Your KOS-Check", text, 1)
     #             text = text.replace("\n\n", "<br>")
-    #             message = ChatParser.chatparser.Message("Vintel KOS-Check", text,
+    #             message = ChatParser.chat.Message("Vintel KOS-Check", text,
     #                                                     EsiInterface().currentEveTime(), "VINTEL",
     #                                                     [], states.NOT_CHANGE, text.upper(), text)
     #             self.addMessageToIntelChat(message)
@@ -984,7 +984,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.chatThread.update_room_names(newRoomnames)
         # TODO: this is new (ST) to update the Rooms after changes
         # TODO: otherwise it wont have effect until restart of program
-        # self.chatparser.collectInitFileData()
+        # self.chat.collectInitFileData()
 
     def showInfo(self):
         LOGGER.debug("Opening About-Dialog")

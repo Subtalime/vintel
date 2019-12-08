@@ -32,8 +32,8 @@ from PyQt5.QtCore import QThread, QTimer, pyqtSignal
 from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath, getVintelDir
-from vi.chatentrywidget import ChatEntryWidget
-from vi.esihelper import EsiHelper
+from vi.chat.chatentrywidget import ChatEntryWidget
+from vi.esi.esihelper import EsiHelper
 
 STATISTICS_UPDATE_INTERVAL_MSECS = (1 * 60) * 1000  # every hour
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 24  # oldest Chatlog-File to scan
@@ -282,7 +282,10 @@ class ChatTidyThread(QThread):
 
     def run(self):
         while self.active:
-            self.queue.get(True, self.interval)
+            try:
+                self.queue.get(True, self.interval)
+            except Exception:
+                pass
             self.time_up.emit()
 
     def quit(self):

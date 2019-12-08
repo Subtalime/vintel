@@ -36,6 +36,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 
+
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
