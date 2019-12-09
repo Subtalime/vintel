@@ -546,7 +546,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.esiThread:
                 self.esiThread.quit()
         except Exception as e:
-            pass
+            LOGGER.exception("Error while stopping a Thread", e)
         self.trayIcon.hide()
         if self.logWindow:
             self.logWindow.close()
@@ -760,6 +760,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not newSystem == "?" and newSystem in self.systems:
             self.systems[newSystem].addLocatedCharacter(char)
             self.knownPlayers[char].setLocation(newSystem)
+        # character location highlight update
+        self.mapUpdate()
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
@@ -768,7 +770,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.mapView.page().runJavaScript(_scrollTo)
         self.initialMapPosition = QPointF(x, y)
 
-    def mapUpdate(self, newContent):
+    def mapUpdate(self, newContent=None):
         if newContent:
             self.refreshContent = newContent  # triggered by mapUpdateThread
         if self.refreshContent:

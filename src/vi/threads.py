@@ -220,7 +220,6 @@ class KOSCheckerThread(QThread):
         logging.debug("Stopping KOSChecker-Thread")
         self.active = False
         self.addRequest()
-        # self.queue.put((None, None, None))
         QThread.quit(self)
 
 
@@ -273,7 +272,7 @@ class ChatTidyThread(QThread):
     time_up = pyqtSignal()
 
     def __init__(self, max_age: int = 20 * 60, interval: float = 60):
-        super(__class__, self).__init__()
+        QThread.__init__(self)
         logging.debug("Starting ChatTidy-Thread")
         self.active = True
         self.interval = interval
@@ -283,15 +282,17 @@ class ChatTidyThread(QThread):
     def run(self):
         while self.active:
             try:
-                self.queue.get(True, self.interval)
+                self.queue.get(timeout=self.interval)
             except Exception:
                 pass
-            self.time_up.emit()
+            if self.active:
+                self.time_up.emit()
 
     def quit(self):
         logging.debug("Stopping ChatTidy-Thread")
         self.active = False
-        QThread.quit()
+        self.queue.put(1)
+        QThread.quit(self)
 
 
 class FileWatcherThread(QThread):
