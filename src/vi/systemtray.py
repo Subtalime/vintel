@@ -114,7 +114,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         LOGGER.debug("TrayIcon looking for %s" % resourcePath("logo_small.png"))
         self.icon = QIcon(resourcePath("logo_small.png"))
         QSystemTrayIcon.__init__(self, self.icon, app)
-        self.setToolTip("Your Vintel-Information-Service! :)")
+        self.setToolTip("Your Vintel-Information-Service!")
         self.lastNotifications = {}
         self.setContextMenu(TrayContextMenu(self))
         self.showAlarm = True

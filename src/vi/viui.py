@@ -86,6 +86,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.logConfigThread = None
         self.selfNotify = False
         self.chatThread = None
+        self.dotlan = None
+        self.systems = None
         self.popup_notification = True
         self.character_parser_enabled = True
         self.ship_parser_enabled = True
@@ -126,6 +128,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 "Logging is set to default. Please adjust {}".format(LogConfiguration().getLogFilePath()))
         # Load user's toon names
         self.knownPlayers = Characters()
+        # here we are resetting our own menus, not the one from UI
         self.menubar.removeAction(self.menuCharacters.menuAction())
         self.menubar.removeAction(self.menuRegion.menuAction())
         self.menuCharacters = CharacterMenu("Characters", self)
@@ -151,7 +154,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Set up Transparency menu - fill in opacity values and make connections
         self.opacityGroup = QActionGroup(self.menu)
         for i in (100, 80, 60, 40, 20):
-            action = QAction("Opacity {0}%".format(i), None, checkable=True)
+            action = QAction("Opacity {0}%".format(i), None)
+            action.setCheckable(True)
             if i == 100:
                 action.setChecked(True)
             action.opacity = i / 100.0
@@ -268,8 +272,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def viewChatlogs(self):
         logs = ""
         for log in self.chatThread.process_pool.keys():
-            logs += "{}\n".format(log)
-        QMessageBox.information(None, "Monitored logs", "%r" % logs)
+            logs += "{}\r\n".format(log)
+        QMessageBox.information(QWidget=None, p_str="Monitored logs", p_str_1="%s" % logs,
+                                buttons=QMessageBox.standardButtons())
 
     def settings(self, tabIndex: int = 0):
         def handleRegionsChosen(regionList):
@@ -408,7 +413,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dotlan = self.myMap.loadMap(regionName)
         except DotlanException as e:
             LOGGER.error(e)
-            QMessageBox.critical(self, "Error getting map", six.text_type(e))
+            QMessageBox.critical(QWidget=None, p_str="Error getting map", p_str_1=six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 self.cache.putIntoCache("region_name", "Delve")
@@ -423,7 +428,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                        "cached data. Check for a newer version and inform the maintainer." \
                        "\n\nError: {0} {1}".format(type(e), six.text_type(e))
             LOGGER.warning(diagText)
-            QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
+            QMessageBox.warning(QWidget=None, p_str="Using map from cache", p_str_1=diagText, buttons=QMessageBox.Ok)
 
         # Load the jumpbridges
         LOGGER.debug("Load jump bridges")
@@ -457,7 +462,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # update Character-Locations
             for char in self.knownPlayers:
                 if self.knownPlayers[char].getLocation():
-                    self.setLocation(char, self.knownPlayers[char].getLocation())
+                    self.set_player_location(char, self.knownPlayers[char].getLocation(), False)
             # self.restartMapTimer()
 
         if self.mapUpdateThread:
@@ -487,7 +492,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.clipboardTimer:
             try:
                 self.clipboardTimer.timeout.disconnect(self.clipboardChanged)
-            except Exception:
+            except:
                 pass
             self.clipboardTimer.stop()
 
@@ -604,12 +609,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.useSpokenNotificationsAction.setEnabled(False)
 
     def changeOpacity(self, newValue=None):
-        if newValue is not None:
-            for action in self.opacityGroup.actions():
-                if action.opacity == newValue:
-                    action.setChecked(True)
-        action = self.opacityGroup.checkedAction()
-        self.setWindowOpacity(action.opacity)
+        try:
+            action = self.opacityGroup.checkedAction()
+            newValue = action.opacity
+            if newValue is not None:
+                for action in self.opacityGroup.actions():
+                    if action.opacity == newValue:
+                        action.setChecked(True)
+                        break
+            self.setWindowOpacity(action.opacity)
+        except Exception as e:
+            LOGGER.error("Error while selecting Opacity", e)
 
     def changeSound(self, newValue=None, disable=False):
         if disable:
@@ -743,10 +753,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         try:
             system = self.systems[str(systemName)]
             sc = SystemChat(self, SystemChat.SYSTEM, system, self.chatEntries,
-                            list(self.knownPlayers))
+                            self.knownPlayers)
             self.chat_message_added.connect(sc.addChatEntry)
             self.avatar_loaded.connect(sc.newAvatarAvailable)
-            sc.location_set.connect(self.setLocation)
+            sc.location_set.connect(self.set_player_location)
             sc.show()
         except Exception as e:
             LOGGER.error("mapLinkClicked problem for \"%s\": %r", systemName, e)
@@ -762,14 +772,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.systems[six.text_type(systemname)].mapCoordinates["center_y"] / zoomfactor)
         self.updateMapView()
 
-    def setLocation(self, char, newSystem):
+    def set_player_location(self, player_name, new_system, update_view: bool = True):
         for system in self.systems.values():
-            system.removeLocatedCharacter(char)
-        if not newSystem == "?" and newSystem in self.systems:
-            self.systems[newSystem].addLocatedCharacter(char)
-            self.knownPlayers[char].setLocation(newSystem)
+            system.removeLocatedCharacter(player_name)
+        if not new_system == "?" and new_system in self.systems:
+            self.systems[new_system].addLocatedCharacter(player_name)
+            self.knownPlayers[player_name].setLocation(new_system)
         # character location highlight update
-        self.mapUpdate()
+        if update_view:
+            self.updateMapView()
 
     def scrollTo(self, x, y):
         _scrollTo = str("window.scrollTo({}, {});".
@@ -797,11 +808,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def inject(self, on):
         if on:
-            alarm = "'reqeust'"
+            alarm = "'request'"
         else:
             alarm = "'clear'"
-        script = "showTimer(0, {}, document.querySelector('#txt30004726'), document.querySelector('#rect30004726'), document.querySelector('#rect30004726'));".format(
-            alarm)
+        script = "showTimer(0, {}, " \
+                 "document.querySelector('#txt30004726'), " \
+                 "document.querySelector('#rect30004726'), " \
+                 "document.querySelector('#rect30004726'));".format(alarm)
         self.mapView.page().runJavaScript(script)
 
     def updateMapView(self):
@@ -832,7 +845,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 xy, zoom = self.mapPositionsDict[regionName]
                 self.initialMapPosition = QPoint(xy[0], xy[1])
                 self.initialZoom = zoom
-        except Exception:
+        except:
             pass
 
     def mapPositionChanged(self, qPointF):
@@ -896,7 +909,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     self.cache.putJumpbridge(self.dotlan.region, data)
         except Exception as e:
-            QMessageBox.warning(self, "Loading jumpbridges failed!",
+            QMessageBox.warning(None, "Loading jumpbridges failed!",
                                 "Error: {0}".format(six.text_type(e)),
                                 QMessageBox.Ok)
             self.cache.delFromCache("jumpbridge_url")
@@ -1050,7 +1063,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # wait for Map to be completly loaded
         if message.status == states.LOCATION:
             self.knownPlayers[message.user].setLocation(message.systems[0])
-            self.setLocation(message.user, message.systems[0])
+            self.set_player_location(message.user, message.systems[0])
         elif message.status == states.SOUND_TEST:
             SoundManager().playSound("alarm", message)
 

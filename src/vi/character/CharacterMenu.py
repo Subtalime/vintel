@@ -44,7 +44,8 @@ class CharacterMenu(QMenu):
         # prevent duplicates
         if character.getName() in self._menu_actions.keys():
             return False
-        action = QAction(character.getName(), self, checkable=True)
+        action = QAction(character.getName(), self)
+        action.setCheckable(True)
         action.setData(self._actionName(character.getName()))
         action.setObjectName(character.getName())
         action.setChecked(character.getStatus())

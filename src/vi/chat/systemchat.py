@@ -49,10 +49,10 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
 
-    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: 'list'):
+    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: Characters):
         QDialog.__init__(self, parent)
-        if not isinstance(knownPlayers, list):
-            LOGGER.critical("SystemChat.init(knownPlayers) is not type of \"list\"")
+        if not isinstance(knownPlayers, Characters):
+            LOGGER.critical("SystemChat.init(knownPlayers) is not type of \"Characters\"")
             exit(-1)
         self.setupUi(self)
         self.parent = parent
@@ -67,9 +67,9 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
             self.system = selector
         # TODO: verify this!
         # only add characters which I "seem" to know, aren't here
-        characters = Characters()
-        for player in knownPlayers:
-            if player in characters and characters[player].getLocation() != self.system.name or player not in characters:
+        # characters = Characters()
+        for player in knownPlayers.keys():
+            if knownPlayers[player].getLocation() != self.system.name:
                 self.playerNamesBox.addItem(player)
         if len(self.playerNamesBox) == 0:
             self.locationButton.setEnabled(False)

@@ -45,9 +45,6 @@ class MyDateFormatter(logging.Formatter):
         return s
 
 
-def construct_logfilepath(loader, node):
-    value = loader.construct_scalar(node)
-    return os.path.join(getVintelLogDir(), value)
 
 
 class LogConfiguration(six.with_metaclass(Singleton)):
@@ -56,14 +53,23 @@ class LogConfiguration(six.with_metaclass(Singleton)):
     MAX_FILE_COUNT = 7
     LOG_FILE_PATH = None
 
-    def __init__(self, config_file=LOG_CONFIG, log_folder="."):
+    def construct_logfilepath(self, loader, node):
+        value = loader.construct_scalar(node)
+        return os.path.join(self.log_folder, value)
+
+    def __init__(self, config_file=LOG_CONFIG, log_folder=None):
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                    config_file) if not os.path.exists(config_file) else config_file
-        config_path = self.getLogFilePath(config_file)
+        self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
+        path = os.path.split(config_file)
+        if path[0] == "":
+            config_path = self.getLogFilePath(config_file)
+        else:
+            config_path = config_file
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
-                    yaml.add_constructor(u'!log_path', construct_logfilepath)
+                    yaml.add_constructor(u'!log_path', self.construct_logfilepath)
                     # Loader MUST be specified, otherwise constructor wont work!
                     config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
@@ -82,7 +88,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
                     print(e)
                     raise
         else:
-            self.default(log_folder=log_folder)
+            self.default(log_folder=self.log_folder)
 
     def getLogFilePath(self, config_file: str = LOG_CONFIG) -> str:
         return os.path.join(resourcePath(), config_file)
@@ -162,7 +168,7 @@ class LogConfigurationThread(threading.Thread):
 
 if __name__ == "__main__":
 
-    yaml.add_constructor("!test", construct_logfilepath)
+    # yaml.add_constructor("!test", construct_logfilepath)
     try:
         print(yaml.load(u"""
         foo: !test tester
@@ -170,7 +176,7 @@ if __name__ == "__main__":
     except:
         raise
 
-    LogConfiguration(config_file="logging.yaml", log_folder=getVintelLogDir())
+    LogConfiguration(config_file="./logging.yaml", log_folder=".")
     # log = LogConfiguration()
 
     LOGGER.critical("Test")

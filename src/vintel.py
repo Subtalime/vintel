@@ -93,6 +93,7 @@ class Application(QApplication):
         if not logLevel:
             logLevel = logging.DEBUG
         logging.getLogger().setLevel(logLevel)
+        LOGGER.setLevel(logLevel)
         backColor = vintelCache.getFromCache("background_color")
         if backColor:
             backGroundColor = backColor
@@ -157,7 +158,7 @@ def myExceptionHook(exceptionType, exceptionValue, tracebackObject):
 
 sys.excepthook = myExceptionHook
 
-app = Application(sys.argv)
+# app = Application(sys.argv)
 try:
     LogConfiguration(log_folder=getVintelLogDir())
 except:
@@ -165,4 +166,4 @@ except:
 LOGGER = logging.getLogger(__name__)
 
 
-sys.exit(app.exec_())
+sys.exit(Application(sys.argv).exec_())
