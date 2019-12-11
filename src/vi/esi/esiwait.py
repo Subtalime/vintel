@@ -24,7 +24,7 @@ from .esiwebserver import EsiWebServer
 
 class EsiWait(QDialog, Ui_EsiWaitDialog):
     def __init__(self, parent=None):
-        super().__init__(parent)
+        QDialog.__init__(self, parent)
         self.setupUi(self)
         self.waiter = WaitThread()
         self.waiter_thread = threading.Thread(target=self.waiter.wait_for_secret)
@@ -40,10 +40,10 @@ class EsiWait(QDialog, Ui_EsiWaitDialog):
         super().show()
 
     def exec_(self):
-        if not self.waiter_thread.isAlive():
-            self.waiter_thread.start()
-            self.server.start()
-        super().exec_()
+        # if not self.waiter_thread.isAlive():
+        self.waiter_thread.start()
+        self.server.start()
+        QDialog.exec_(self)
 
     def cancel_request(self):
         self.server.stop()
@@ -60,19 +60,20 @@ class WaitThread(QObject):
     secret_received = pyqtSignal(str)
 
     def __init__(self):
-        super().__init__()
+        QObject.__init__(self)
         self.__is_shut_down = threading.Event()
         self.__shutdown_request = False
+        EsiConfig().ESI_SECRET_KEY = None
 
     def wait_for_secret(self, poll_interval: float = 0.5):
         self.__is_shut_down.clear()
         import time
         try:
-            while not EsiConfig.ESI_SECRET_KEY and not self.__shutdown_request:
+            while not EsiConfig().ESI_SECRET_KEY and not self.__shutdown_request:
                 time.sleep(poll_interval)
         finally:
             if not self.__shutdown_request:
-                self.secret_received.emit(EsiConfig.ESI_SECRET_KEY)
+                self.secret_received.emit(EsiConfig().ESI_SECRET_KEY)
             self.__shutdown_request = False
             self.__is_shut_down.set()
 

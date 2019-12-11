@@ -25,10 +25,11 @@ from esipy import EsiClient, EsiApp, EsiSecurity
 from esipy.utils import generate_code_verifier
 from esipy.security import APIException
 from esipy.events import AFTER_TOKEN_REFRESH
-from .esicache import EsiCache
-from .esiconfig import EsiConfig
-from .esiconfigdialog import EsiConfigDialog
-from .esiwait import EsiWait
+from vi.esi.esicache import EsiCache
+from vi.esi.esiconfig import EsiConfig
+from vi.esi.esiwebserver import EsiWebServer
+from vi.esi.esiconfigdialog import EsiConfigDialog
+from vi.esi.esiwait import EsiWait
 
 lock = threading.Lock()
 
@@ -45,6 +46,8 @@ def logrepr(className: type) -> str:
     return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
 
                                                                                              "")
+
+
 def synchronized(lock):
     """ Synchronisation decorator """
 
@@ -53,7 +56,9 @@ def synchronized(lock):
         def inner_wrapper(*args, **kwargs):
             with lock:
                 return f(*args, **kwargs)
+
         return inner_wrapper
+
     return wrapper
 
 
@@ -84,34 +89,24 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.caching = enablecache
             self.esicache = EsiCache(self.caching)
             self.progress = None
+            self.security = None
+            self.esiClient = None
             LOGGER.info("Creating ESI access")
             self.authenticated = False
             self.esiConfig = EsiConfig()
             self.server = None
+            self.esiApp = None
+            self.ignoreSecurity = True
             self.headers = {
-                'User-Agent': "{} Intel Management Tool".format(self.esiConfig.PROGNAME)}
+                'User-Agent': "{} Intel Management Tool".format(self.esiConfig.PROGNAME),
+                # 'content-type': 'application/x-www-form-urlencoded',
+                # 'authorization': 'Basic xxx',
+                # 'Content-Length': '100',
+            }
             self.codeverifier = generate_code_verifier()
-            try:
-                if not self.esiConfig.ESI_CLIENT_ID or self.esiConfig.ESI_CLIENT_ID == "":
-                    cacheToken = self.esicache.get("esi_clientid")
-                    if cacheToken:
-                        self.esiConfig.ESI_CLIENT_ID = str(cacheToken)
-                    else:
-                        self.esiConfig.ESI_CLIENT_ID = None
-                cacheToken = self.esicache.get("esi_callback")
-                if cacheToken:
-                    self.esiConfig.ESI_CALLBACK = str(cacheToken)
-                # this uses PKCE (pixie) authorisation with ESI
-                if not self.esiConfig.ESI_CLIENT_ID:
-                    # TODO: look at PyFa to see how they do it...
-                    # TODO: until then, we should stop storing the SecretKey
-                    with EsiConfigDialog(self.esiConfig) as inputDia:
-                        res = inputDia.exec_()
-                        if not res == inputDia.Accepted:
-                            LOGGER.info("User canceled Client-ID Input-Dialog")
-                            exit(0)
-                        self.esiConfig = inputDia.esiConfig
-                    self.esicache.set("esi_callback", self.esiConfig.ESI_CALLBACK)
+            if not self.ignoreSecurity:
+                self.getSecurity()
+            else:
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
                     redirect_uri=self.esiConfig.ESI_CALLBACK,
@@ -124,94 +119,134 @@ class EsiInterface(metaclass=EsiInterfaceType):
                                            retry_requests=True,
                                            headers=self.headers
                                            )
-                self.apiInfo = None
-                self.esiApp = None
-                refreshKey = None
-                tokenKey = self.esicache.get("esi_token")
-                if tokenKey:
-                    refreshKey = tokenKey['refresh_token']
-                while not self.apiInfo:
-                    try:
-                        if EsiConfig.ESI_SECRET_KEY:
-                            LOGGER.debug("Checking the Secretkey")
-                            self.tokens = self.security.auth(EsiConfig.ESI_SECRET_KEY)
-                            EsiConfig.ESI_SECRET_KEY = None
-                            self.apiInfo = self.security.verify()
-                            # store the Token
-                            self.esicache.set("esi_token", self.tokens)
-                            LOGGER.debug("Secretkey success")
-                        elif refreshKey:
-                            LOGGER.debug("Checking the Refresh-Token")
-                            self.security.update_token({
-                                'access_token': '',
-                                'expires_in': -1,
-                                'refresh_token': refreshKey
-                            })
-                            refreshKey = None
-                            self.apiInfo = self.security.refresh()
-                            LOGGER.debug("Refreshtoken success")
-                        elif tokenKey:
-                            LOGGER.debug("Checking the Tokenkey")
-                            self.security.update_token(tokenKey)
-                            tokenKey = None
-                            self.apiInfo = self.security.refresh()
-                            LOGGER.debug("Tokenkey success")
-                        else:
-                            LOGGER.debug("Waiting for Website response of Secretkey")
-                            self.waitForSecretKey()
-                    except APIException as e:
-                        LOGGER.error("EsiAPI Error", e)
-                        APIException("Problem with the API?", e)
-                        self.waitForSecretKey()
-                    except AttributeError as e:
-                        LOGGER.error("EsiAttribute Error", e)
-                        APIException("Attribute problem?", e)
-                        self.waitForSecretKey()
-                    except Exception as e:
-                        LOGGER.error("Some unexpected error in Esi", e)
+
+            LOGGER.debug("ESI loading Swagger...")
+            # outputs a load of data in Debug
+            oldSetting = LOGGER.getEffectiveLevel()
+            LOGGER.setLevel(logging.WARN)
+            while not self.esiApp:
+                try:
+                    self.esiApp = EsiApp(cache=EsiCache(self.caching),
+                                         cache_time=3 * 86400).get_latest_swagger
+                except (Exception, HTTPException) as e:
+                    LOGGER.error("Error while retrieving latest Swagger", e)
+                    if e.code == 500:
+                        self.esicache.invalidateAll()
+                        LOGGER.exception("ESI-Interface not explicitly instantiated!")
                         raise
 
-                LOGGER.debug("ESI loading Swagger...")
-                # outputs a load of data in Debug
-                oldSetting = LOGGER.getEffectiveLevel()
-                LOGGER.setLevel(logging.WARN)
-                while not self.esiApp:
-                    try:
-                        self.esiApp = EsiApp(cache=EsiCache(self.caching),
-                                             cache_time=3 * 86400).get_latest_swagger
-                    except (Exception, HTTPException) as e:
-                        LOGGER.error("Error while retrieving latest Swagger", e)
-                        if e.code == 500:
-                            self.esicache.invalidateAll()
-                            LOGGER.exception("ESI-Interface not explicitly instantiated!")
-                            raise
+                        # Reset logging to old level
+            LOGGER.setLevel(oldSetting)
+            LOGGER.debug("ESI loading Swagger...complete")
+            LOGGER.debug("Finished authorizing with ESI")
+            self.authenticated = True
+            # now we can store the Client-ID
+            self.esicache.set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
 
-                            # Reset logging to old level
-                LOGGER.setLevel(oldSetting)
-                LOGGER.debug("ESI loading Swagger...complete")
-                LOGGER.debug("Finished authorizing with ESI")
-                self.authenticated = True
-                # now we can store the Client-ID
-                self.esicache.set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
+        def getSecurity(self):
+            if not self.esiConfig.ESI_CLIENT_ID or self.esiConfig.ESI_CLIENT_ID == "":
+                cacheToken = self.esicache.get("esi_clientid")
+                if cacheToken:
+                    self.esiConfig.ESI_CLIENT_ID = str(cacheToken)
+                else:
+                    self.esiConfig.ESI_CLIENT_ID = None
+            cacheToken = self.esicache.get("esi_callback")
+            if cacheToken:
+                self.esiConfig.ESI_CALLBACK = str(cacheToken)
+            # this uses PKCE (pixie) authorisation with ESI
+            if not self.esiConfig.ESI_CLIENT_ID:
+                # TODO: look at PyFa to see how they do it...
+                # TODO: until then, we should stop storing the SecretKey
+                with EsiConfigDialog(self.esiConfig) as inputDia:
+                    res = inputDia.exec_()
+                    if not res == inputDia.Accepted:
+                        LOGGER.info("User canceled Client-ID Input-Dialog")
+                        exit(0)
+                    self.esiConfig = inputDia.esiConfig
 
-            except Exception as e:
-                LOGGER.critical("Error authenticating with ESI", e)
-                raise
-            EsiInterface.esiLoading = "complete"
+                self.esicache.set("esi_callback", self.esiConfig.ESI_CALLBACK)
+                # EsiConfig.ESI_CALLBACK = self.esiConfig.ESI_CALLBACK
+            self.security = EsiSecurity(
+                # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
+                redirect_uri=self.esiConfig.ESI_CALLBACK,
+                client_id=self.esiConfig.ESI_CLIENT_ID,
+                code_verifier=self.codeverifier,
+                headers=self.headers
+            )
+            # this authentication can be used with all ESI calls
+            self.esiClient = EsiClient(security=self.security,
+                                       retry_requests=True,
+                                       headers=self.headers
+                                       )
+            self.apiInfo = None
+            self.esiApp = None
+            refreshKey = None
+            tokenKey = self.esicache.get("esi_token")
+            if tokenKey:
+                refreshKey = tokenKey['refresh_token']
+            while not self.apiInfo:
+                try:
+                    if self.esiConfig.ESI_SECRET_KEY:
+                        LOGGER.debug("Checking the Secretkey")
+                        self.waitForSecretKey()
+                        self.tokens = self.security.auth(self.esiConfig.ESI_SECRET_KEY)
+                        self.esiConfig.ESI_SECRET_KEY = None
+                        self.apiInfo = self.security.verify()
+                        # store the Token
+                        self.esicache.set("esi_token", self.tokens)
+                        LOGGER.debug("Secretkey success")
+                    elif refreshKey:
+                        LOGGER.debug("Checking the Refresh-Token")
+                        self.security.update_token({
+                            'access_token': '',
+                            'expires_in': -1,
+                            'refresh_token': refreshKey
+                        })
+                        refreshKey = None
+                        try:
+                            self.apiInfo = self.security.refresh()
+                        except:
+                            self.esicache.delFromCache("esi_token")
+                            continue
+                        LOGGER.debug("Refreshtoken success")
+                    elif tokenKey:
+                        LOGGER.debug("Checking the Tokenkey")
+                        self.security.update_token(tokenKey)
+                        tokenKey = None
+                        try:
+                            self.apiInfo = self.security.refresh()
+                        except:
+                            self.esicache.delFromCache("esi_token")
+                            continue
+                        LOGGER.debug("Tokenkey success")
+                    else:
+                        LOGGER.debug("Waiting for Website response of Secretkey")
+                        self.waitForSecretKey()
+                except APIException as e:
+                    LOGGER.error("EsiAPI Error", e)
+                    APIException("Problem with the API?", e)
+                    self.waitForSecretKey()
+                except AttributeError as e:
+                    LOGGER.error("EsiAttribute Error", e)
+                    APIException("Attribute problem?", e)
+                    self.waitForSecretKey()
+                except Exception as e:
+                    LOGGER.error("Some unexpected error in Esi", e)
+                    exit(-1)
+            self.esiInterface.esiLoading = "complete"
 
         def waitForSecretKey(self):
             # Take the user to the EVE-Auth page in a Browser-Window
             ssoUri = self.security.get_auth_uri(
                 state="Authentication for {}".format(self.esiConfig.PROGNAME),
-                scopes=None
+                # scopes=['get_universe_system_jumps']
             )
             webbrowser.open(ssoUri)
             # Wait for the user to complete login or cancel
             wait_dialog = EsiWait()
             wait_dialog.exec_()
-            if not EsiConfig.ESI_SECRET_KEY:
-                # User decided to cancel the operation
-
+            # User decided to cancel the operation
+            if not self.esiConfig.ESI_SECRET_KEY:
                 exit(0)
 
         def __str__(self):
@@ -473,3 +508,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
         target = datetime.datetime(target.year, target.month, target.day, 11, 0, 0, 0)
         delta = (target - now).total_seconds()
         return delta
+
+
+if __name__ == "__main__":
+    import sys
+    from PyQt5.QtWidgets import QApplication
+
+    app = QApplication(sys.argv)
+
+    app.exec_(EsiInterface())

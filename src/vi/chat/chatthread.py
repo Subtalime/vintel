@@ -38,6 +38,9 @@ __all_known_messages = {}
 chat_thread_lock = threading.RLock()
 
 
+def chat_search_key(message: Message):
+    return message.plainText + message.user + message.room
+
 
 def chat_thread_all_messages_contains(message: Message):
     """
@@ -49,7 +52,7 @@ def chat_thread_all_messages_contains(message: Message):
     global __all_known_messages, chat_thread_lock
     chat_thread_lock.acquire()
     hit = False
-    search = message.room + message.plainText
+    search = chat_search_key(message)
     if search in __all_known_messages.keys():
         diff = (__all_known_messages[search] - message.timestamp).total_seconds()
         if diff <= 1:
@@ -76,7 +79,7 @@ def chat_thread_all_messages_add(message: Message) -> bool:
     if chat_thread_all_messages_contains(message):
         chat_thread_lock.release()
         return False
-    __all_known_messages[message.room + message.plainText] = message.timestamp
+    __all_known_messages[chat_search_key(message)] = message.timestamp
     _chat_thread_all_messages_tidy_up()
     chat_thread_lock.release()
     return True

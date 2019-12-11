@@ -56,6 +56,7 @@ from vi.logger.logconfig import LogConfigurationThread, LogConfiguration
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
 from vi.settings.JsModel import stringToColor
+from vi.systemtray import TrayIcon
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -72,7 +73,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     character_parser = pyqtSignal(bool)
     ship_parser = pyqtSignal(bool)
 
-    def __init__(self, path_to_logs: str, tray_icon: QSystemTrayIcon, background_color: str):
+    def __init__(self, path_to_logs: str, tray_icon: TrayIcon, background_color: str):
         super(self.__class__, self).__init__()
         self.setupUi(self)
         self.avatarFindThread = None
@@ -250,6 +251,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.trayIcon.alarm_distance.connect(self.changeAlarmDistance)
         self.framelessWindowAction.triggered.connect(self.changeFrameless)
         self.trayIcon.change_frameless.connect(self.changeFrameless)
+        self.trayIcon.view_chatlogs.connect(self.viewChatlogs)
         self.frameButton.clicked.connect(self.changeFrameless)
         self.actionQuit.triggered.connect(self.close)
         self.trayIcon.quit_me.connect(self.close)
@@ -262,6 +264,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.logWindow:
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
+
+    def viewChatlogs(self):
+        logs = ""
+        for log in self.chatThread.process_pool.keys():
+            logs += "{}\n".format(log)
+        QMessageBox.information(None, "Monitored logs", "%r" % logs)
 
     def settings(self, tabIndex: int = 0):
         def handleRegionsChosen(regionList):

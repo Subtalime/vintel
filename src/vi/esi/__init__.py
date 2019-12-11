@@ -22,16 +22,15 @@ from __future__ import absolute_import
 import logging
 from logging import NullHandler
 
-from .esiinterface import EsiConfig, EsiInterface, EsiCache
-from .esithread import EsiThread
-
-dir()
+from vi.esi.esiinterface import EsiConfig, EsiInterface
+from vi.esi.esicache import EsiCache
+from vi.esi.esithread import EsiThread
 
 __all__ = [
     "EsiInterface",
     "EsiThread",
     "EsiConfig",
-    "EsiCache"
+    "EsiCache",
 ]
 __author__ = "Steven Tschache (github@tschache.com)"
 __license__ = "MIT"

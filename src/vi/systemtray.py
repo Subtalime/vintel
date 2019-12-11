@@ -82,10 +82,15 @@ class TrayContextMenu(QtWidgets.QMenu):
         self.quitAction.triggered.connect(self.trayIcon.quit)
         # self.connect(self.quitAction, PYQT_SIGNAL("triggered()"), self.trayIcon.quit)
         self.addAction(self.quitAction)
-        if getattr(sys, 'frozen', False):
+        f = getattr(sys, 'frozen', False)
+        if not f:
             self.addSeparator()
             self.viewSource = QAction("View source", self)
             self.viewSource.triggered.connect(self.trayIcon.viewSource)
+            self.addAction(self.viewSource)
+            self.viewChats = QAction("View Chat-Logs", self)
+            self.viewChats.triggered.connect(self.trayIcon.viewChatlogs)
+            self.addAction(self.viewChats)
 
 
     def changeAlarmDistance(self):
@@ -101,6 +106,8 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     alarm_distance = pyqtSignal(int)
     change_frameless = pyqtSignal()
     quit_me = pyqtSignal()
+    view_chatlogs = pyqtSignal()
+
 
     def __init__(self, app):
         self.resource_path = resourcePath()
@@ -116,6 +123,9 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def viewSource(self):
         pass
+
+    def viewChatlogs(self):
+        self.view_chatlogs.emit()
 
     def changeAlarmDistance(self):
         distance = self.alarmDistance
