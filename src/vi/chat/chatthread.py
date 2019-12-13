@@ -55,7 +55,7 @@ def chat_thread_all_messages_contains(message: Message):
     search = chat_search_key(message)
     if search in __all_known_messages.keys():
         diff = (__all_known_messages[search] - message.timestamp).total_seconds()
-        if diff <= 1:
+        if 0 <= diff <= 1:
             LOGGER.info("chat_message_contains: HIT Search \"{}\" (age {})".format(search, diff))
             hit = True
     chat_thread_lock.release()

@@ -273,8 +273,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         logs = ""
         for log in self.chatThread.process_pool.keys():
             logs += "{}\r\n".format(log)
-        QMessageBox.information(QWidget=None, p_str="Monitored logs", p_str_1="%s" % logs,
-                                buttons=QMessageBox.standardButtons())
+        QMessageBox.information(None, "Monitored logs", "%s" % logs, QMessageBox.Ok)
 
     def settings(self, tabIndex: int = 0):
         def handleRegionsChosen(regionList):
@@ -413,7 +412,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dotlan = self.myMap.loadMap(regionName)
         except DotlanException as e:
             LOGGER.error(e)
-            QMessageBox.critical(QWidget=None, p_str="Error getting map", p_str_1=six.text_type(e))
+            QMessageBox.critical(None, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 self.cache.putIntoCache("region_name", "Delve")
@@ -428,7 +427,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                        "cached data. Check for a newer version and inform the maintainer." \
                        "\n\nError: {0} {1}".format(type(e), six.text_type(e))
             LOGGER.warning(diagText)
-            QMessageBox.warning(QWidget=None, p_str="Using map from cache", p_str_1=diagText, buttons=QMessageBox.Ok)
+            QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
         # Load the jumpbridges
         LOGGER.debug("Load jump bridges")
