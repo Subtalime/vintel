@@ -44,7 +44,7 @@ from vi import states
 from vi.esi.esihelper import EsiHelper
 LOGGER = logging.getLogger(__name__)
 
-CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+")
+CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+", ":")
 
 
 def textReplace(element: NavigableString, newText: str):
@@ -283,7 +283,7 @@ def parseCharnames(rtext: Tag) -> bool:
 
     def formatCharname(text: str, charname: str, esicharacter: dict):
         formatText = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{1}">{0}</a>"""
-        newtext = text.replace(charname, formatText.format(charname, esicharacter["id"]))
+        newtext = re.sub(' +', ' ', text).replace(charname, formatText.format(charname, esicharacter["id"]))
         return newtext
 
     texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t) >= 3]
@@ -304,13 +304,13 @@ if __name__ == "__main__":
                 "Dominix  AntsintheEyeJohnsen  +4  4K-TRB"
     charnames = ["Zedan Chent-Shi", "Merlin", "Tablot Manzari"]
 
+    chat_text = "AsicMiner9 one  red to  8RQJ-2  julius squeezerofficer maj gendelve.imperium"
     formatedText = u"<rtext>{0}</rtext>".format(chat_text)
     soup = BeautifulSoup(formatedText, 'html.parser')
     rtext = soup.select("rtext")[0]
     from vi.esi.esiinterface import EsiInterface
     from vi.resources import getVintelDir
     EsiInterface(cache_dir=getVintelDir())
-
     while parseCharnames(rtext):
         continue
     LOGGER.debug("Names found: %r", rtext)

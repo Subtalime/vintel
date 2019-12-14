@@ -58,6 +58,8 @@ def chat_thread_all_messages_contains(message: Message):
         if 0 <= diff <= 1:
             LOGGER.info("chat_message_contains: HIT Search \"{}\" (age {})".format(search, diff))
             hit = True
+        else:
+            LOGGER.info("chat_message_contains: NOT HIT Search \"{}\" (age {})".format(search, diff))
     chat_thread_lock.release()
     return hit
 

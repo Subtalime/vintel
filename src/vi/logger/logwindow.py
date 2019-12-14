@@ -34,10 +34,11 @@ LOGGER = logging.getLogger(__name__)
 _lock = threading.RLock()
 LOG_WINDOW_HANDLER_NAME = "_LogWindowHandler"
 
+
 class LogWindowHandler(logging.Handler, QObject):
     new_message = pyqtSignal(logging.LogRecord)
 
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         logging.Handler.__init__(self)
         QObject.__init__(self)
         self.parent = parent
@@ -49,6 +50,7 @@ class LogWindowHandler(logging.Handler, QObject):
 
     def emit(self, record):
         self.new_message.emit(record)
+
 
 def _acquireLock():
     """
@@ -249,5 +251,3 @@ class LogWindow(QtWidgets.QWidget):
         Cache().putIntoCache("log_window_level", self.logLevel)
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
-
-
