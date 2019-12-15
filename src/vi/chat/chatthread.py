@@ -246,12 +246,27 @@ class ChatThreadProcess(QThread):
     def _refineMessage(self, message: Message):
         LOGGER.debug("%s/%s: Start refining message: %r", self.roomname, self.charname, message)
         if self.ship_scanner:
+            count = 0
             while parseShips(message.rtext):
+                count += 1
+                if count > 5:
+                    LOGGER.warning("parseShips excessive runs on %r" % message.rtext)
+                    break
                 continue
+        count = 0
         while parseUrls(message.rtext):
+            count += 1
+            if count > 5:
+                LOGGER.warning("parseUrls excessive runs on %r" % message.rtext)
+                break
             continue
         if self.character_scanner:
+            count = 0
             while parseCharnames(message.rtext):
+                count += 1
+                if count > 5:
+                    LOGGER.warning("parseCharnames excessive runs on %r" % message.rtext)
+                    break
                 continue
 
         # If message says clear and no system? Maybe an answer to a request?
@@ -265,6 +280,7 @@ class ChatThreadProcess(QThread):
                         message.systems.append(system)
                     break
                 if count > maxSearch:
+                    LOGGER.warning("parseOldMessages excessive runs on %r" % message.rtext)
                     break
         message.message = six.text_type(message.rtext)
         # multiple clients?
@@ -420,7 +436,12 @@ class ChatThreadProcess(QThread):
             status = parsedStatus if parsedStatus is not None else states.ALARM
             message = Message(self.roomname, text, timestamp, username, status=status, rtext=rtext,
                               plainText=originalText, upperText=upperText)
+            count = 0
             while parseSystems(self.dotlan_systems, message.rtext, message.systems):
+                count += 1
+                if count > 5:
+                    LOGGER.error("parseSystems excessive runs on %r" % message.rtext)
+                    break
                 continue
         LOGGER.debug("%s/%s: Message created: %r", self.roomname, self.charname, message)
         return message

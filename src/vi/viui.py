@@ -968,13 +968,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if now - time.mktime(message.timestamp.timetuple()) > self.message_expiry:
                     self.chatEntries.remove(chatEntryWidget)
                     self.chatListWidget.takeItem(0)
-
-                    # for widgetInMessage in message.widgets:
-                    #     widgetInMessage.removeItemWidget(chatListWidgetItem)
-                else:
-                    break
         except Exception as e:
             LOGGER.error(e)
+        finally:
+            self.chatListWidget.scrollToBottom()
 
     # def showKosResult(self, state, text, requestType, hasKos):
     #     if not self.scanIntelForKosRequestsEnabled:

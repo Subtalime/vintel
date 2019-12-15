@@ -42,18 +42,19 @@ from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from vi import states
 from vi.esi.esihelper import EsiHelper
+
 LOGGER = logging.getLogger(__name__)
 
 CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+", ":")
 
 
-def textReplace(element: NavigableString, newText: str):
-    newText = "<t>" + newText + "</t>"
-    newElements = []
-    for newPart in BeautifulSoup(newText, 'html.parser').select("t")[0].contents:
-        newElements.append(newPart)
+def text_replace(element: NavigableString, new_text: str):
+    new_text = "<t>{}</t>".format(new_text)
+    new_elements = []
+    for newPart in BeautifulSoup(new_text, 'html.parser').select("t")[0].contents:
+        new_elements.append(newPart)
     try:
-        for newElement in newElements:
+        for newElement in new_elements:
             element.insert_before(newElement)
         element.replace_with(six.text_type(""))
     except Exception:
@@ -71,14 +72,14 @@ def parseStatus(rtext):
         for char in CHARS_TO_IGNORE:
             upperText = upperText.replace(char, "")
         upperWords = upperText.split()
-        if (("CLEAR" in upperWords or "CLR" in upperWords) and not originalText.endswith("?")):
+        if ("CLEAR" in upperWords or "CLR" in upperWords) and not originalText.endswith("?"):
             return states.CLEAR
-        elif ("STAT" in upperWords or "STATUS" in upperWords):
+        elif "STAT" in upperWords or "STATUS" in upperWords:
             return states.REQUEST
-        elif ("?" in originalText):
+        elif "?" in originalText:
             return states.REQUEST
-        elif (text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE",
-                                       "STILL BLUE", "ALL BLUES")):
+        elif text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE",
+                                       "STILL BLUE", "ALL BLUES"):
             return states.CLEAR
 
 
@@ -88,6 +89,7 @@ def parseShips(rtext: Tag) -> bool:
     :param rtext: Tag
     :return: bool if content has changed
     """
+
     def formatShipName(text: str, realShipName: str, word: str, tooltip: str) -> str:
         newText = u"""<a style="color:green;font-weight:bold" title="{2}" href="ship_name/{0}">{1}</a>"""
         text = text.replace(word, newText.format(realShipName, word, tooltip))
@@ -114,9 +116,10 @@ def parseShips(rtext: Tag) -> bool:
                     hit = False
                 if hit:
                     shipInText = text[start:end]
-                    shipType=EsiHelper().esi.getShipGroupTypes(EsiHelper().ShipsUpper[upperText]['group_id'])['name']
+                    shipType = EsiHelper().esi.getShipGroupTypes(EsiHelper().ShipsUpper[upperText]['group_id'])['name']
+                    LOGGER.debug("ESI found a ship \"{}\"".format(shipInText))
                     formatted = formatShipName(text, shipInText, part, shipType)
-                    textReplace(text, formatted)
+                    text_replace(text, formatted)
                     return True
 
 
@@ -137,7 +140,7 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: list) -> bool:
         text = text.replace(word, newText.format(system, word))
         return text
 
-    texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t)]    
+    texts = [t for t in rtext.contents if isinstance(t, NavigableString) and len(t)]
     for wtIdx, text in enumerate(texts):
         worktext = text
         for char in CHARS_TO_IGNORE:
@@ -149,10 +152,10 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: list) -> bool:
         for idx, word in enumerate(words):
             # Is this about another a system's gate?
             if len(words) > idx + 1:
-                if words[idx+1].upper() == 'GATE':
+                if words[idx + 1].upper() == 'GATE':
                     bailout = True
                     if len(words) > idx + 2:
-                        if words[idx+2].upper() == 'TO':
+                        if words[idx + 2].upper() == 'TO':
                             # Could be '___ GATE TO somewhere' so check this one.
                             bailout = False
                     if bailout:
@@ -163,15 +166,16 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: list) -> bool:
             if upperWord != word and upperWord in WORDS_TO_IGNORE: continue
             if upperWord in systemNames:  # - direct hit on name
                 foundSystems.append(systems[upperWord])  # of the system?
+                LOGGER.debug("Found a system \"{}\"".format(upperWord))
                 formattedText = formatSystem(text, word, upperWord)
-                textReplace(text, formattedText)
+                text_replace(text, formattedText)
                 return True
             elif 1 < len(upperWord) < 5:  # - upperWord < 4 chars.
                 for system in systemNames:  # system begins with?
                     if system.startswith(upperWord):
                         foundSystems.append(systems[system])
                         formattedText = formatSystem(text, word, system)
-                        textReplace(text, formattedText)
+                        text_replace(text, formattedText)
                         return True
             elif "-" in upperWord and len(upperWord) > 2:  # - short with - (minus)
                 upperWordParts = upperWord.split("-")  # (I-I will match I43-IF3)
@@ -185,7 +189,7 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: list) -> bool:
                             and upperWordParts[1][0] == systemParts[1][0]):
                         foundSystems.append(systems[system])
                         formattedText = formatSystem(text, word, system)
-                        textReplace(text, formattedText)
+                        text_replace(text, formattedText)
                         return True
             elif len(upperWord) > 1:  # what if F-YH58 is named FY?
                 for system in systemNames:
@@ -193,7 +197,7 @@ def parseSystems(systems: list, rtext: Tag, foundSystems: list) -> bool:
                     if clearedSystem.startswith(upperWord):
                         foundSystems.append(systems[system])
                         formattedText = formatSystem(text, word, system)
-                        textReplace(text, formattedText)
+                        text_replace(text, formattedText)
                         return True
     return False
 
@@ -204,6 +208,7 @@ def parseUrls(rtext: Tag) -> bool:
     :param rtext:
     :return:
     """
+
     def findUrls(s):
         # yes, this is faster than regex and less complex to read
         urls = []
@@ -229,7 +234,7 @@ def parseUrls(rtext: Tag) -> bool:
     for text in texts:
         urls = findUrls(text)
         for url in urls:
-            textReplace(text, formatUrl(text, url))
+            text_replace(text, formatUrl(text, url))
             return True
 
 
@@ -240,9 +245,11 @@ def parseCharnames(rtext: Tag) -> bool:
     :return:
     """
     MAX_WORDS_FOR_CHARACTERNAME = 3
+
     def findNames(text: NavigableString) -> dict:
         WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
-        def chunks(listofwords: list, size: int=1, offset=0) -> list:
+
+        def chunks(listofwords: list, size: int = 1, offset=0) -> list:
             return [" ".join(listofwords[pos:pos + size]) for pos in range(0 + offset,
                                                                            len(listofwords),
                                                                            size)]
@@ -255,7 +262,7 @@ def parseCharnames(rtext: Tag) -> bool:
         # chunks of 2s
         LOGGER.debug("Analysing Names in: {}".format(words))
         try:
-            for pairs in range(MAX_WORDS_FOR_CHARACTERNAME,0,-1):
+            for pairs in range(MAX_WORDS_FOR_CHARACTERNAME, 0, -1):
                 checklist = chunks(words, pairs)
                 for checkname in checklist:
                     origname = checkname
@@ -293,7 +300,7 @@ def parseCharnames(rtext: Tag) -> bool:
         names = findNames(text)  # line
         for name, chara in names.items():
             newText = formatCharname(text, name, chara)
-            textReplace(text, newText)
+            text_replace(text, newText)
             replaced = True
     return replaced
 
@@ -310,7 +317,9 @@ if __name__ == "__main__":
     rtext = soup.select("rtext")[0]
     from vi.esi.esiinterface import EsiInterface
     from vi.resources import getVintelDir
+
     EsiInterface(cache_dir=getVintelDir())
+
     while parseCharnames(rtext):
         continue
     LOGGER.debug("Names found: %r", rtext)
