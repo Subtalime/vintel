@@ -42,7 +42,7 @@ if os.path.exists("dist"):
     except FileNotFoundError:
         pass
 
-executables = [Executable("vintel.py", base=base, icon="icon.ico")]
+executables = [Executable("vintel.py", base=base, icon="icon.ico", shortcutName="Vintel", shortcutDir="DesktopFolder" )]
 
 move_files = ((os.path.join('mapdata', 'Delve.svg'),),
               (os.path.join('mapdata', 'Querious.svg'),),
@@ -90,12 +90,12 @@ build_exe_options = {
     'replace_paths': replace_paths,
     'includes': 'atexit',
 }
-
 bdist_msi_options = {
     'install_icon': "icon.ico",
     'product_code': '{A34EE3A5-832B-4E7A-8FCE-71DDC4BC7E1B}',
     'upgrade_code': '{A34EE3A5-832B-4E7A-8FCE-71DDC4BC7E1C}',
     'add_to_path': False,
+
     'initial_target_dir': r'[ProgramFilesFolder]\%s\%s' % (PROGNAME, PROGNAME),
 }
 
