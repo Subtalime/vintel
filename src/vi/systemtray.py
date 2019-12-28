@@ -91,6 +91,9 @@ class TrayContextMenu(QtWidgets.QMenu):
             self.viewChats = QAction("View Chat-Logs", self)
             self.viewChats.triggered.connect(self.trayIcon.viewChatlogs)
             self.addAction(self.viewChats)
+            self.refreshMap = QAction("Refresh Map", self)
+            self.refreshMap.triggered.connect(self.trayIcon.refreshMap)
+            self.addAction(self.refreshMap)
 
 
     def changeAlarmDistance(self):
@@ -107,6 +110,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     change_frameless = pyqtSignal()
     quit_me = pyqtSignal()
     view_chatlogs = pyqtSignal()
+    refresh_map = pyqtSignal()
 
 
     def __init__(self, app):
@@ -123,6 +127,9 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def viewSource(self):
         pass
+
+    def refreshMap(self):
+        self.refresh_map.emit()
 
     def viewChatlogs(self):
         self.view_chatlogs.emit()

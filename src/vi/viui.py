@@ -256,6 +256,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.framelessWindowAction.triggered.connect(self.changeFrameless)
         self.trayIcon.change_frameless.connect(self.changeFrameless)
         self.trayIcon.view_chatlogs.connect(self.viewChatlogs)
+        self.trayIcon.refresh_map.connect(self.updateMapView)
         self.frameButton.clicked.connect(self.changeFrameless)
         self.actionQuit.triggered.connect(self.close)
         self.trayIcon.quit_me.connect(self.close)
@@ -354,6 +355,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setupThreads(self):
         LOGGER.debug("Creating threads")
 
+
+        self.logConfigThread = LogConfigurationThread(self.logWindow)
+        self.logConfigThread.start()
+
+        self.versionCheckThread = NotifyNewVersionThread()
+        self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
+        self.versionCheckThread.start()
+
+        self.mapUpdateThread = MapUpdateThread(self.map_update_interval)
+        self.mapUpdateThread.map_update.connect(self.mapUpdate)
+        self.mapUpdateThread.start()
+
         # Set up threads and their connections
         self.avatarFindThread = AvatarFindThread()
         self.avatarFindThread.avatar_update.connect(self.updateAvatarOnChatEntry)
@@ -377,21 +390,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chatTidyThread.time_up.connect(self.pruneMessages)
         self.chatTidyThread.start()
 
-        self.versionCheckThread = NotifyNewVersionThread()
-        self.versionCheckThread.newer_version.connect(self.notifyNewerVersion)
-        self.versionCheckThread.start()
-
-        self.mapUpdateThread = MapUpdateThread(self.map_update_interval)
-        self.mapUpdateThread.map_update.connect(self.mapUpdate)
-        self.mapUpdateThread.start()
-
         self.statisticsThread = MapStatisticsThread()
         self.statisticsThread.statistic_data_update.connect(self.updateStatisticsOnMap)
         # statisticsThread is blocked until first call of requestStatistics
         self.statisticsThread.start()
-
-        self.logConfigThread = LogConfigurationThread(self.logWindow)
-        self.logConfigThread.start()
 
         LOGGER.debug("Finished Creating threads")
 
