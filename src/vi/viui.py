@@ -191,11 +191,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return self.backgroundColor
 
     def setConstants(self):
-        self.map_update_interval = int(self.cache.getFromCache("map_update_interval", True))
+        self.map_update_interval = self.cache.getFromCache("map_update_interval", True)
         if not self.map_update_interval:
             self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
             self.cache.putIntoCache("map_update_interval", self.map_update_interval)
-        self.clipboard_check_interval = int(self.cache.getFromCache("clipboard_check_interval", True))
+        self.clipboard_check_interval = self.cache.getFromCache("clipboard_check_interval", True)
         if not self.clipboard_check_interval:
             self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
             self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)

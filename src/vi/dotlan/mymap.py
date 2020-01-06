@@ -21,6 +21,7 @@ from bs4.element import CData
 from PyQt5 import QtWidgets
 from vi.dotlan.map import Map
 from vi.resources import getVintelMap
+from vi import states
 from vi.dotlan.colorjavascript import ColorJavaScript
 import sys
 import time
@@ -36,19 +37,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MyMap(Map):
-    # var
-    # ALARM_COLORS = [60 * 4, "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#000000",
-    #                 60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000",
-    #                 60 * 60 * 24, "#FFFFFF", "#000000"];
-    # var
-    # REQUEST_COLORS = [60 * 2, "#ffaaff", "#000000",
-    #                   60 * 60 * 24, "#FFFFFF", "#000000"];
-    # var
-    # CLEAR_COLORS = [60 * 2, "#59FF6C", "#000000",
-    #                 60 * 60 * 24, "#FFFFFF", "#000000"];
 
     def addTimerJs(self):
         realtime_js = """
+        // courtesy of https://github.com/PimpTrizkit/PJs 
         const pSBC=(p,c0,c1,l)=>{
             let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
             if(typeof(p)!="number"||p<-1||p>1||typeof(c0)!="string"||(c0[0]!='r'&&c0[0]!='#')||(c1&&!a))return null;
@@ -131,15 +123,14 @@ class MyMap(Map):
                 var seconds = parseInt(elapsed % 60, 10);
                 minutes = minutes < 10 ? "0" + minutes : minutes;
                 seconds = seconds < 10 ? "0" + seconds : seconds;
-                secondline.setAttribute("style", "fill: "+slcolor);
-                //secondline.style.fill = "#000000";
+                secondline.setAttribute("style", "fill: " + slcolor);
                 var achieved = 0;
                 if (arrayoffset >= 0) {
                     achieved = elapsed / maxtime;
                 }
                 var newcolor = pSBC(achieved, bgcolor, endcolor, 1);
-                rect.setAttribute('style', "fill: "+newcolor);
-                rectice.setAttribute('style', "fill: "+newcolor);
+                rect.setAttribute('style', "fill: " + newcolor);
+                rectice.setAttribute('style', "fill: " + newcolor);
                 secondline.textContent = minutes + ":" + seconds;
             }, 1000);
         }
@@ -153,19 +144,20 @@ class MyMap(Map):
 
     @property
     def svg(self):
+        LOGGER.debug("Start SVG {}".format(datetime.datetime.now()))
         self.addTimerJs()
         # Re-render all systems
         onload = []
         # for system in self.mySystems.values():
         for system in self.systems.values():
+            if len(system.timerload) and system.timerload[0] >= 60 * 60 * 2:  # remove timers older than 2 hours
+                system.setStatus(states.UNKNOWN)
             system.update()
-            if len(system.timerload) and system.timerload[0] < 60 * 60 * 2:  # remove timers older than 2 hours
+            if len(system.timerload):  # remove timers older than 2 hours
                 onload.append(
                     "showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
                         system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3],
                         system.timerload[4]))
-            else:
-                system.timerload = ()
         # Update the marker
         js_onload = self.soup.find("script", attrs={"id": "onload"})
         if not js_onload:
@@ -188,6 +180,7 @@ class MyMap(Map):
                 newValue = "0"
             self.marker["opacity"] = newValue
         content = str(self.soup)
+        LOGGER.debug("End SVG {}".format(datetime.datetime.now()))
         if not getattr(sys, 'frozen', False):
             self.debugWriteSoup(content)
         return content

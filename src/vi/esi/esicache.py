@@ -86,6 +86,8 @@ class EsiCache(BaseCache):
             if getattr(sys, 'frozen', False):
                 base_path = sys._MEIPASS
             self.dbPath = os.path.join(base_path, "esi_cache.sqlite3")
+        if not getattr(sys, 'frozen', False):
+            self.dbPath = self.dbPath.replace(".", "_deb.")
         try:
             self.con = sqlite3.connect(self.dbPath, check_same_thread=False)
             with EsiCache.SQLITE_WRITE_LOCK:

@@ -21,6 +21,7 @@ import sqlite3
 import threading
 import time
 import ast
+import sys
 import os
 import logging
 import pickle
@@ -53,15 +54,17 @@ class Cache(object):
 
     def __init__(self, pathToSQLiteFile="cache.sqlite3", forceVersionCheck=False):
         """
-        pathToSQLiteFile=path to sqlite-file to save the cache. will be ignored if you set
-        Cache.PATH_TO_CACHE before init forceVersionCheck=bool to enforce a check. You will
-        need True if you are using several Cache-Files
+        pathToSQLiteFile=path to sqlite-file to save the cache. will be ignored if you set Cache.PATH_TO_CACHE before init
+        forceVersionCheck=bool to enforce a check. You will need True if you are using several Cache-Files
         """
         if Cache.PATH_TO_CACHE and not os.path.dirname(pathToSQLiteFile):
             if os.path.basename(Cache.PATH_TO_CACHE).endswith("sqlite3"):
                 pathToSQLiteFile = Cache.PATH_TO_CACHE
             else:
                 pathToSQLiteFile = os.path.join(Cache.PATH_TO_CACHE, pathToSQLiteFile)
+        if not getattr(sys, 'frozen', False):  # we are running in DEBUG
+            pathToSQLiteFile = pathToSQLiteFile.replace(".", "_deb.")
+
         try:
             self.con = sqlite3.connect(pathToSQLiteFile, check_same_thread=False)
             if not Cache.VERSION_CHECKED or forceVersionCheck:

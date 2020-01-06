@@ -19,6 +19,7 @@ from vi.cache.cache import Cache
 from vi.singleton import Singleton
 import pickle
 import six
+from colorutils import Color, color_run
 
 
 class ColorJavaScript(six.with_metaclass(Singleton)):
@@ -35,15 +36,27 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
             for a, b, c in val:
                 return_str += " {}, '{}', '{}',".format(a, b, c)
             return_str = return_str.rstrip(",")
-            return_str += " ];\n"
+            return_str += " ];\n        "
         return return_str
 
-    def get_color(self, time_in_secs, status: str):
-        # TODO: use the pSBC algorithm to get correct color
+    def get_color(self, time_in_secs, status: str) -> tuple:
+        lenc = len(self.js_lst[status.capitalize()])
+        nextc = 0
+        timerange = 0
+        startc = Color()
+        endc = Color()
         for lst in self.js_lst[status.capitalize()]:
-            if time_in_secs < lst[0]:
-                return lst[1]
-        return '#ffffff'
+            timerange += lst[0]
+            nextc += 1
+            if time_in_secs < timerange:
+                startc.hex = lst[1]
+                if nextc == lenc:
+                    endc.hex = '#ffffff'
+                else:
+                    endc.hex = self.js_lst[status.capitalize()][nextc][1]
+                ccolor = color_run(startc, endc, lst[0] - 1)[time_in_secs-timerange]
+                return ccolor.hex, lst[2]
+        return '#ffffff', '#000000'
 
     def load_settings(self):
         content = self.cache.getFromCache("js_alarms")

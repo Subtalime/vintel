@@ -23,6 +23,7 @@ import math
 from vi import states
 from vi.dotlan.colorjavascript import ColorJavaScript
 
+
 class MySystem(System):
     def __init__(self, name, svgElement, mapSoup, mapCoordinates, transform, systemId):
         super(MySystem, self).__init__(name, svgElement, mapSoup, mapCoordinates, transform,
@@ -41,9 +42,7 @@ class MySystem(System):
             self.secondLine["id"] = "watch{}".format(self.name_label)
         # set default to White
         for rect in self.svgElement.select("rect"):
-            # if rect.has_attr("style"):
             rect["style"] = "fill: #ffffff"
-
 
     def update(self):
         if self.status != states.UNKNOWN:
@@ -53,10 +52,11 @@ class MySystem(System):
             seconds = int(diff - minutes * 60)
             ndiff = minutes * 60 + seconds
             self.timerload = (ndiff, self.status, self.secondLine["id"], self.rectId, self.rectIdIce)
-            js = ColorJavaScript()
+            self.secondLine.string = "{:02d}:{:02d}".format(minutes, seconds)
+            color, txtcolor = ColorJavaScript().get_color(ndiff, self.status)
             for rect in self.svgElement.select("rect"):
-                rect["style"] = "fill: " + js.get_color(ndiff, self.status)
-
+                rect["style"] = "fill: " + color
+            self.secondLine["style"] = "fill: " + txtcolor
         else:
             self.secondLine.string = "??"
             self.timerload = ()

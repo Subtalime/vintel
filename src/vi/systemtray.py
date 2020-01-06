@@ -168,37 +168,38 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         text = None
         icon = None
         text = ""
-        soundFile = None
-        orgSoundVolume = None
+        sound_file = None
+        org_sound_volume = None
         if soundlist is None:
             try:
                 soundlist = Cache().getFromCache("sound_setting_list")
-                soundlist = literal_eval(soundlist)
-            except Exception as e:
-                LOGGER.error("Error while unpacking Cache", e)
+                if soundlist:
+                    soundlist = literal_eval(soundlist)
+            except (Exception, ValueError) as e:
+                LOGGER.error("Error while unpacking Cache for sound_setting_list", e)
                 soundlist = None
         if soundlist:
             # set the sound which has been preconfigured
-            orgSoundVolume = SoundManager().soundVolume
+            org_sound_volume = SoundManager().soundVolume
             if message.status == states.ALARM:
                 row = soundlist[distance]
                 SoundManager().setSoundVolume(row[2])
-                soundFile = row[1]
+                sound_file = row[1]
             elif message.status == states.REQUEST:
                 SoundManager().setSoundVolume(soundlist["Request"][2])
-                soundFile = soundlist["Request"][1]
+                sound_file = soundlist["Request"][1]
         if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(
                 states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "ALARM!"
             icon = 2
-            speechText = (
+            speech_text = (
                 u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
-            text = (u"%s\n" % message.plainText) + speechText
-            if soundFile:
-                SoundManager().playSoundFile(soundFile, text, speechText)
-                SoundManager().setSoundVolume(orgSoundVolume)
+            text = (u"%s\n" % message.plainText) + speech_text
+            if sound_file:
+                SoundManager().playSoundFile(sound_file, text, speech_text)
+                SoundManager().setSoundVolume(org_sound_volume)
             else:
-                SoundManager().playSound("alarm", text, speechText)
+                SoundManager().playSound("alarm", text, speech_text)
             self.lastNotifications[states.ALARM] = time.time()
         elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(
                 states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
@@ -206,9 +207,9 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             icon = 1
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
             self.lastNotifications[states.REQUEST] = time.time()
-            if soundFile:
-                SoundManager().playSoundFile(soundFile, text)
-                SoundManager().setSoundVolume(orgSoundVolume)
+            if sound_file:
+                SoundManager().playSoundFile(sound_file, text)
+                SoundManager().setSoundVolume(org_sound_volume)
             else:
                 SoundManager().playSound("request", text)
         if not (title is None or text is None) or icon:
