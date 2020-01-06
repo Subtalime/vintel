@@ -33,10 +33,17 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
         for p, val in self.js_lst.items():
             return_str += "var {}_COLORS = [".format(str(p).upper())
             for a, b, c in val:
-                return_str += "{}, '{}', '{}',".format(a, b, c)
+                return_str += " {}, '{}', '{}',".format(a, b, c)
             return_str = return_str.rstrip(",")
-            return_str += "];\n"
+            return_str += " ];\n"
         return return_str
+
+    def get_color(self, time_in_secs, status: str):
+        # TODO: use the pSBC algorithm to get correct color
+        for lst in self.js_lst[status.capitalize()]:
+            if time_in_secs < lst[0]:
+                return lst[1]
+        return '#ffffff'
 
     def load_settings(self):
         content = self.cache.getFromCache("js_alarms")

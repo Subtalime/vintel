@@ -21,7 +21,7 @@ from vi.dotlan.system import System
 import time
 import math
 from vi import states
-
+from vi.dotlan.colorjavascript import ColorJavaScript
 
 class MySystem(System):
     def __init__(self, name, svgElement, mapSoup, mapCoordinates, transform, systemId):
@@ -46,7 +46,6 @@ class MySystem(System):
 
 
     def update(self):
-        # super(MySystem, self).update()
         if self.status != states.UNKNOWN:
             # calc the new timer for injecting into JS
             diff = time.time() - self.lastAlarmTime
@@ -54,6 +53,10 @@ class MySystem(System):
             seconds = int(diff - minutes * 60)
             ndiff = minutes * 60 + seconds
             self.timerload = (ndiff, self.status, self.secondLine["id"], self.rectId, self.rectIdIce)
+            js = ColorJavaScript()
+            for rect in self.svgElement.select("rect"):
+                rect["style"] = "fill: " + js.get_color(ndiff, self.status)
+
         else:
             self.secondLine.string = "??"
             self.timerload = ()

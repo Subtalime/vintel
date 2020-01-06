@@ -17,8 +17,8 @@
 #
 #
 
-from bs4.element import  CData
-from PyQt5 import  QtWidgets
+from bs4.element import CData
+from PyQt5 import QtWidgets
 from vi.dotlan.map import Map
 from vi.resources import getVintelMap
 from vi.dotlan.colorjavascript import ColorJavaScript
@@ -74,14 +74,14 @@ class MyMap(Map):
             else return"#"+(4294967296+r*16777216+g*65536+b*256+(f?m(a*255):0)).toString(16).slice(1,f?undefined:-2)
         }
 
-        // max time for alarm, rect color, secondLine color
+        // max time for alarm, rect color, secondLine color [ array in set of 3 ]
         """
         realtime_js += ColorJavaScript().getJs()
         realtime_js += """
         var UNKNOWN_COLOR = "#FFFFFF";
         var CLEAR_COLOR = "#59FF6C";
         var STATE = ['alarm', 'was alarmed', 'clear', 'unknown', 'ignore', 'no change', 'request', 'location'];
-        // seconds to start at, text-line, rectangle, where current state
+        // seconds since a state has been announced, state, text-line to place text, Rectangle, Ice-Rectangle
         function showTimer(currentTime, state, secondline, rect, rectice) {
             var bgcolor = UNKNOWN_COLOR; // the default
             var endcolor = CLEAR_COLOR;
@@ -159,9 +159,13 @@ class MyMap(Map):
         # for system in self.mySystems.values():
         for system in self.systems.values():
             system.update()
-            if len(system.timerload):
-                onload.append("showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
-                system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3], system.timerload[4]))
+            if len(system.timerload) and system.timerload[0] < 60 * 60 * 2:  # remove timers older than 2 hours
+                onload.append(
+                    "showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
+                        system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3],
+                        system.timerload[4]))
+            else:
+                system.timerload = ()
         # Update the marker
         js_onload = self.soup.find("script", attrs={"id": "onload"})
         if not js_onload:
@@ -234,7 +238,8 @@ class MyMap(Map):
         if not jumpbridgesData or len(jumpbridgesData) <= 0:
             return
         try:
-            progress = QtWidgets.QProgressDialog("Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridgesData), parent)
+            progress = QtWidgets.QProgressDialog("Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridgesData),
+                                                 parent)
             progress.setWindowTitle("Jump-Bridge")
             progress.setModal(True)
             progress.setValue(0)
@@ -281,8 +286,8 @@ class MyMap(Map):
                 dx = (x2 - x1) / 2
                 dy = (y2 - y1) / 2
                 dd = math.sqrt(dx * dx + dy * dy)
-                ex = cx + dy/dd * 40
-                ey = cy - dx/dd * 40
+                ex = cx + dy / dd * 40
+                ey = cy - dx / dd * 40
                 line = soup.new_tag("path", d="M{} {}Q{} {} {} {}".format(x1, y1, ex, ey, x2, y2), visibility="hidden",
                                     style="stroke:#{0}; fill: none".format(jbColor))
                 line["stroke-width"] = 2
