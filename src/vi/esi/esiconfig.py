@@ -40,12 +40,8 @@ class EsiConfig(six.with_metaclass(Singleton)):
     ESI_SWAGGER_JSON = 'https://esi.tech.ccp.is/latest/swagger.json?datasource=%s' % ESI_DATASOURCE
     # Run the Application, then register on "https://developers.eveonline.com/applications"
     # You will then receive your Secret and Client keys
-    ESI_CLIENT_ID = None  # your client ID
-    # ESI_CLIENT_ID = '0ab476e584064214869d532acd027494'  # your client ID example
-    # ESI_CLIENT_ID = '50de89684c374189a25ccf83aa1d928a'  # your client ID example
-    # This ESI_SECRET_KEY is currently not being used...
-    # ESI_SECRET_KEY = "mh9DMVZfdPVTtwq6btOA1I4OblUqcWuaSEWzoaN4"
-#    ESI_SECRET_KEY = "QUD3IsBSMa3AtEHHDMBhsTZsurL8s8FrauQoOF7f"
+    # ESI_CLIENT_ID = None  # your client ID
+    ESI_CLIENT_ID = '0ab476e584064214869d532acd027494'  # your client ID example
     ESI_SECRET_KEY = ""
     ESI_CALLBACK = 'http://%s:%d/%s' % (HOST, PORT, URI)  # the callback URI you gave CCP
     ESI_USER_AGENT = PROGNAME

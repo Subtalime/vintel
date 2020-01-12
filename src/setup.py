@@ -44,14 +44,12 @@ if os.path.exists("dist"):
 
 executables = [Executable("vintel.py", base=base, icon="icon.ico", shortcutName="Vintel", shortcutDir="DesktopFolder" )]
 
-move_files = ((os.path.join('mapdata', 'Delve.svg'),),
-              (os.path.join('mapdata', 'Querious.svg'),),
-              (os.path.join('mapdata', 'Providencecatch.svg'),),
-              (os.path.join('sound', 'warning.wav'),),
-              (os.path.join('sound', 'request.wav'),),
-              (os.path.join('sound', 'alert.wav'),),
-              (os.path.join('docs', 'jumpbridgeformat.txt'),),
-              (os.path.join('docs', 'regionselect.txt'),),
+move_files = (('mapdata', 'mapdata'),
+              # (os.path.join('vi/ui/res/mapdata', 'Querious.svg'), 'mapdata'),
+              # (os.path.join('vi/ui/res/mapdata', 'Providencecatch.svg'), 'mapdata'),
+              ('sound', 'sound'),
+              ('docs', 'docs'),
+              # (os.path.join('docs', 'regionselect.txt'),),
               ('logo.png',),
               ('logo_small_green.png',),
               ('logo_small.png',),

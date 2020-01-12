@@ -27,7 +27,6 @@ from esipy.security import APIException
 from esipy.events import AFTER_TOKEN_REFRESH
 from vi.esi.esicache import EsiCache
 from vi.esi.esiconfig import EsiConfig
-from vi.esi.esiwebserver import EsiWebServer
 from vi.esi.esiconfigdialog import EsiConfigDialog
 from vi.esi.esiwait import EsiWait
 
@@ -44,7 +43,6 @@ def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
 
 def logrepr(className: type) -> str:
     return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
-
                                                                                              "")
 
 
@@ -105,8 +103,10 @@ class EsiInterface(metaclass=EsiInterfaceType):
             }
             self.codeverifier = generate_code_verifier()
             if not self.ignoreSecurity:
+                LOGGER.info("Ignore-Security is FALSE")
                 self.getSecurity()
             else:
+                LOGGER.info("Ignore-Security is TRUE")
                 self.security = EsiSecurity(
                     # The application (matching ESI_CLIENT_ID) must have the same Callback configured!
                     redirect_uri=self.esiConfig.ESI_CALLBACK,
@@ -144,6 +144,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.esicache.set("esi_clientid", self.esiConfig.ESI_CLIENT_ID)
 
         def getSecurity(self):
+            import traceback
+            LOGGER.exception(traceback.print_stack())
             if not self.esiConfig.ESI_CLIENT_ID or self.esiConfig.ESI_CLIENT_ID == "":
                 cacheToken = self.esicache.get("esi_clientid")
                 if cacheToken:
@@ -161,7 +163,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     res = inputDia.exec_()
                     if not res == inputDia.Accepted:
                         LOGGER.info("User canceled Client-ID Input-Dialog")
-                        exit(0)
+                        sys.exit(-1)
                     self.esiConfig = inputDia.esiConfig
 
                 self.esicache.set("esi_callback", self.esiConfig.ESI_CALLBACK)
@@ -232,7 +234,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.waitForSecretKey()
                 except Exception as e:
                     LOGGER.error("Some unexpected error in Esi", e)
-                    exit(-1)
+                    sys.exit(-1)
             self.esiInterface.esiLoading = "complete"
 
         def waitForSecretKey(self):
@@ -247,7 +249,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             wait_dialog.exec_()
             # User decided to cancel the operation
             if not self.esiConfig.ESI_SECRET_KEY:
-                exit(0)
+                sys.exit(-1)
 
         def __str__(self):
             return repr(self)
@@ -261,7 +263,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             try:
                 EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
             except Exception:
-                exit(-1)
+                sys.exit(-1)
         self.cache = EsiCache(self.caching)
 
     def __getattr__(self, name):

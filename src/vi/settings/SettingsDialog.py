@@ -308,8 +308,18 @@ class SettingsDialog(QDialog, Ui_Dialog):
         if color.isValid():
             self.color = color.name()
 
+    def isInteger(self, value) -> bool:
+        try:
+            int(value)
+            return True
+        except ValueError:
+            return False
+
     def save_settings(self):
         if not self.region_save():
+            return
+        if not self.isInteger(self.txtJumpDistance.text()):
+            self.txtJumpDistance.setFocus(Qt.OtherFocusReason)
             return
         self.settings_saved.emit()
         # dirty, but make sure the latest Model is copied to our data

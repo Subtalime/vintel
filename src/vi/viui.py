@@ -76,6 +76,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, path_to_logs: str, tray_icon: TrayIcon, background_color: str):
         super(self.__class__, self).__init__()
         self.setupUi(self)
+        # set the Splitter-Location
+        self.splitter.setStretchFactor(8, 2)
+        # self.splitter.setSizes([1065, 839])
         self.avatarFindThread = None
         self.esiThread = None
         self.filewatcherThread = None
@@ -112,7 +115,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.trayIcon.activated.connect(self.systemTrayActivated)
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
-        self.alarmDistance = 2
+        self.changeAlarmDistance(2)
         self.initialMapPosition = None
         self.initialZoom = None
         self.lastStatisticsUpdate = 0
@@ -292,6 +295,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.checkPopupNotification.setChecked(self.popup_notification)
         setting.color = self.setColor()
         setting.tabWidget.setCurrentIndex(tabIndex)
+        setting.txtJumpDistance.setText(str(self.alarmDistance))
 
         setting.show()
         if setting.exec_():
@@ -302,6 +306,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.clipboardCheckInterval(int(setting.txtKosInterval.text()) * 1000)
             self.messageExpiry(int(setting.txtMessageExpiry.text()))
             self.enableSelfNotify(setting.checkNotifyOwn.isChecked())
+            self.changeAlarmDistance(setting.txtJumpDistance.text())
 
     def enableSelfNotify(self, enable: bool = None) -> bool:
         if enable is not None:
@@ -534,7 +539,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     (None, "changeKosCheckClipboard", self.kosClipboardActiveAction.isChecked()),
                     (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled))
         strsettings = str(settings)
-        self.cache.putIntoCache("settings", strsettings, 60 * 60 * 24 * 30)
+        # self.cache.putIntoCache("settings", strsettings, 60 * 60 * 24 * 30)
 
         # Stop the threads
         try:
@@ -710,13 +715,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.ship_parser.emit(enable)
         return self.ship_parser_enabled
 
-    def changeAlarmDistance(self, distance):
-        self.alarmDistance = distance
+    def changeAlarmDistance(self, distance: int):
+        self.alarmDistance = int(distance)
         for cm in TrayContextMenu.instances:
             for action in cm.distanceGroup.actions():
                 if action.alarmDistance == distance:
                     action.setChecked(True)
-        self.trayIcon.alarmDistance = distance
+        self.trayIcon.alarmDistance = int(distance)
 
     def changeJumpbridgesVisibility(self):
         newValue = self.dotlan.changeJumpbridgesVisibility()

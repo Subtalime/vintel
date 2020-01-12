@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'MainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -12,7 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(936, 695)
+        MainWindow.resize(1363, 904)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
@@ -66,7 +67,7 @@ class Ui_MainWindow(object):
         self.jumpbridgesButton = QtWidgets.QPushButton(self.mapbuttonwidget)
         self.jumpbridgesButton.setMaximumSize(QtCore.QSize(16777215, 19))
         self.jumpbridgesButton.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.jumpbridgesButton.setCheckable(False)
+        self.jumpbridgesButton.setCheckable(True)
         self.jumpbridgesButton.setChecked(False)
         self.jumpbridgesButton.setObjectName("jumpbridgesButton")
         self.horizontalLayout_2.addWidget(self.jumpbridgesButton)
@@ -133,7 +134,7 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.splitter, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 936, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1363, 21))
         self.menubar.setObjectName("menubar")
         self.menu = QtWidgets.QMenu(self.menubar)
         self.menu.setObjectName("menu")
