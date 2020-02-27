@@ -29,7 +29,7 @@ class CharacterMenu(QMenu):
     def __init__(self, menuname: str, parent: QObject = None, characters: Characters = None):
         super(CharacterMenu, self).__init__(menuname, parent)
         self._listWidget = QListWidget()
-        self._menu_actions = dict()
+        self._menu_actions = {}
         self.setObjectName("menu"+menuname)
         if characters is not None:
             self.addItems(characters)
@@ -74,10 +74,11 @@ class CharacterMenu(QMenu):
 
     def removeItems(self):
         try:
-            for menuitem in self._menu_actions:
-                obj = self.findChild(QAction, menuitem)
-                if obj:
-                    self.removeAction(obj)
+            self.clear()
+            # for menuitem in self._menu_actions:
+            #     obj = self.findChild(QAction, menuitem)
+            #     if obj:
+            #         self.removeAction(obj)
             self._menu_actions = dict()
         except Exception:
             raise

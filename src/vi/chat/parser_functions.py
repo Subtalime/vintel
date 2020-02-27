@@ -110,9 +110,9 @@ def parseShips(rtext: Tag) -> bool:
                 hit = True
                 start = text.upper().find(upperText)
                 end = start + len(upperText)
-                if ((start > 0 and text.upper()[start - 1] not in (".", ",", " ", "X"))
+                if ((start > 0 and text.upper()[start - 1] not in (".", ",", " ", "X", ":"))
                         or (end < len(text.upper()) - 1 and
-                            text.upper()[end] not in (".", ",", "S", " "))):
+                            text.upper()[end] not in (".", ",", "S", " ", ":"))):
                     hit = False
                 if hit:
                     shipInText = text[start:end]

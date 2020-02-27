@@ -54,7 +54,11 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
                     endc.hex = '#ffffff'
                 else:
                     endc.hex = self.js_lst[status.capitalize()][nextc][1]
-                ccolor = color_run(startc, endc, lst[0] - 1)[time_in_secs-timerange]
+                try:
+                    ccolor = color_run(startc, endc, lst[0] - 1)[time_in_secs-timerange]
+                except IndexError:
+                    ccolor = color_run(startc, endc, lst[0])[time_in_secs-timerange]
+
                 return ccolor.hex, lst[2]
         return '#ffffff', '#000000'
 

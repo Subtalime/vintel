@@ -37,10 +37,11 @@ from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
-from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, FileWatcherThread, ChatTidyThread
+from vi.threads import AvatarFindThread, MapStatisticsThread, MapUpdateThread, ChatTidyThread
 from vi.systemtray import TrayContextMenu
 from vi.chat.chatthread import ChatThread
 from vi.chat.chatmessage import Message
+from vi.chat.filewatcherthread import FileWatcherThread
 from vi.esi import EsiInterface
 from vi.esi.esihelper import EsiHelper
 from vi.chat.chatentrywidget import ChatEntryWidget
@@ -80,7 +81,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.splitter.setStretchFactor(8, 2)
         # self.splitter.setSizes([1065, 839])
         self.avatarFindThread = None
-        self.esiThread = None
         self.filewatcherThread = None
         self.chatTidyThread = None
         self.statisticsThread = None
@@ -204,10 +204,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
 
     def updateCharacterMenu(self):
-        self.menuCharacters.removeItems()
-        LOGGER.debug("Updating Character-Menu with Players: {}".format(self.knownPlayers))
-        self.menuCharacters.addItems(self.knownPlayers)
-        self.menuCharacters.triggered.connect(self.char_menu_clicked)
+        try:
+            self.menuCharacters.removeItems()
+            LOGGER.debug("Updating Character-Menu with Players: {}".format(self.knownPlayers))
+            self.menuCharacters.addItems(self.knownPlayers)
+            self.menuCharacters.triggered.connect(self.char_menu_clicked)
+        except Exception as e:
+            LOGGER.error("updateCharacterMenu", e)
 
     def char_menu_clicked(self, action: 'QAction'):
         LOGGER.debug(
@@ -389,6 +392,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.filewatcherThread = FileWatcherThread(self.pathToLogs)
         self.filewatcherThread.file_change.connect(self.chatThread.add_log_file)
+        self.filewatcherThread.file_removed.connect(self.chatThread.remove_log_file)
         self.filewatcherThread.start()
 
         self.chatTidyThread = ChatTidyThread(self.message_expiry)
@@ -409,7 +413,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.filewatcherThread:
             self.filewatcherThread.paused = True
         if self.mapUpdateThread:
-            self.mapUpdateThread.active = False
+            self.mapUpdateThread.pause(True)
         LOGGER.debug("Finding map file")
         regionName = self.cache.getFromCache("region_name")
         if not regionName:
@@ -472,7 +476,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # self.restartMapTimer()
 
         if self.mapUpdateThread:
-            self.mapUpdateThread.active = True
+            self.mapUpdateThread.pause(False)
         self.setInitialMapPositionForRegion(regionName)
         self.checkJumpbridges()
         self.updateMapView()
@@ -538,7 +542,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                      self.useSpokenNotificationsAction.isChecked()),
                     (None, "changeKosCheckClipboard", self.kosClipboardActiveAction.isChecked()),
                     (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled))
-        strsettings = str(settings)
+        try:
+            self.cache.saveSettings("settings", settings, 60 * 60 * 24 * 30)
+        except Exception:
+            pass
+        # strsettings = str(settings)
         # self.cache.putIntoCache("settings", strsettings, 60 * 60 * 24 * 30)
 
         # Stop the threads
@@ -562,8 +570,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.statisticsThread.quit()
             if self.mapUpdateThread:
                 self.mapUpdateThread.quit()
-            if self.esiThread:
-                self.esiThread.quit()
         except Exception as e:
             LOGGER.exception("Error while stopping a Thread", e)
         self.trayIcon.hide()

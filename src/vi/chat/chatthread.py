@@ -199,8 +199,9 @@ class ChatThread(QThread):
 
     def quit(self):
         for thread in self.process_pool.keys():
+            LOGGER.debug("Closing Chat-Sub-Thread")
             self.process_pool[thread].quit()
-        LOGGER.debug("Closing Chat-Thread")
+        LOGGER.debug("Closing Main Chat-Thread")
         self.active = False
         self.add_log_file(None)
         QThread.quit(self)
@@ -455,7 +456,7 @@ class ChatThreadProcess(QThread):
                 # unusable log-file... end thread
                 if not self._prepareParser():
                     self.active = False
-                    continue
+                    return
             self.queue.get()
             # process the Log-File
             if self.active:
@@ -470,7 +471,7 @@ class ChatThreadProcess(QThread):
 
 if __name__ == "__main__":
     from PyQt5.Qt import QApplication
-    from vi.threads import FileWatcherThread
+    from vi.chat.filewatcherthread import FileWatcherThread
     from vi.resources import getEveChatlogDir, getVintelDir
     from vi.dotlan.mymap import MyMap
     from vi.cache import cache

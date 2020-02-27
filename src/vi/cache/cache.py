@@ -248,11 +248,17 @@ class Cache(object):
             LOGGER.error("Cache-Error delJumpbridge \"%s\": %r", regionName, e)
             raise e
 
-    def recallAndApplySettings(self, responder, settingsIdentifier):
-        settings = self.getFromCache(settingsIdentifier)
-        if settings:
+    def saveSettings(self, settings_identifier, object_setting, duration=60 * 60 * 24 * 365):
+        import pickle
+        store_value = pickle.dumps(object_setting)
+        self.putIntoCache(settings_identifier, store_value, duration)
+
+    def recallAndApplySettings(self, responder, settings_identifier):
+        object_setting = self.getFromCache(settings_identifier)
+        if object_setting:
+            settings = pickle.loads(object_setting)
             try:
-                settings = eval(settings)
+                # settings = eval(settings)
                 for setting in settings:
                     obj = responder if not setting[0] else getattr(responder, setting[0])
                     # logging.debug("{0} | {1} | {2}".format(str(obj), setting[1], setting[2]))
