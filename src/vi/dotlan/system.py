@@ -171,7 +171,7 @@ class System(object):
     def setStatus(self, newStatus, alarmtime: float = time.time()):
         if not isinstance(alarmtime, float):
             if isinstance(alarmtime, datetime.datetime):
-                alarmtime = (alarmtime - datetime.datetime(1970, 1,1)).total_seconds()
+                alarmtime = (alarmtime - datetime.datetime(1970, 1, 1)).total_seconds()
         if newStatus == states.ALARM:
             self.lastAlarmTime = alarmtime
             self.secondLine["alarmtime"] = self.lastAlarmTime
@@ -185,7 +185,7 @@ class System(object):
             self.lastAlarmTime = alarmtime
             self.secondLine.string = "status"
         # if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
-        if newStatus not in (states.NOT_CHANGE):  # unknown not affect system status
+        if newStatus not in (states.NOT_CHANGE, ):  # unknown not affect system status
             self.status = newStatus
             self.secondLine["state"] = str(self.status)
 

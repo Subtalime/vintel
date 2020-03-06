@@ -95,7 +95,6 @@ class TrayContextMenu(QtWidgets.QMenu):
             self.refreshMap.triggered.connect(self.trayIcon.refreshMap)
             self.addAction(self.refreshMap)
 
-
     def changeAlarmDistance(self):
         for action in self.distanceGroup.actions():
             if action.isChecked():
@@ -115,7 +114,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def __init__(self, app):
         self.resource_path = resourcePath()
-        LOGGER.debug("TrayIcon looking for %s" % resourcePath("logo_small.png"))
+        LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small.png"))
         self.icon = QIcon(resourcePath("logo_small.png"))
         QSystemTrayIcon.__init__(self, self.icon, app)
         self.setToolTip("Your Vintel-Information-Service!")
@@ -176,7 +175,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
                 if soundlist:
                     soundlist = literal_eval(soundlist)
             except (Exception, ValueError) as e:
-                LOGGER.error("Error while unpacking Cache for sound_setting_list", e)
+                LOGGER.error("Error while unpacking Cache for sound_setting_list: %r", e)
                 soundlist = None
         if soundlist:
             # set the sound which has been preconfigured
@@ -186,8 +185,11 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
                 SoundManager().setSoundVolume(row[2])
                 sound_file = row[1]
             elif message.status == states.REQUEST:
-                SoundManager().setSoundVolume(soundlist["Request"][2])
-                sound_file = soundlist["Request"][1]
+                if "Request" in soundlist:
+                    SoundManager().setSoundVolume(soundlist["Request"][2])
+                    sound_file = soundlist["Request"][1]
+                else:
+                    LOGGER.error("No \"Request\" sound configured! %r", soundlist)
         if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(
                 states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "ALARM!"
@@ -215,5 +217,5 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         if not (title is None or text is None) or icon:
             if text == "":
                 text = "{}".format(**locals())
-            LOGGER.debug("Trayicon-Message: \"%s\"" % text)
+            LOGGER.debug("Trayicon-Message: \"%s\"", text)
             self.showMessage(title, text, icon)

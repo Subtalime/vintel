@@ -265,6 +265,10 @@ class EsiInterface(metaclass=EsiInterfaceType):
             except Exception:
                 sys.exit(-1)
         self.cache = EsiCache(self.caching)
+        # start off with disabling ESI for 10 seconds
+        self.esi_timeout = 10000  # 10 seconds
+        # Calls to ESI shouldn't take longer than 1 second
+        self.esi_max_call_duration = 1000  # 1 second
 
     def __getattr__(self, name):
         return getattr(self._instance, name)
@@ -305,6 +309,36 @@ class EsiInterface(metaclass=EsiInterfaceType):
             retval[key] = val
         return retval
 
+    def _allowCallToEsi(self, call_start=None, force_disable: bool = False) -> bool:
+        """
+        if previous attempts took longer than expected, reduce the number of calls to ESI until
+        the connections speed improves... do this incrementally
+        :return: if call to ESI is permitted at this time
+        :type bool
+        """
+        now = datetime.datetime.now()
+        if force_disable:
+            self.cache.putIntoCache("esi_allowed", False, self.esi_timeout)
+            self.cache.putIntoCache("esi_last_try", now, self.esi_timeout)
+            return not force_disable
+        if not call_start:
+            esi_allowed = self.cache.getFromCache("esi_allowed", default=True)
+            if not esi_allowed:
+                last_try = self.cache.getFromCache("esi_last_try", default=None)
+                if last_try:
+                    if (now - last_try).total_seconds() * 1000 > self.esi_timeout:
+                        self.esi_timeout += self.esi_timeout
+                        self.cache.putIntoCache("esi_last_try", now, self.esi_timeout)
+                        self.cache.putIntoCache("esi_allowed", True, self.esi_timeout)
+                        LOGGER.info("Call to ESI Re-Enabled. Next delay will be %ds", self.esi_timeout / 1000)
+                        return True
+            return esi_allowed
+        call_duration = (now - call_start).total_seconds() * 1000
+        if call_duration > self.esi_max_call_duration:
+            LOGGER.info("Call to ESI took %ds. Too long, so disabling ESI", call_duration/1000)
+            return self._allowCallToEsi(force_disable=True)
+        return True
+
     def _getResponse(self, operation, cache_expiry_secs, **kwargs):
         """
         Do a Swagger-Call to ESI-Api if we can't find the information in Cache
@@ -323,7 +357,11 @@ class EsiInterface(metaclass=EsiInterfaceType):
             try:
                 # call the Swagger interface
                 operation_call = self.esiApp.op[operation](**kwargs)
+                if not self._allowCallToEsi():
+                    return None
+                start_call = datetime.datetime.now()
                 response = self.esiClient.request(operation_call)
+                self._allowCallToEsi(start_call)
                 if response:
                     # use default expiry handed back by ESI
                     if not cache_expiry_secs:

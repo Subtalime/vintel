@@ -117,7 +117,7 @@ def parseShips(rtext: Tag) -> bool:
                 if hit:
                     shipInText = text[start:end]
                     shipType = EsiHelper().esi.getShipGroupTypes(EsiHelper().ShipsUpper[upperText]['group_id'])['name']
-                    LOGGER.debug("ESI found a ship \"{}\"".format(shipInText))
+                    LOGGER.debug("ESI found a ship \"%s\"", shipInText)
                     formatted = formatShipName(text, shipInText, part, shipType)
                     text_replace(text, formatted)
                     return True
@@ -260,7 +260,7 @@ def parseCharnames(rtext: Tag) -> bool:
 
         words = text.split()
         # chunks of 2s
-        LOGGER.debug("Analysing Names in: {}".format(words))
+        LOGGER.debug("Analysing Names in: %r", words)
         try:
             for pairs in range(MAX_WORDS_FOR_CHARACTERNAME, 0, -1):
                 checklist = chunks(words, pairs)
@@ -274,18 +274,18 @@ def parseCharnames(rtext: Tag) -> bool:
                         found = False
                         for a in names.items():
                             if re.search(checkname, a[0], re.IGNORECASE):
-                                LOGGER.debug("a part of \"{}\" was previously found".format(checkname))
+                                LOGGER.debug("a part of \"%s\" was previously found", checkname)
                                 found = True
                                 break
                         if not found:
-                            LOGGER.debug("Couldn't find \"%s\" in list of \"%r\" names" % (checkname, names))
+                            LOGGER.debug("Couldn't find \"%s\" in list of \"%r\" names", checkname, names.keys())
                             char = EsiHelper().checkPlayerName(checkname)
                             if char is not None:
-                                LOGGER.debug("ESI found the character \"{}\"".format(checkname))
+                                LOGGER.debug("ESI found the character \"%s\"", checkname)
                                 names[origname] = char
-            LOGGER.debug("Found names: {}".format(names))
+            LOGGER.debug("Found names: %r", names.keys())
         except Exception as e:
-            LOGGER.error("Error parsing Names", e)
+            LOGGER.error("Error parsing Names: %r", e)
         return names
 
     def formatCharname(text: str, charname: str, esicharacter: dict):

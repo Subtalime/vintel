@@ -135,20 +135,23 @@ class MyMap(Map):
             }, 1000);
         }
         """
-
+        LOGGER.debug(" Start addTimerJs")
         js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
         if not js:
             js = self.soup.new_tag("script", attrs={"id": "timer", "type": "text/javascript"})
         js.string = CData(realtime_js)
         self.soup.svg.append(js)
+        LOGGER.debug(" End addTimerJs")
 
     @property
     def svg(self):
-        LOGGER.debug("Start SVG {}".format(datetime.datetime.now()))
+        start = datetime.datetime.now()
+        LOGGER.debug("Start SVG %s", start)
         self.addTimerJs()
         # Re-render all systems
         onload = []
-        # for system in self.mySystems.values():
+        start_sysupd = datetime.datetime.now()
+        LOGGER.debug(" Start system.update (%d Systems)", len(self.systems))
         for system in self.systems.values():
             if len(system.timerload) and system.timerload[0] >= 60 * 60 * 2:  # remove timers older than 2 hours
                 system.setStatus(states.UNKNOWN)
@@ -158,7 +161,9 @@ class MyMap(Map):
                     "showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
                         system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3],
                         system.timerload[4]))
+        LOGGER.debug(" End system.update (took %ds)", (datetime.datetime.now() - start_sysupd).total_seconds())
         # Update the marker
+        LOGGER.debug(" Start js_onload")
         js_onload = self.soup.find("script", attrs={"id": "onload"})
         if not js_onload:
             js_onload = self.soup.new_tag("script",
@@ -172,6 +177,7 @@ class MyMap(Map):
             startjs += "}\n"
             js_onload.string = startjs
 
+        LOGGER.debug(" End js_onload")
         # Update the marker
         if not self.marker["opacity"] == "0":
             now = time.time()
@@ -180,9 +186,10 @@ class MyMap(Map):
                 newValue = "0"
             self.marker["opacity"] = newValue
         content = str(self.soup)
-        LOGGER.debug("End SVG {}".format(datetime.datetime.now()))
-        if not getattr(sys, 'frozen', False):
-            self.debugWriteSoup(content)
+        finished = datetime.datetime.now()
+        LOGGER.debug("End SVG %s (Duration %ds)", finished, (finished-start).total_seconds())
+        # if not getattr(sys, 'frozen', False):
+        #     self.debugWriteSoup(content)
         return content
 
     def __init__(self, parent=None):

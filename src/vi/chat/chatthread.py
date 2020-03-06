@@ -272,7 +272,7 @@ class ChatThreadProcess(QThread):
 
         # If message says clear and no system? Maybe an answer to a request?
         if message.status == states.CLEAR and not message.systems:
-            maxSearch = 4  # we search only max_search messages in the room
+            max_search = 4  # we search only max_search messages in the room
             for count, oldMessage in enumerate(oldMessage for oldMessage in
                                                self.knownMessages[-1::-1]
                                                if oldMessage.room == self.roomname):
@@ -280,7 +280,7 @@ class ChatThreadProcess(QThread):
                     for system in oldMessage.systems:
                         message.systems.append(system)
                     break
-                if count > maxSearch:
+                if count > max_search:
                     LOGGER.warning("parseOldMessages excessive runs on %r" % message.rtext)
                     break
         message.message = six.text_type(message.rtext)
@@ -358,6 +358,8 @@ class ChatThreadProcess(QThread):
 
     def _processFile(self):
         lines = self._getLines()
+        start = datetime.datetime.now()
+        LOGGER.debug(" processFile start (%s)", self.log_file)
         for line in lines[self.parsed_lines:]:
             line = line.strip()
             if len(line) > 2:
@@ -377,6 +379,7 @@ class ChatThreadProcess(QThread):
                     LOGGER.debug("%s/%s: Notify new message: %r", self.roomname, self.charname, message)
                     # Thereafter, the Worker-Loop can do the beautifying of the Widget
                     self.worker_loop.call_soon_threadsafe(self._refineMessage, message)
+        LOGGER.debug(" processFile end (%d Lines took %ds)", len(lines), (datetime.datetime.now() - start).total_seconds())
         self.parsed_lines = len(lines) - 1
 
     def _parseLocal(self, line) -> Message:

@@ -45,8 +45,6 @@ class MyDateFormatter(logging.Formatter):
         return s
 
 
-
-
 class LogConfiguration(six.with_metaclass(Singleton)):
     LOG_CONFIG = "logging.yaml"
     MAX_FILE_SIZE = 1024 * 1024 * 5
@@ -136,7 +134,7 @@ class LogConfigurationThread(threading.Thread):
         while self.active:
             try:
                 self.queue.get(timeout=self.timeout)
-            except:
+            except queue.Empty as e:
                 pass
             # LOG_FILEPATH is real... but still catch, in case it has been moved/deleted
             if LogConfiguration.LOG_FILE_PATH:
@@ -150,7 +148,7 @@ class LogConfigurationThread(threading.Thread):
                     if newstat != self.file_stat:
                         self.file_stat = newstat
                         try:
-                            LOGGER.debug("Configuration-Change in \"{}\"".format(LogConfiguration.LOG_FILE_PATH))
+                            LOGGER.debug("Configuration-Change in \"%s\"", LogConfiguration.LOG_FILE_PATH)
                             LogConfiguration(LogConfiguration.LOG_FILE_PATH)
                             # Make sure our LogWindowHandler is still alive!
                             if LOG_WINDOW_HANDLER_NAME not in logging._handlerList:

@@ -91,7 +91,7 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             time=time,
             text=self.message.message)
         self.textLabel.setText(text)
-        self.updateTooltip(self.message.message)
+        # self.updateTooltip(self.message.message)
 
     def updateAvatar(self, avatarData):
         image = QImage.fromData(avatarData)
