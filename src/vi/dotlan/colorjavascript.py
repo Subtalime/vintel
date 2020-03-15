@@ -19,6 +19,7 @@ from vi.cache.cache import Cache
 from vi.singleton import Singleton
 import pickle
 import six
+import logging
 from colorutils import Color, color_run
 
 
@@ -28,6 +29,7 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
         self.js_header = ["Starting Color for... (seconds)", "Background Color", "Text Color"]
         self.js_lst = None
         self.load_settings()
+        self.LOGGER = logging.getLogger(__name__)
 
     def getJs(self):
         return_str = ""
@@ -55,9 +57,11 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
                 else:
                     endc.hex = self.js_lst[status.capitalize()][nextc][1]
                 try:
-                    ccolor = color_run(startc, endc, lst[0] - 1)[time_in_secs-timerange]
+                    ccolor = color_run(startc, endc, lst[0] - 1)[time_in_secs - timerange]
                 except IndexError:
-                    ccolor = color_run(startc, endc, lst[0])[time_in_secs-timerange]
+                    self.LOGGER.error(
+                        "Index-Error: %r, %d-%d=%d" % (lst, time_in_secs, timerange, time_in_secs - timerange))
+                    ccolor = color_run(startc, endc, lst[0])[time_in_secs - timerange]
 
                 return ccolor.hex, lst[2]
         return '#ffffff', '#000000'

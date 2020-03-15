@@ -26,7 +26,6 @@ import os
 import logging
 import pickle
 
-LOGGER = logging.getLogger(__name__)
 
 
 def to_blob(x):
@@ -57,6 +56,7 @@ class Cache(object):
         pathToSQLiteFile=path to sqlite-file to save the cache. will be ignored if you set Cache.PATH_TO_CACHE before init
         forceVersionCheck=bool to enforce a check. You will need True if you are using several Cache-Files
         """
+        self.LOGGER = logging.getLogger(__name__)
         if Cache.PATH_TO_CACHE and not os.path.dirname(pathToSQLiteFile):
             if os.path.basename(Cache.PATH_TO_CACHE).endswith("sqlite3"):
                 pathToSQLiteFile = Cache.PATH_TO_CACHE
@@ -72,7 +72,7 @@ class Cache(object):
                     self.checkVersion()
             Cache.VERSION_CHECKED = True
         except Exception as e:
-            LOGGER.critical("Error create Cache-File %s" % pathToSQLiteFile, e)
+            self.LOGGER.critical("Error create Cache-File %s" % pathToSQLiteFile, e)
             raise e
 
     def checkVersion(self):
@@ -101,7 +101,7 @@ class Cache(object):
                 self.con.execute(query, (key, value, time.time(), maxAge))
                 self.con.commit()
             except Exception as e:
-                LOGGER.error("Cache-Error putIntoCache:  %r", e)
+                self.LOGGER.error("Cache-Error putIntoCache:  %r", e)
                 raise e
 
     def delFromCache(self, key):
@@ -111,7 +111,7 @@ class Cache(object):
                 self.con.execute(query, (key,))
                 self.con.commit()
             except Exception as e:
-                LOGGER.error("Cache-Error delFromCache: %r", e)
+                self.LOGGER.error("Cache-Error delFromCache: %r", e)
                 raise e
 
     def getFromCache(self, key, outdated=False, default=None):
@@ -130,7 +130,7 @@ class Cache(object):
             else:
                 return founds[0][1]
         except Exception as e:
-            LOGGER.error("Cache-Error getFromCache: %r", e)
+            self.LOGGER.error("Cache-Error getFromCache: %r", e)
             raise e
 
     def putPlayerName(self, name, status):
@@ -145,7 +145,7 @@ class Cache(object):
                 self.con.execute(query, (name, status, time.time()))
                 self.con.commit()
             except Exception as e:
-                LOGGER.error("Cache-Error putPlayerName: %r", e)
+                self.LOGGER.error("Cache-Error putPlayerName: %r", e)
                 raise e
 
     def getPlayerName(self, name):
@@ -175,7 +175,7 @@ class Cache(object):
                 self.con.execute(query, (name, data, time.time()))
                 self.con.commit()
             except Exception as e:
-                LOGGER.error("Cache-Error putAvatar: %r", e)
+                self.LOGGER.error("Cache-Error putAvatar: %r", e)
                 raise e
 
     def getAvatar(self, name):
@@ -193,7 +193,7 @@ class Cache(object):
                 data = from_blob(founds[0][0])
                 return data
         except Exception as e:
-            LOGGER.error("Cache-Error getAvatar: %r", e)
+            self.LOGGER.error("Cache-Error getAvatar: %r", e)
             raise e
 
     def removeAvatar(self, name):
@@ -206,7 +206,7 @@ class Cache(object):
                 self.con.execute(query, (name,))
                 self.con.commit()
         except Exception as e:
-            LOGGER.error("Cache-Error removeAvatar: %r", e)
+            self.LOGGER.error("Cache-Error removeAvatar: %r", e)
             raise e
 
     def putJumpbridge(self, regionName: str, data: list):
@@ -220,7 +220,7 @@ class Cache(object):
                 self.con.execute(query, (cacheKey, pickle.dumps(data), time.time(), Cache.FOREVER))
                 self.con.commit()
             except Exception as e:
-                LOGGER.error("Cache-Error putJumpbridg \"%s\": %r", regionName, e)
+                self.LOGGER.error("Cache-Error putJumpbridg \"%s\": %r", regionName, e)
                 raise e
 
     def getJumpbridge(self, regionName: str) -> list:
@@ -232,7 +232,7 @@ class Cache(object):
             if len(founds) > 0:
                 return pickle.loads(founds[0][0])
         except Exception as e:
-            LOGGER.error("Cache-Error getJumpbridge \"%s\": %r", regionName, e)
+            self.LOGGER.error("Cache-Error getJumpbridge \"%s\": %r", regionName, e)
             raise e
         return None
 
@@ -245,7 +245,7 @@ class Cache(object):
                 self.con.execute(query, (cacheKey,))
                 self.con.commit()
         except Exception as e:
-            LOGGER.error("Cache-Error delJumpbridge \"%s\": %r", regionName, e)
+            self.LOGGER.error("Cache-Error delJumpbridge \"%s\": %r", regionName, e)
             raise e
 
     def saveSettings(self, settings_identifier, object_setting, duration=60 * 60 * 24 * 365):
@@ -265,9 +265,9 @@ class Cache(object):
                     try:
                         getattr(obj, setting[1])(setting[2])
                     except Exception as e:
-                        LOGGER.error("{}: {} [{}]".format(__file__, e, setting[1]))
-                        self.delFromCache(settingsIdentifier)
+                        self.LOGGER.error("{}: {} [{}]".format(__file__, e, setting[1]))
+                        self.delFromCache(settings_identifier)
                         raise
             except Exception as e:
-                LOGGER.error("Invalid settings \"%s\": %r", str(eval(settings)), e)
+                self.LOGGER.error("Invalid settings \"%s\": %r", str(eval(settings)), e)
                 raise e

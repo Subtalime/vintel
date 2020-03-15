@@ -49,9 +49,9 @@ CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+", ":")
 
 
 def text_replace(element: NavigableString, new_text: str):
-    new_text = "<t>{}</t>".format(new_text)
+    parse_text = "<t>{}</t>".format(new_text)
     new_elements = []
-    for newPart in BeautifulSoup(new_text, 'html.parser').select("t")[0].contents:
+    for newPart in BeautifulSoup(parse_text, 'html.parser').select("t")[0].contents:
         new_elements.append(newPart)
     try:
         for newElement in new_elements:
@@ -61,7 +61,7 @@ def text_replace(element: NavigableString, new_text: str):
         pass
 
 
-def parseStatus(rtext):
+def parse_status(rtext):
     """
     parse the Chat-Line to see if there are any System-Statuses triggered
     """
@@ -79,7 +79,7 @@ def parseStatus(rtext):
         elif "?" in originalText:
             return states.REQUEST
         elif text.strip().upper() in ("BLUE", "BLUES ONLY", "ONLY BLUE",
-                                       "STILL BLUE", "ALL BLUES"):
+                                      "STILL BLUE", "ALL BLUES"):
             return states.CLEAR
 
 

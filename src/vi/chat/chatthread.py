@@ -28,7 +28,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from queue import Queue
 from threading import Thread
 from vi.chat.chatmessage import Message
-from vi.chat.parser_functions import parseCharnames, parseShips, parseStatus, parseSystems, parseUrls
+from vi.chat.parser_functions import parseCharnames, parseShips, parse_status, parseSystems, parseUrls
 from vi import states
 
 LOGGER = logging.getLogger(__name__)
@@ -436,7 +436,7 @@ class ChatThreadProcess(QThread):
             message = Message(self.roomname, text, timestamp, username,
                               status=states.SOUND_TEST, rtext=rtext, plainText=originalText, upperText=upperText)
         else:
-            parsedStatus = parseStatus(rtext)
+            parsedStatus = parse_status(rtext)
             status = parsedStatus if parsedStatus is not None else states.ALARM
             message = Message(self.roomname, text, timestamp, username, status=status, rtext=rtext,
                               plainText=originalText, upperText=upperText)

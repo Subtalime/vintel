@@ -155,6 +155,7 @@ class MyMap(Map):
         for system in self.systems.values():
             if len(system.timerload) and system.timerload[0] >= 60 * 60 * 2:  # remove timers older than 2 hours
                 system.setStatus(states.UNKNOWN)
+            #TODO: when changing System, rescan all Chats and update markers that way
             system.update()
             if len(system.timerload):  # remove timers older than 2 hours
                 onload.append(
