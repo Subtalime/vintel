@@ -139,7 +139,7 @@ class AvatarFindThread(QThread):
         try:
             if clearCache:
                 cache = Cache()
-                cache.removeAvatar(chatEntry.message.user)
+                cache.delete_avatar(chatEntry.message.user)
 
             # Enqeue the data to be picked up in run()
             self.queue.put(chatEntry)
@@ -179,7 +179,7 @@ class AvatarFindThread(QThread):
                     #  or even do it within ESI to skip all calls!
                     start_time = datetime.now()
                     LOGGER.debug("AvatarFindThread getting avatar for %s at %s", charname, start_time)
-                    avatar = EsiHelper().getAvatarByName(charname)
+                    avatar = EsiHelper().get_avatarByName(charname)
                     LOGGER.debug("AvatarFindThread getting avatar for %s took %ds", charname,
                                  (datetime.now() - start_time).total_seconds())
                     self.switch_off_avatar(start_time)

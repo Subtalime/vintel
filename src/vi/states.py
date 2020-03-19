@@ -20,6 +20,21 @@
 ###########################################################################
 # Holding the states for messages here                                    #
 ###########################################################################
+from enum import Enum
+
+
+class State(Enum):
+    IGNORE = 'ignore'
+    UNKNOWN = 'unknown'
+    NOT_CHANGE = 'no change'
+    CLEAR = 'clear'
+    ALARM = 'alarm'
+    WAS_ALARMED = 'was alarmed'
+    REQUEST = 'request'
+    LOCATION = 'location'
+    KOS_STATUS_REQUEST = 'kos request'
+    SOUND_TEST = 'soundtest'
+
 
 IGNORE = 'ignore'
 UNKNOWN = 'unknown'

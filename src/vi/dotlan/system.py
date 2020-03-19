@@ -168,25 +168,25 @@ class System(object):
         if self in system._neighbours:
             system._neigbours.remove(self)
 
-    def setStatus(self, newStatus, alarmtime: float = time.time()):
-        if not isinstance(alarmtime, float):
-            if isinstance(alarmtime, datetime.datetime):
-                alarmtime = (alarmtime - datetime.datetime(1970, 1, 1)).total_seconds()
-        if newStatus == states.ALARM:
-            self.lastAlarmTime = alarmtime
-            self.secondLine["alarmtime"] = self.lastAlarmTime
-        elif newStatus == states.CLEAR:
-            self.lastAlarmTime = alarmtime
-            self.secondLine["alarmtime"] = self.lastAlarmTime
-            self.secondLine.string = "clear"
-        elif newStatus == states.UNKNOWN:
+    def setStatus(self, new_status, alarm_time: float = time.time()):
+        if not isinstance(alarm_time, float):
+            if isinstance(alarm_time, datetime.datetime):
+                alarm_time = time.mktime(alarm_time.timetuple()) + alarm_time.microsecond / 1E6
+                # alarm_time = (alarm_time - datetime.datetime(1970, 1, 1)).total_seconds()
+        if new_status in (states.ALARM, states.CLEAR, states.REQUEST):
+            self.lastAlarmTime = alarm_time
+            if new_status == states.ALARM:
+                self.secondLine["alarmtime"] = self.lastAlarmTime
+            elif new_status == states.CLEAR:
+                self.secondLine["alarmtime"] = self.lastAlarmTime
+                self.secondLine.string = "clear"
+            elif new_status == states.REQUEST:
+                self.secondLine.string = "status"
+        elif new_status == states.UNKNOWN:
             self.secondLine.string = "?"
-        elif newStatus == states.REQUEST:
-            self.lastAlarmTime = alarmtime
-            self.secondLine.string = "status"
-        # if newStatus not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
-        if newStatus not in (states.NOT_CHANGE, ):  # unknown not affect system status
-            self.status = newStatus
+        # if new_status not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
+        if new_status not in (states.NOT_CHANGE,):  # unknown not affect system status
+            self.status = new_status
             self.secondLine["state"] = str(self.status)
 
     def setStatistics(self, statistics):

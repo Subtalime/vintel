@@ -112,7 +112,7 @@ class EsiCache(BaseCache):
                 raise e
         updateDatabase(version, self.con)
 
-    def getFromCache(self, key, outdated=False, default=None):
+    def fetch(self, key, outdated=False, default=None):
         return self.get(key, outdated, default)
 
     # outdated defaults to True, because it may contain ESI refresh tokens
@@ -145,7 +145,7 @@ class EsiCache(BaseCache):
         except Exception as e:
             raise e
 
-    def putIntoCache(self, key, value, max_age=None):
+    def put(self, key, value, max_age=None):
         self.set(key, value, max_age)
 
     def set(self, key, value, max_age=None):
@@ -169,7 +169,7 @@ class EsiCache(BaseCache):
             except Exception as e:
                 raise e
 
-    def delFromCache(self, key):
+    def delete(self, key):
         self.invalidate(key)
 
     def invalidate(self, key):

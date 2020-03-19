@@ -18,7 +18,7 @@
 from vi import states
 from bs4 import NavigableString
 import datetime
-
+import time
 
 class Message(object):
     def __init__(self, room: str, message: str, timestamp: datetime.datetime, user: str,
@@ -28,6 +28,7 @@ class Message(object):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
+        self.timestamp_float = time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1E6
         self.user = user  # user who posted the message
         self.systems = currsystems if currsystems is not None else [] # list of systems mentioned in the message
         self.status = status  # status related to the message

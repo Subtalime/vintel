@@ -42,8 +42,6 @@ from vi import states
 from vi.character.Characters import Characters
 import vi.ui.SystemChat
 
-LOGGER = logging.getLogger(__name__)
-
 
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
@@ -51,8 +49,9 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
 
     def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: Characters):
         QDialog.__init__(self, parent)
+        self.LOGGER = logging.getLogger(__name__)
         if not isinstance(knownPlayers, Characters):
-            LOGGER.critical("SystemChat.init(knownPlayers) is not type of \"Characters\"")
+            self.LOGGER.critical("SystemChat.init(knownPlayers) is not type of \"Characters\"")
             exit(-1)
         self.setupUi(self)
         self.parent = parent

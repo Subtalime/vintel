@@ -148,7 +148,7 @@ class Characters(dict):
         return chars
 
     def loadData(self):
-        knownPlayerData = self._cache.getFromCache("known_players")
+        knownPlayerData = self._cache.fetch("known_players")
         if knownPlayerData:
             charsets = set(knownPlayerData.split(","))
             for character in charsets:
@@ -161,7 +161,7 @@ class Characters(dict):
 
     def storeData(self):
         value = ",".join(str(x) for x in self.values())
-        self._cache.putIntoCache("known_players", value, 60 * 60 * 24 * 30)
+        self._cache.put("known_players", value, 60 * 60 * 24 * 30)
 
     def __repr__(self) -> str:
         return str(list(self.keys()))

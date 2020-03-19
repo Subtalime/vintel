@@ -31,8 +31,6 @@ from vi.chat.chatmessage import Message
 from vi.chat.parser_functions import parseCharnames, parseShips, parse_status, parseSystems, parseUrls
 from vi import states
 
-LOGGER = logging.getLogger(__name__)
-
 __all_known_messages = {}
 
 chat_thread_lock = threading.RLock()
@@ -56,10 +54,10 @@ def chat_thread_all_messages_contains(message: Message):
     if search in __all_known_messages.keys():
         diff = (__all_known_messages[search] - message.timestamp).total_seconds()
         if -1 <= diff <= 1:
-            LOGGER.info("chat_message_contains: HIT Search \"{}\" (age {})".format(search, diff))
+            logging.getLogger(__name__).info("chat_message_contains: HIT Search \"%s\" (age %f)" % (search, diff,))
             hit = True
         else:
-            LOGGER.info("chat_message_contains: NOT HIT Search \"{}\" (age {})".format(search, diff))
+            logging.getLogger(__name__).info("chat_message_contains: NOT HIT Search \"%s\" (age %f)" % (search, diff,))
     chat_thread_lock.release()
     return hit
 
@@ -117,7 +115,8 @@ class ChatThread(QThread):
 
     def __init__(self, parent, room_names: list, dotlan_systems: systems = {}, known_players: list = []):
         super(__class__, self).__init__()
-        LOGGER.debug("Creating ChatThread")
+        self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Creating ChatThread")
         self.queue = Queue()
         self.active = True
         self.room_names = room_names
@@ -146,7 +145,7 @@ class ChatThread(QThread):
             self.player_added_signal.emit(self.known_players)
 
     def update_dotlan_systems(self, dotlan_systems: systems):
-        LOGGER.debug("Informing Chat-Threads of new System")
+        self.LOGGER.debug("Informing Chat-Threads of new System")
         self.dotlan_systems = dotlan_systems
         for thread in self.process_pool.keys():
             self.process_pool[thread].update_dotlan_systems(self.dotlan_systems)
@@ -165,13 +164,13 @@ class ChatThread(QThread):
         self.message_updated_signal.emit(message)
 
     def ship_parser_enabled(self, value):
-        LOGGER.debug("Informing Chat-Threads of new Ship-Parser %r", value)
+        self.LOGGER.debug("Informing Chat-Threads of new Ship-Parser %r" % (value, ))
         self.ship_parser = value
         for thread in self.process_pool.keys():
             self.process_pool[thread].ship_parser_enabled(value)
 
     def char_parser_enabled(self, value):
-        LOGGER.debug("Informing Chat-Threads of new Character-Parser %r", value)
+        self.LOGGER.debug("Informing Chat-Threads of new Character-Parser %r" % (value, ))
         self.char_parser = value
         for thread in self.process_pool.keys():
             self.process_pool[thread].char_parser_enabled(value)
@@ -183,7 +182,7 @@ class ChatThread(QThread):
                 if logfile and logfile not in self.process_pool.keys() and not delete:
                     roomname = os.path.basename(logfile)[:-20]
                     if roomname not in self.room_names and roomname not in LOCAL_NAMES:
-                        LOGGER.debug("Not interested in \"%s\" since not in monitored rooms", logfile)
+                        self.LOGGER.debug("Not interested in \"%s\" since not in monitored rooms" % (logfile, ))
                         continue
                     self.process_pool[logfile] = ChatThreadProcess(logfile, self.ship_parser, self.char_parser,
                                                                    self.dotlan_systems)
@@ -199,9 +198,9 @@ class ChatThread(QThread):
 
     def quit(self):
         for thread in self.process_pool.keys():
-            LOGGER.debug("Closing Chat-Sub-Thread")
+            self.LOGGER.debug("Closing Chat-Sub-Thread")
             self.process_pool[thread].quit()
-        LOGGER.debug("Closing Main Chat-Thread")
+        self.LOGGER.debug("Closing Main Chat-Thread")
         self.active = False
         self.add_log_file(None)
         QThread.quit(self)
@@ -214,6 +213,7 @@ class ChatThreadProcess(QThread):
 
     def __init__(self, log_file_path: str, ship_scanner: bool, char_scanner: bool, dotlan_systems: systems = ()):
         super(__class__, self).__init__()
+        self.LOGGER = logging.getLogger(__name__)
         self.queue = Queue()
         self.log_file = log_file_path
         self.ship_scanner = ship_scanner
@@ -243,22 +243,24 @@ class ChatThreadProcess(QThread):
 
     def update_dotlan_systems(self, dotlan_systems: systems):
         self.dotlan_systems = dotlan_systems
+        # required to rescan all files, so map gets redrawn with current data
+        self.charname = None
 
     def _refineMessage(self, message: Message):
-        LOGGER.debug("%s/%s: Start refining message: %r", self.roomname, self.charname, message)
+        self.LOGGER.debug("%s/%s: Start refining message: %r" % (self.roomname, self.charname, message, ))
         if self.ship_scanner:
             count = 0
             while parseShips(message.rtext):
                 count += 1
                 if count > 5:
-                    LOGGER.warning("parseShips excessive runs on %r" % message.rtext)
+                    self.LOGGER.warning("parseShips excessive runs on %r" % (message.rtext, ))
                     break
                 continue
         count = 0
         while parseUrls(message.rtext):
             count += 1
             if count > 5:
-                LOGGER.warning("parseUrls excessive runs on %r" % message.rtext)
+                self.LOGGER.warning("parseUrls excessive runs on %r" % (message.rtext, ))
                 break
             continue
         if self.character_scanner:
@@ -266,7 +268,7 @@ class ChatThreadProcess(QThread):
             while parseCharnames(message.rtext):
                 count += 1
                 if count > 5:
-                    LOGGER.warning("parseCharnames excessive runs on %r" % message.rtext)
+                    self.LOGGER.warning("parseCharnames excessive runs on %r" % (message.rtext, ))
                     break
                 continue
 
@@ -281,7 +283,7 @@ class ChatThreadProcess(QThread):
                         message.systems.append(system)
                     break
                 if count > max_search:
-                    LOGGER.warning("parseOldMessages excessive runs on %r" % message.rtext)
+                    self.LOGGER.warning("parseOldMessages excessive runs on %r" % (message.rtext, ))
                     break
         message.message = six.text_type(message.rtext)
         # multiple clients?
@@ -290,7 +292,7 @@ class ChatThreadProcess(QThread):
             for system in message.systems:
                 system.messages.append(message)
         self.message_updated_s.emit(message)
-        LOGGER.debug("%s/%s: Done refining message: %r", self.roomname, self.charname, message)
+        self.LOGGER.debug("%s/%s: Done refining message: %r" % (self.roomname, self.charname, message, ))
 
     def _runLoop(self):
         asyncio.set_event_loop(self.worker_loop)
@@ -298,7 +300,7 @@ class ChatThreadProcess(QThread):
 
     # get all the relevant information which ChatParser requires
     def _prepareParser(self) -> bool:
-        LOGGER.debug("Analysing relevance of %s", self.log_file)
+        self.LOGGER.debug("Analysing relevance of %s" % (self.log_file, ))
         filename = os.path.basename(self.log_file)
         self.roomname = filename[:-20]
         if self.roomname in LOCAL_NAMES:
@@ -314,7 +316,7 @@ class ChatThreadProcess(QThread):
             if self.charname and self.session_start:
                 break
         if not self.charname or not self.session_start:
-            LOGGER.warning("File did not contain relevant information: \"%s\"", self.log_file)
+            self.LOGGER.warning("File did not contain relevant information: \"%s\"" % (self.log_file, ))
             return False
         # tell the world we're monitoring a new character
         self.new_player_s.emit(self.charname)
@@ -326,7 +328,7 @@ class ChatThreadProcess(QThread):
             if (datetime.datetime.now() - timestamp).total_seconds() <= self.message_age:
                 break
             self.parsed_lines += 1
-        LOGGER.debug("Registered %s in %s", self.charname, self.roomname)
+        self.LOGGER.debug("Registered %s in %s" % (self.charname, self.roomname, ))
         return True
 
     def _parseLine(self, line) -> tuple:
@@ -337,7 +339,7 @@ class ChatThreadProcess(QThread):
         try:
             timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
         except ValueError:
-            LOGGER.error("Invalid Timestamp in \"{}\" Line {}".format(self.log_file, line))
+            self.LOGGER.error("Invalid Timestamp in \"%s\" Line %s" % (self.log_file, line))
             raise
         # finding the username of the poster
         userEnds = line.find(">")
@@ -352,14 +354,14 @@ class ChatThreadProcess(QThread):
                 content = f.read()
             lines = content.split("\n")
         except Exception as e:
-            LOGGER.error("Failed to read log file \"%s\" %r", self.log_file, e)
+            self.LOGGER.error("Failed to read log file \"%s\" %r" % (self.log_file, e,))
             raise e
         return lines
 
     def _processFile(self):
         lines = self._getLines()
         start = datetime.datetime.now()
-        LOGGER.debug(" processFile start (%s)", self.log_file)
+        self.LOGGER.debug(" processFile start (%s)" % (self.log_file, ))
         for line in lines[self.parsed_lines:]:
             line = line.strip()
             if len(line) > 2:
@@ -370,16 +372,16 @@ class ChatThreadProcess(QThread):
                 if message:
                     # multiple clients?
                     if chat_thread_all_messages_contains(message):
-                        LOGGER.debug("%s/%s: Ignoring message (duplicate) from %s in %s", self.roomname, self.charname,
-                                     message.user, message.room)
+                        self.LOGGER.debug("%s/%s: Ignoring message (duplicate) from %s in %s" % (self.roomname, self.charname,
+                                     message.user, message.room, ))
                         continue
                     # here, I believe, we should add it to the Widget-List and update
                     # the Map. Hence, we emit the Message
                     self.message_added_s.emit(message)
-                    LOGGER.debug("%s/%s: Notify new message: %r", self.roomname, self.charname, message)
+                    self.LOGGER.debug("%s/%s: Notify new message: %r" % (self.roomname, self.charname, message, ))
                     # Thereafter, the Worker-Loop can do the beautifying of the Widget
                     self.worker_loop.call_soon_threadsafe(self._refineMessage, message)
-        LOGGER.debug(" processFile end (%d Lines took %ds)", len(lines), (datetime.datetime.now() - start).total_seconds())
+        self.LOGGER.debug(" processFile end (%d Lines took %ds)" % (len(lines), (datetime.datetime.now() - start).total_seconds()),)
         self.parsed_lines = len(lines) - 1
 
     def _parseLocal(self, line) -> Message:
@@ -394,7 +396,7 @@ class ChatThreadProcess(QThread):
         timestamp, username, text = self._parseLine(line)
         # anything older than max_age, ignore
         if (datetime.datetime.now() - timestamp).total_seconds() > self.message_age:
-            LOGGER.debug("%s/%s: Message-Line too old", self.roomname, self.charname)
+            self.LOGGER.debug("%s/%s: Message-Line too old" % (self.roomname, self.charname, ))
             return None
 
         if username in ("EVE-System", "EVE System"):
@@ -422,7 +424,7 @@ class ChatThreadProcess(QThread):
         upperText = text.upper()
         # anything older than max_age, ignore
         if (datetime.datetime.now() - timestamp).total_seconds() > self.message_age:
-            LOGGER.debug("%s/%s: Message-Line too old", self.roomname, self.charname)
+            self.LOGGER.debug("%s/%s: Message-Line too old" % (self.roomname, self.charname, ))
             return None
         # KOS request
         if upperText.startswith("XXX "):
@@ -444,10 +446,10 @@ class ChatThreadProcess(QThread):
             while parseSystems(self.dotlan_systems, message.rtext, message.systems):
                 count += 1
                 if count > 5:
-                    LOGGER.error("parseSystems excessive runs on %r" % message.rtext)
+                    self.LOGGER.error("parseSystems excessive runs on %r" % (message.rtext, ))
                     break
                 continue
-        LOGGER.debug("%s/%s: Message created: %r", self.roomname, self.charname, message)
+        self.LOGGER.debug("%s/%s: Message created: %r" % (self.roomname, self.charname, message, ))
         return message
 
     def logfileChanged(self, val=1):
@@ -466,7 +468,7 @@ class ChatThreadProcess(QThread):
                 self._processFile()
 
     def quit(self):
-        LOGGER.debug("Closing Thread for %s in %s", self.charname, self.roomname)
+        self.LOGGER.debug("Closing Thread for %s in %s" % (self.charname, self.roomname, ))
         self.active = False
         self.logfileChanged(0)
         QThread.quit(self)

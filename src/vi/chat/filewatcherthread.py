@@ -23,7 +23,6 @@ import glob
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal
 
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 4  # oldest Chatlog-File to scan (4 hours)
-LOGGER = logging.getLogger(__name__)
 
 
 class FileWatcherThread(QThread):
@@ -32,7 +31,8 @@ class FileWatcherThread(QThread):
 
     def __init__(self, folder, maxAge=FILE_DEFAULT_MAX_AGE, scan_interval: float = 0.5):
         super(__class__, self).__init__()
-        LOGGER.debug("Starting FileWatcher-Thread")
+        self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Starting FileWatcher-Thread")
         self.folder = folder
         self._active = True
         self._warned = False
@@ -47,7 +47,7 @@ class FileWatcherThread(QThread):
         self._addFiles(path)
 
     def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
-        LOGGER.debug("Starting FileWatcher-Thread")
+        self.LOGGER.debug("Starting FileWatcher-Thread")
         self._active = True
         super(FileWatcherThread, self).start(priority)
 
@@ -64,23 +64,23 @@ class FileWatcherThread(QThread):
     def quit(self) -> None:
         if self._active:
             self._active = False
-            LOGGER.debug("Stopping FileWatcher-Thread")
+            self.LOGGER.debug("Stopping FileWatcher-Thread")
             super(FileWatcherThread, self).quit()
 
     def fileChanged(self, path):
         self.file_change.emit(path)
 
     def removeFile(self, path):
-        LOGGER.debug("removing old File from tracking (older than %d seconds): %s", self.maxAge, path)
+        self.LOGGER.debug("removing old File from tracking (older than %d seconds): %s" % (self.maxAge, path, ))
         self.file_removed.emit(path)
 
     def _sendWarning(self, path, length):
         # only do this ONCE at startup
         if self._warned:
             return
-        LOGGER.warning(
-            "Log-Folder \"%s\" has more than %d files (actually has %d)! This will impact performance! Consider tidying up!",
-            path, self.maxFiles, length)
+        self.LOGGER.warning(
+            "Log-Folder \"%s\" has more than %d files (actually has %d)! This will impact performance! Consider tidying up!" %
+            (path, self.maxFiles, length, ))
         self._warned = True
 
     def _checkChanges(self, check_list):
@@ -95,7 +95,7 @@ class FileWatcherThread(QThread):
                     self.fileChanged(file)
                 file_list[file] = fstat
             except Exception as e:
-                LOGGER.warning("Filewatcher-Thread error on \"%s\": %r", file, e)
+                self.LOGGER.warning("Filewatcher-Thread error on \"%s\": %r" % (file, e, ))
                 pass
         return file_list
 
@@ -107,8 +107,10 @@ class FileWatcherThread(QThread):
     # check for new files in folder and add if necessary
     # TODO: to filter chat-logs which are kept open over a long time, match it to character...
     #  new log-file for character, close old one
-    def _addFiles(self, path):
-        files_in_dir = self.filesInFolder[path] if path in self.filesInFolder.keys() else {}
+    def _addFiles(self, path: str = None):
+        if not path:
+            self.LOGGER.warning("No path passed to _addFiles !")
+        files_in_dir = self.filesInFolder[path] if path and path in self.filesInFolder.keys() else {}
         changed = False
         now = time.time()
         # order by date descending
@@ -138,9 +140,9 @@ class FileWatcherThread(QThread):
                     changed = True
                     del files_in_dir[fullPath]
             except Exception as e:
-                LOGGER.error("Trying to remove %s from dictionary %r", fullPath, files_in_dir, e)
+                self.LOGGER.error("Trying to remove %s from dictionary %r" % (fullPath, files_in_dir,), e)
                 pass
         if changed:
             self.filesInFolder[path] = files_in_dir
-            LOGGER.debug("currently tracking %d files in %s" % (len(files_in_dir), path))
-            LOGGER.debug("  %r" % self.filesInFolder[path])
+            self.LOGGER.debug("currently tracking %d files in %s" % (len(files_in_dir), path, ))
+            self.LOGGER.debug("  %r" % (self.filesInFolder[path], ))

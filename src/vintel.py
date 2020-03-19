@@ -84,17 +84,17 @@ class Application(QApplication):
 
         cache.Cache.PATH_TO_CACHE = getVintelDir()
         try:
-            vintelCache = Cache(forceVersionCheck=True)
+            vintelCache = Cache(force_version_check=True)
         except Exception as e:
             print("Failed to load Cache", e)
             raise e
 
-        logLevel = vintelCache.getFromCache("logging_level")
+        logLevel = vintelCache.fetch("logging_level")
         if not logLevel:
             logLevel = logging.DEBUG
         logging.getLogger().setLevel(logLevel)
         LOGGER.setLevel(logLevel)
-        backColor = vintelCache.getFromCache("background_color")
+        backColor = vintelCache.fetch("background_color")
         if backColor:
             backGroundColor = backColor
         self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)

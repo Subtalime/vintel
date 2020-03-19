@@ -208,7 +208,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         try:
                             self.apiInfo = self.security.refresh()
                         except:
-                            self.esicache.delFromCache("esi_token")
+                            self.esicache.delete("esi_token")
                             continue
                         LOGGER.debug("Refreshtoken success")
                     elif tokenKey:
@@ -218,7 +218,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         try:
                             self.apiInfo = self.security.refresh()
                         except:
-                            self.esicache.delFromCache("esi_token")
+                            self.esicache.delete("esi_token")
                             continue
                         LOGGER.debug("Tokenkey success")
                     else:
@@ -318,18 +318,18 @@ class EsiInterface(metaclass=EsiInterfaceType):
         """
         now = datetime.datetime.now()
         if force_disable:
-            self.cache.putIntoCache("esi_allowed", False, self.esi_timeout)
-            self.cache.putIntoCache("esi_last_try", now, self.esi_timeout)
+            self.cache.put("esi_allowed", False, self.esi_timeout)
+            self.cache.put("esi_last_try", now, self.esi_timeout)
             return not force_disable
         if not call_start:
-            esi_allowed = self.cache.getFromCache("esi_allowed", default=True)
+            esi_allowed = self.cache.fetch("esi_allowed", default=True)
             if not esi_allowed:
-                last_try = self.cache.getFromCache("esi_last_try", default=None)
+                last_try = self.cache.fetch("esi_last_try", default=None)
                 if last_try:
                     if (now - last_try).total_seconds() * 1000 > self.esi_timeout:
                         self.esi_timeout += self.esi_timeout
-                        self.cache.putIntoCache("esi_last_try", now, self.esi_timeout)
-                        self.cache.putIntoCache("esi_allowed", True, self.esi_timeout)
+                        self.cache.put("esi_last_try", now, self.esi_timeout)
+                        self.cache.put("esi_allowed", True, self.esi_timeout)
                         LOGGER.info("Call to ESI Re-Enabled. Next delay will be %ds", self.esi_timeout / 1000)
                         return True
             return esi_allowed
@@ -352,7 +352,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         for key in kwargs.keys():
             cache_key = "_".join((cache_key, str(kwargs[key])))
         # check if we have it in Cache
-        response = self.cache.getFromCache(cache_key)
+        response = self.cache.fetch(cache_key)
         if not response:
             try:
                 # call the Swagger interface
@@ -372,9 +372,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     # some items in the response may not be storable... so make a storable copy
                     response = self._copyModel(response.data)
                     # save data in Cache
-                    self.cache.putIntoCache(cache_key, response, cache_expiry_secs)
+                    self.cache.put(cache_key, response, cache_expiry_secs)
             except Exception as e:
-                self.cache.delFromCache(cache_key)
+                self.cache.delete(cache_key)
                 LOGGER.error("Error executing Operation [%s] %r" % (operation, kwargs), e)
                 raise
         return response

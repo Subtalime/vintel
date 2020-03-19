@@ -63,17 +63,17 @@ class Map(object):
 
         # Get map from dotlan if not in the cache
         if not svgFile:
-            svg = cache.getFromCache("map_" + self.region)
+            svg = cache.fetch("map_" + self.region)
         else:
             svg = svgFile
         if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg,
+                cache.put("map_" + self.region, svg,
                                    EsiInterface().secondsTillDowntime() + 60 * 60)
             except Exception as e:
                 self.outdatedCacheError = e
-                svg = cache.getFromCache("map_" + self.region, True)
+                svg = cache.fetch("map_" + self.region, True)
                 if not svg:
                     t = "No Map in cache, nothing from dotlan. Must give up " \
                         "because this happened:\n{0} {1}\n\nThis could be a " \

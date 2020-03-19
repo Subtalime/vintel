@@ -106,17 +106,17 @@ class LogWindow(QtWidgets.QWidget):
         self.setBaseSize(400, 300)
         vbox.addWidget(self.textEdit)
         self.addHandler(LogWindowHandler(parent))
-        self.logLevel = self.cache.getFromCache("log_window_level")
+        self.logLevel = self.cache.fetch("log_window_level")
         if not self.logLevel:
             # by default, have warnings only shown here
             self.logLevel = logging.WARNING
         self.setTitle()
 
-        rect = self.cache.getFromCache("log_window")
+        rect = self.cache.fetch("log_window")
         if rect:
             self.restoreGeometry(rect)
 
-        vis = self.cache.getFromCache("log_window_visible")
+        vis = self.cache.fetch("log_window_visible")
         if bool(vis):
             self.show()
 
@@ -178,14 +178,14 @@ class LogWindow(QtWidgets.QWidget):
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super(LogWindow, self).resizeEvent(event)
-        self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
+        self.cache.put("log_window", bytes(self.saveGeometry()))
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         super(LogWindow, self).changeEvent(event)
         if event.type() == QEvent.WindowStateChange:
             if self.windowState() & Qt.WindowMinimized:
-                self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
-                self.cache.putIntoCache("log_window_visible", str(False))
+                self.cache.put("log_window", bytes(self.saveGeometry()))
+                self.cache.put("log_window_visible", str(False))
                 LOGGER.debug("LogWindow hidden")
                 self.hide()
             else:
@@ -193,8 +193,8 @@ class LogWindow(QtWidgets.QWidget):
                 self.show()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
-        self.cache.putIntoCache("log_window_visible", not self.isHidden())
+        self.cache.put("log_window", bytes(self.saveGeometry()))
+        self.cache.put("log_window_visible", not self.isHidden())
         LOGGER.debug("LogWindow closed")
         self.queue_listener.stop()
 
@@ -248,6 +248,6 @@ class LogWindow(QtWidgets.QWidget):
             self.logLevel = currLevel
             self.refresh()
 
-        Cache().putIntoCache("log_window_level", self.logLevel)
+        Cache().put("log_window_level", self.logLevel)
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
