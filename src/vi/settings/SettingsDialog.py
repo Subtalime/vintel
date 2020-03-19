@@ -133,7 +133,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.chatroom_setup()
 
     def chatroom_setup(self):
-        roomnames = Cache().getFromCache("room_names")
+        roomnames = Cache().fetch("room_names")
         if not roomnames:
             roomnames = u"querius.imperium,delve.imperium"
         self.txtChatrooms.setPlainText(roomnames)
@@ -142,7 +142,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.btnRegionHelp.clicked.connect(self.region_help_clicked)
 
         region_names = []
-        cache_regions = Cache().getFromCache("region_name_range")
+        cache_regions = Cache().fetch("region_name_range")
         if cache_regions:
             region_names = cache_regions.split(",")
             for name in region_names:
@@ -203,13 +203,13 @@ class SettingsDialog(QDialog, Ui_Dialog):
             save_cache += "," + self.txtRegions.text()
         # just to make sure
         save_cache = save_cache.lstrip(",")
-        Cache().putIntoCache("region_name_range", save_cache, 60 * 60 * 24 * 365)
+        Cache().put("region_name_range", save_cache, 60 * 60 * 24 * 365)
         self.new_region_range_chosen.emit(save_cache)
 
         return True
 
     def sound_setup(self):
-        self.soundset = Cache().getFromCache("sound_setting_list")
+        self.soundset = Cache().fetch("sound_setting_list")
         if self.soundset:
             self.soundset = literal_eval(self.soundset)
         if not self.soundset:
@@ -290,12 +290,11 @@ class SettingsDialog(QDialog, Ui_Dialog):
                 self.tableViewMap.model().setData(sQModelIndex, color.name(), Qt.EditRole)
                 return True
             return False
-        return False
+        return True
 
     def set_map_table_model(self, index):
         # dirty... but somehow the Model doesn't update the dataset...
-        self.mapColorList[
-            self.cmbAlertType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
+        self.mapColorList[self.cmbAlertType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
         self.mapColorIndex = index
         idx = self.cmbAlertType.itemText(index)
         # self.tableViewMap.model().submitAll()
@@ -328,10 +327,10 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.java_script.save_settings()
         mod = self.lstSound.model()
         sound_set = mod.getDataSet().copy()
-        Cache().putIntoCache("sound_setting_list", str(sound_set))
+        Cache().put("sound_setting_list", str(sound_set))
         text = self.txtChatrooms.toPlainText()
         rooms = [name.strip() for name in text.split(",")]
-        if u",".join(rooms) != Cache().getFromCache("room_names"):
+        if u",".join(rooms) != Cache().fetch("room_names"):
             self.rooms_changed.emit(rooms)
         self.accept()
 

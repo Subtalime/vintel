@@ -72,17 +72,17 @@ class Import:
 
         return self.bridges.export()
 
-    def readGarpaFile(self, fileName: str = None, clipboard: str = None):
+    def readGarpaFile(self, file_name: str = None, clipboard: str = None):
         try:
             if not clipboard:
-                with open(fileName, "r") as f:
+                with open(file_name, "r") as f:
                     content = f.read().splitlines(keepends=False)
             else:
                 content = clipboard.splitlines(keepends=False)
             if content:
                 return self.convertGarpaData(content)
         except Exception as e:
-            LOGGER.error("Error in importing Garpa Jumpbridges: %r", e)
+            LOGGER.error("Error in importing Garpa Jumpbridges: %s, %r" % (file_name, e))
         return []
 
 

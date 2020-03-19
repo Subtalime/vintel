@@ -73,7 +73,7 @@ for pack in move_files:
     include_files.append((os.path.join(resourcePath(), src), dest))
 
 requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy',
-            'pyswagger', 'PyYAML', 'colorutils']
+            'pyswagger', 'PyYAML', 'colorutils', 'colour']
 packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
 
 replace_paths = [(os.path.join(resourcePath(), "mapdata"), "mapdata"),

@@ -58,6 +58,7 @@ from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
 from vi.settings.JsModel import stringToColor
 from vi.systemtray import TrayIcon
+from vi.logger.mystopwatch import ViStopwatch
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -76,6 +77,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __init__(self, path_to_logs: str, tray_icon: TrayIcon, background_color: str):
         super(self.__class__, self).__init__()
+        self.sw = ViStopwatch()
         self.setupUi(self)
         # set the Splitter-Location
         self.splitter.setStretchFactor(8, 2)
@@ -140,12 +142,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.menuRegion = RegionMenu("Regions", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
         # Set up user's intel rooms
-        roomnames = self.cache.getFromCache("room_names")
+        roomnames = self.cache.fetch("room_names")
         if roomnames:
             roomnames = roomnames.split(",")
         else:
             roomnames = (u"delve.imperium", u"querious.imperium")
-            self.cache.putIntoCache("room_names", u",".join(roomnames), 60 * 60 * 24 * 365 * 5)
+            self.cache.put("room_names", u",".join(roomnames), 60 * 60 * 24 * 365 * 5)
         self.roomnames = roomnames
 
         # Disable the sound UI if sound is not available
@@ -194,14 +196,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return self.backgroundColor
 
     def setConstants(self):
-        self.map_update_interval = self.cache.getFromCache("map_update_interval", True)
+        self.map_update_interval = self.cache.fetch("map_update_interval", True)
         if not self.map_update_interval:
             self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
-            self.cache.putIntoCache("map_update_interval", self.map_update_interval)
-        self.clipboard_check_interval = self.cache.getFromCache("clipboard_check_interval", True)
+            self.cache.put("map_update_interval", self.map_update_interval)
+        self.clipboard_check_interval = self.cache.fetch("clipboard_check_interval", True)
         if not self.clipboard_check_interval:
             self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
-            self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
+            self.cache.put("clipboard_check_interval", self.clipboard_check_interval)
 
     def updateCharacterMenu(self):
         try:
@@ -226,10 +228,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def recallCachedSettings(self):
         try:
-            self.cache.recallAndApplySettings(self, "settings")
+            self.cache.recall_and_apply_settings(self, "settings")
         except Exception as e:
             # TODO: add a button to delete the cache / DB
-            self.cache.putIntoCache("settings", "", 0)
+            self.cache.put("settings", "", 0)
             msg = "Something went wrong loading saved state:\n {0}".format(str(e))
             LOGGER.error(msg)
             self.trayIcon.showMessage("Settings error", msg, 1)
@@ -324,9 +326,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def clipboardCheckInterval(self, value: int = None):
         if value:
             self.clipboard_check_interval = value
-            self.cache.putIntoCache("clipboard_check_interval", self.clipboard_check_interval)
+            self.cache.put("clipboard_check_interval", self.clipboard_check_interval)
         if self.clipboard_check_interval is None:
-            self.clipboard_check_interval = self.cache.getFromCache("clipboard_check_interval")
+            self.clipboard_check_interval = self.cache.fetch("clipboard_check_interval")
         if self.clipboard_check_interval is None:
             self.clipboard_check_interval = 4
 
@@ -341,7 +343,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             LOGGER.debug("Opened JumpBridge dialog")
             self.showJumpBridgeChooser()
         else:
-            self.cache.putIntoCache("region_name", qAction.text(), Regions.CACHE_TIME)
+            self.cache.put("region_name", qAction.text(), Regions.CACHE_TIME)
             LOGGER.debug("Set Region to {}".format(qAction.text()))
             self.setupMap()
 
@@ -362,7 +364,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def setupThreads(self):
         LOGGER.debug("Creating threads")
-
 
         self.logConfigThread = LogConfigurationThread(self.logWindow)
         self.logConfigThread.start()
@@ -415,7 +416,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.mapUpdateThread:
             self.mapUpdateThread.pause(True)
         LOGGER.debug("Finding map file")
-        regionName = self.cache.getFromCache("region_name")
+        regionName = self.cache.fetch("region_name")
         if not regionName:
             regionName = "Delve"
 
@@ -426,12 +427,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(None, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
-                self.cache.putIntoCache("region_name", "Delve")
+                self.cache.put("region_name", "Delve")
                 self.dotlan = self.myMap.loadMap(regionName)
             else:
                 sys.exit(1)
         LOGGER.debug("Map File found, Region set to {}".format(regionName))
-        # self.cache.putIntoCache("region_name", "Delve")
+        # self.cache.put("region_name", "Delve")
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
             diagText = "Something went wrong getting map data. Proceeding with older " \
@@ -441,10 +442,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
         # Load the jumpbridges
-        LOGGER.debug("Load jump bridges")
-        self.setJumpbridges()
-        LOGGER.debug("Load jump bridges done")
-
+        with self.sw.timer("setJumpbridges"):
+            self.setJumpbridges()
+        LOGGER.debug(self.sw.get_report())
         self.systems = self.dotlan.systems
         self.dotlan_systems.emit(self.systems)
         if self.chatThread:
@@ -543,11 +543,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     (None, "changeKosCheckClipboard", self.kosClipboardActiveAction.isChecked()),
                     (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled))
         try:
-            self.cache.saveSettings("settings", settings, 60 * 60 * 24 * 30)
+            self.cache.save_settings("settings", settings, 60 * 60 * 24 * 30)
         except Exception:
             pass
         # strsettings = str(settings)
-        # self.cache.putIntoCache("settings", strsettings, 60 * 60 * 24 * 30)
+        # self.cache.put("settings", strsettings, 60 * 60 * 24 * 30)
 
         # Stop the threads
         try:
@@ -852,7 +852,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setInitialMapPositionForRegion(self, regionName):
         try:
             if not regionName:
-                regionName = self.cache.getFromCache("region_name")
+                regionName = self.cache.fetch("region_name")
             if regionName:
                 xy, zoom = self.mapPositionsDict[regionName]
                 self.initialMapPosition = QPoint(xy[0], xy[1])
@@ -861,7 +861,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             pass
 
     def mapPositionChanged(self, qPointF):
-        regionName = self.cache.getFromCache("region_name")
+        regionName = self.cache.fetch("region_name")
         if regionName:
             scrollPosition = self.mapView.page().scrollPosition()
             self.mapPositionsDict[regionName] = (
@@ -876,13 +876,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings(4)
 
     def showJumpBridgeChooser(self):
-        url = self.cache.getFromCache("jumpbridge_url")
+        url = self.cache.fetch("jumpbridge_url")
         chooser = JumpbridgeDialog(self, url)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.exec_()
 
     def checkJumpbridges(self):
-        data = self.cache.getJumpbridge(self.dotlan.region)
+        data = self.cache.fetch_jumpbridge_data()
         if data:
             self.jumpbridgesButton.setEnabled(True)
             self.jumpbridgesButton.setCheckable(True)
@@ -892,40 +892,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.jumpbridgesButton.setCheckable(False)
             self.jumpbridgesButton.setChecked(False)
 
-    def setJumpbridges(self, url: str = None, clipdata: str = None):
-        if url is None:
-            url = ""
+    def setJumpbridges(self, url_or_filepath: str = None, clipdata: str = None):
+        data = []
         try:
-            data = []
-            if url != "":
-                if url.startswith("http"):
-                    resp = requests.get(url)
-                    for line in resp.iter_lines(decode_unicode=True):
-                        parts = line.strip().split()
-                        if len(parts) == 3:
-                            data.append(parts)
-                    if len(data) <= 0:
-                        url = ""
+            if url_or_filepath:
+                if url_or_filepath.startswith("http"):
+                    try:
+                        resp = requests.get(url_or_filepath)
+                        for line in resp.iter_lines(decode_unicode=True):
+                            parts = line.strip().split()
+                            if len(parts) == 3:
+                                data.append(parts)
+                    except Exception as e:
+                        LOGGER.exception("Error querying Jump-Bridge-Data at %s" % (url_or_filepath, ), e)
                 else:
-                    data = Import().readGarpaFile(url)
+                    data = Import().readGarpaFile(url_or_filepath)
+                if len(data): # valid File/URL
+                    self.cache.put("jumpbridge_url", url_or_filepath, maxAge=Cache.FOREVER)
             elif clipdata:
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
-                data = self.cache.getJumpbridge(self.dotlan.region)
+                data = self.cache.fetch_jumpbridge_data()
             self.dotlan.setJumpbridges(self, data)
-            if url or (data and len(data) > 0):
-                if url:
-                    self.cache.putIntoCache("jumpbridge_url",
-                                            url,
-                                            maxAge=Cache.FOREVER)
-                else:
-                    self.cache.putJumpbridge(self.dotlan.region, data)
+            if len(data):
+                self.cache.put_jumpbridge_data(data)
         except Exception as e:
-            QMessageBox.warning(None, "Loading jumpbridges failed!",
-                                "Error: {0}".format(six.text_type(e)),
-                                QMessageBox.Ok)
-            self.cache.delFromCache("jumpbridge_url")
-            self.cache.delJumpbridge(self.dotlan.region)
+            QMessageBox.warning(None, "Loading Jump-Bridges failed!", "Error: %r" % (e, ), QMessageBox.Ok)
+            self.cache.delete("jumpbridge_url")
+            self.cache.delete_jumpbridge_data()
         self.checkJumpbridges()
 
     # TODO: add functionality to still store other Region actions
@@ -934,7 +928,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             menuAction.setChecked(True)
             regionName = six.text_type(menuAction.property("regionName"))
             regionName = Regions.convertRegionName(regionName)
-            Cache().putIntoCache("region_name", regionName, 60 * 60 * 24 * 365)
+            Cache().put("region_name", regionName, 60 * 60 * 24 * 365)
             self.setupMap()
 
     def addMessageToIntelChat(self, message: Message):
@@ -1011,7 +1005,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #     self.trayIcon.setIcon(self.taskbarIconQuiescent)
     #
     def changedRoomnames(self, newRoomnames: list):
-        self.cache.putIntoCache("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
+        self.cache.put("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
         if self.chatThread:
             self.chatThread.update_room_names(newRoomnames)
         # TODO: this is new (ST) to update the Rooms after changes
@@ -1067,7 +1061,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Alert the User
             pass
 
-    def logFileChanged(self, message):
+    def logFileChanged(self, message: Message):
         LOGGER.debug("Message received: {}".format(message))
         # wait for Map to be completly loaded
         if message.status == states.LOCATION:
@@ -1095,7 +1089,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if message.systems:
                 for system in message.systems:
                     systemname = system.name
-                    systemList[systemname].setStatus(message.status, message.timestamp)
+                    try:
+                        systemList[systemname].setStatus(message.status, message.timestamp)
+                    except KeyError:  # Map-System may have changed in the mean time
+                        pass
                     activePlayers = self.knownPlayers.getActiveNames()
                     # notify User if we don't have locations for active Players
                     self.checkPlayerLocations()

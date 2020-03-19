@@ -29,174 +29,93 @@ import logging
 import math
 import os
 import datetime
+from vi.logger.mystopwatch import ViStopwatch
+
 
 JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
              "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
              "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
-LOGGER = logging.getLogger(__name__)
 
 
 class MyMap(Map):
 
     def addTimerJs(self):
-        realtime_js = """
-        // courtesy of https://github.com/PimpTrizkit/PJs 
-        const pSBC=(p,c0,c1,l)=>{
-            let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
-            if(typeof(p)!="number"||p<-1||p>1||typeof(c0)!="string"||(c0[0]!='r'&&c0[0]!='#')||(c1&&!a))return null;
-            if(!this.pSBCr)this.pSBCr=(d)=>{
-                let n=d.length,x={};
-                if(n>9){
-                    [r,g,b,a]=d=d.split(","),n=d.length;
-                    if(n<3||n>4)return null;
-                    x.r=i(r[3]=="a"?r.slice(5):r.slice(4)),x.g=i(g),x.b=i(b),x.a=a?parseFloat(a):-1
-                }else{
-                    if(n==8||n==6||n<4)return null;
-                    if(n<6)d="#"+d[1]+d[1]+d[2]+d[2]+d[3]+d[3]+(n>4?d[4]+d[4]:"");
-                    d=i(d.slice(1),16);
-                    if(n==9||n==5)x.r=d>>24&255,x.g=d>>16&255,x.b=d>>8&255,x.a=m((d&255)/0.255)/1000;
-                    else x.r=d>>16,x.g=d>>8&255,x.b=d&255,x.a=-1
-                }return x};
-            h=c0.length>9,h=a?c1.length>9?true:c1=="c"?!h:false:h,f=pSBCr(c0),P=p<0,t=c1&&c1!="c"?pSBCr(c1):P?{r:0,g:0,b:0,a:-1}:{r:255,g:255,b:255,a:-1},p=P?p*-1:p,P=1-p;
-            if(!f||!t)return null;
-            if(l)r=m(P*f.r+p*t.r),g=m(P*f.g+p*t.g),b=m(P*f.b+p*t.b);
-            else r=m((P*f.r**2+p*t.r**2)**0.5),g=m((P*f.g**2+p*t.g**2)**0.5),b=m((P*f.b**2+p*t.b**2)**0.5);
-            a=f.a,t=t.a,f=a>=0||t>=0,a=f?a<0?t:t<0?a:a*P+t*p:0;
-            if(h)return"rgb"+(f?"a(":"(")+r+","+g+","+b+(f?","+m(a*1000)/1000:"")+")";
-            else return"#"+(4294967296+r*16777216+g*65536+b*256+(f?m(a*255):0)).toString(16).slice(1,f?undefined:-2)
-        }
-
-        // max time for alarm, rect color, secondLine color [ array in set of 3 ]
-        """
-        realtime_js += ColorJavaScript().getJs()
-        realtime_js += """
-        var UNKNOWN_COLOR = "#FFFFFF";
-        var CLEAR_COLOR = "#59FF6C";
-        var STATE = ['alarm', 'was alarmed', 'clear', 'unknown', 'ignore', 'no change', 'request', 'location'];
-        // seconds since a state has been announced, state, text-line to place text, Rectangle, Ice-Rectangle
-        function showTimer(currentTime, state, secondline, rect, rectice) {
-            var bgcolor = UNKNOWN_COLOR; // the default
-            var endcolor = CLEAR_COLOR;
-            var slcolor = '#000000';
-            var arrayoffset = -1;
-            var maxtime = 0;
-            var startTime = new Date().getTime() - currentTime * 1000;
-            window.setInterval(function() {
-                var time = new Date().getTime() - startTime;
-                var elapsed = Math.ceil(time / 100) / 10;
-                if (elapsed >= maxtime) {
-                    if (state == STATE[0]) { // Alarm
-                        while (arrayoffset + 1 < ALARM_COLORS.length / 3 && elapsed > maxtime) {
-                            arrayoffset += 1;
-                            bgcolor = endcolor =  ALARM_COLORS[arrayoffset * 3 + 1];
-                            if (arrayoffset + 1 < ALARM_COLORS.length / 3) {
-                                endcolor = ALARM_COLORS[(arrayoffset + 1) * 3 + 1];
-                            }
-                            slcolor = ALARM_COLORS[arrayoffset * 3 + 2];
-                            maxtime = ALARM_COLORS[arrayoffset * 3];
-                        }
-                    }
-                    else if (state == STATE[2]) { // Clear
-                        while (arrayoffset + 1 < CLEAR_COLORS.length / 3 && elapsed > maxtime) {
-                            arrayoffset += 1;
-                            bgcolor = endcolor = CLEAR_COLORS[arrayoffset * 3 + 1];
-                            if (arrayoffset + 1 < CLEAR_COLORS.length / 3) {
-                                endcolor = CLEAR_COLORS[(arrayoffset + 1) * 3 + 1];
-                            }
-                            slcolor = CLEAR_COLORS[arrayoffset * 3 + 2];
-                            maxtime = CLEAR_COLORS[arrayoffset * 3];
-                        }
-                    }
-                    else if (state == STATE[6]) { // Request
-                        while (arrayoffset + 1 < REQUEST_COLORS.length / 3 && elapsed > maxtime) {
-                            arrayoffset += 1;
-                            bgcolor = endcolor = REQUEST_COLORS[arrayoffset * 3 + 1];
-                            if (arrayoffset + 1 < REQUEST_COLORS.length / 3) {
-                                endcolor = REQUEST_COLORS[(arrayoffset + 1) * 3 + 1];
-                            }
-                            slcolor = REQUEST_COLORS[arrayoffset * 3 + 2];
-                            maxtime = REQUEST_COLORS[arrayoffset * 3];
-                        }
-                    }
-                }
-                var minutes = parseInt(elapsed / 60, 10);
-                var seconds = parseInt(elapsed % 60, 10);
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-                secondline.setAttribute("style", "fill: " + slcolor);
-                var achieved = 0;
-                if (arrayoffset >= 0) {
-                    achieved = elapsed / maxtime;
-                }
-                var newcolor = pSBC(achieved, bgcolor, endcolor, 1);
-                rect.setAttribute('style', "fill: " + newcolor);
-                rectice.setAttribute('style', "fill: " + newcolor);
-                secondline.textContent = minutes + ":" + seconds;
-            }, 1000);
-        }
-        """
-        LOGGER.debug(" Start addTimerJs")
+        self.LOGGER.debug(" Start addTimerJs")
+        realtime_js = ColorJavaScript().js_color_all()
+        realtime_js += ColorJavaScript().show_timer()
         js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
         if not js:
             js = self.soup.new_tag("script", attrs={"id": "timer", "type": "text/javascript"})
         js.string = CData(realtime_js)
+        # js.string = realtime_js
         self.soup.svg.append(js)
-        LOGGER.debug(" End addTimerJs")
+        self.LOGGER.debug(" End addTimerJs")
+
+    def time_report(self, extra_msg: str = None):
+        self.LOGGER.debug(self.sw.get_report(extra_msg))
 
     @property
     def svg(self):
-        start = datetime.datetime.now()
-        LOGGER.debug("Start SVG %s", start)
-        self.addTimerJs()
-        # Re-render all systems
-        onload = []
-        start_sysupd = datetime.datetime.now()
-        LOGGER.debug(" Start system.update (%d Systems)", len(self.systems))
-        for system in self.systems.values():
-            if len(system.timerload) and system.timerload[0] >= 60 * 60 * 2:  # remove timers older than 2 hours
-                system.setStatus(states.UNKNOWN)
-            #TODO: when changing System, rescan all Chats and update markers that way
-            system.update()
-            if len(system.timerload):  # remove timers older than 2 hours
-                onload.append(
-                    "showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
-                        system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3],
-                        system.timerload[4]))
-        LOGGER.debug(" End system.update (took %ds)", (datetime.datetime.now() - start_sysupd).total_seconds())
-        # Update the marker
-        LOGGER.debug(" Start js_onload")
-        js_onload = self.soup.find("script", attrs={"id": "onload"})
-        if not js_onload:
-            js_onload = self.soup.new_tag("script",
-                                          attrs={"id": "onload", "type": "text/javascript"})
-            self.soup.svg.append(js_onload)
-        js_onload = self.soup.find("script", attrs={"id": "onload"})
-        if len(onload) > 0:
-            startjs = "window.onload = function () {\n"
-            for load in onload:
-                startjs += load + "\n"
-            startjs += "}\n"
-            js_onload.string = startjs
-
-        LOGGER.debug(" End js_onload")
-        # Update the marker
-        if not self.marker["opacity"] == "0":
-            now = time.time()
-            newValue = (1 - (now - float(self.marker["activated"])) / 10)
-            if newValue < 0:
-                newValue = "0"
-            self.marker["opacity"] = newValue
-        content = str(self.soup)
-        finished = datetime.datetime.now()
-        LOGGER.debug("End SVG %s (Duration %ds)", finished, (finished-start).total_seconds())
-        # if not getattr(sys, 'frozen', False):
-        #     self.debugWriteSoup(content)
+        with self.sw.timer("SVG"):
+            with self.sw.timer("add Timer JS"):
+                self.addTimerJs()
+            # Re-render all systems
+            with self.sw.timer("System update"):
+                onload = []
+                count = 0
+                cjs = ColorJavaScript()
+                for system in self.systems.values():
+                    if len(system.timerload) and system.timerload[0] >= 60 * 60 * 2:  # remove timers older than 2 hours
+                        system.setStatus(states.UNKNOWN)
+                    #TODO: when changing System, rescan all Chats and update markers that way
+                    if system.update(cjs):
+                        count += 1
+                        if str(system.secondLine.string).startswith("-"):
+                            self.LOGGER.error(system)
+                    if len(system.timerload):  # remove timers older than 2 hours
+                        onload.append(
+                            "showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
+                                system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3],
+                                system.timerload[4]))
+                self.system_updates = count
+            # Update the OnLoad JavaScript in the page
+            with self.sw.timer("add window.onload JS"):
+                js_onload = self.soup.find("script", attrs={"id": "onload"})
+                if not js_onload:
+                    js_onload = self.soup.new_tag("script",
+                                                  attrs={"id": "onload", "type": "text/javascript"})
+                    self.soup.svg.append(js_onload)
+                js_onload = self.soup.find("script", attrs={"id": "onload"})
+                if len(onload) > 0:
+                    startjs = "window.onload = function () {\n"
+                    for load in onload:
+                        startjs += load + "\n"
+                    startjs += "};\n"
+                    js_onload.string = startjs
+            # Update the marker
+            with self.sw.timer("Update Opacity Marker"):
+                if not self.marker["opacity"] == "0":
+                    now = time.time()
+                    new_value = (1 - (now - float(self.marker["activated"])) / 10)
+                    if new_value < 0:
+                        new_value = "0"
+                    self.marker["opacity"] = new_value
+            with self.sw.timer("Build Map Content"):
+                content = str(self.soup)
+            if not getattr(sys, 'frozen', False):
+                with self.sw.timer("Dump Map To disc"):
+                    # pass
+                    self.debugWriteSoup(content)
+        self.time_report("System-Updates: %d" % self.system_updates)
         return content
 
     def __init__(self, parent=None):
         self.progress = None
         self.parent = parent
         self.region = None
+        self.sw = ViStopwatch()
+        self.system_updates = 0
+        self.LOGGER = logging.getLogger(__name__)
 
     def loadMap(self, regionName):
         testFile = getVintelMap(regionName=regionName)
@@ -229,7 +148,7 @@ class MyMap(Map):
             with open(os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+") as svgFile:
                 svgFile.write(svgData)
         except Exception as e:
-            LOGGER.error(e)
+            self.LOGGER.error(e)
 
     def setJumpbridges(self, parent, jumpbridgesData):
         """

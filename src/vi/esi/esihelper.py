@@ -32,7 +32,7 @@ class EsiHelper:
         self.esi = EsiInterface()
         self.cache = Cache()
 
-    def getAvatarByName(self, characterName: str) -> str:
+    def get_avatarByName(self, characterName: str) -> str:
         resp = self.esi.getCharacterAvatarByName(characterName)
         if resp:
             imageurl = resp["px64x64"]
@@ -40,7 +40,7 @@ class EsiHelper:
             return avatar
         return None
 
-    def getAvatarById(self, characterId: int) -> str:
+    def get_avatarById(self, characterId: int) -> str:
         resp = self.esi.getCharacterAvatar(characterId)
         if resp:
             imageurl = resp["px64x64"]

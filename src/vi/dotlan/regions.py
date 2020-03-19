@@ -28,7 +28,7 @@ class Regions:
     def __init__(self):
         cache = Cache()
         self.regions = dict()
-        svg = cache.getFromCache("regions")
+        svg = cache.fetch("regions")
         if not svg:
             url = self.DOTLAN_REGION_URL
             content = requests.get(url).text
@@ -39,7 +39,7 @@ class Regions:
             for href in hrefs:
                 self.regions[href.text] = href.attrs['href']
             if len(self.regions) > 0:
-                cache.putIntoCache("regions", str(",".join("{}.{}".format(key, val) for key, val in self.regions.items())), self.CACHE_TIME)
+                cache.put("regions", str(",".join("{}.{}".format(key, val) for key, val in self.regions.items())), self.CACHE_TIME)
         else:
             tregions = str(svg).split(",")
             for region in tregions:

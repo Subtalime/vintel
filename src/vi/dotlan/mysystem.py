@@ -19,9 +19,11 @@
 
 from vi.dotlan.system import System
 import time
+import datetime
 import math
 from vi import states
 from vi.dotlan.colorjavascript import ColorJavaScript
+import logging
 
 
 class MySystem(System):
@@ -44,19 +46,34 @@ class MySystem(System):
         for rect in self.svgElement.select("rect"):
             rect["style"] = "fill: #ffffff"
 
-    def update(self):
+    def setStatus(self, new_status, alarm_time: float = time.time()):
+        super(MySystem, self).setStatus(new_status, alarm_time)
+
+    def update(self, cjs: ColorJavaScript):
+        updated = False
+        # calc the new timer for injecting into JS
+        diff = max(0, math.floor(time.time() - self.lastAlarmTime))
+        # diff = time.time() - self.lastAlarmTime
+        minutes = int(math.floor(diff / 60))
+        seconds = int(diff - minutes * 60)
+        ndiff = int(minutes * 60 + seconds)
+        # if self.status != states.UNKNOWN and (diff < 0 or ndiff > cjs.max_time(self.status)):  # anything older than max color-size
+        #     self.setStatus(states.UNKNOWN)
         if self.status != states.UNKNOWN:
-            # calc the new timer for injecting into JS
-            diff = time.time() - self.lastAlarmTime
-            minutes = int(math.floor(diff / 60))
-            seconds = int(diff - minutes * 60)
-            ndiff = minutes * 60 + seconds
+            self.secondLine.string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
             self.timerload = (ndiff, self.status, self.secondLine["id"], self.rectId, self.rectIdIce)
-            self.secondLine.string = "{:02d}:{:02d}".format(minutes, seconds)
-            color, txtcolor = ColorJavaScript().get_color(ndiff, self.status)
+            color, text_color = cjs.color_at(ndiff, self.status)
+            updated = True
             for rect in self.svgElement.select("rect"):
                 rect["style"] = "fill: " + color
-            self.secondLine["style"] = "fill: " + txtcolor
+            self.secondLine["style"] = "fill: " + text_color
         else:
             self.secondLine.string = "??"
             self.timerload = ()
+        return updated
+
+    def __repr__(self):
+        ret_str = "%s: Alarm: %f (Diff: -%f=%f)  (%s)" % (
+            self.name, self.lastAlarmTime, time.time(), time.time() - self.lastAlarmTime,
+            (",".join("{}.{}".format(key, val) for key, val in self.statistics.items())),)
+        return ret_str

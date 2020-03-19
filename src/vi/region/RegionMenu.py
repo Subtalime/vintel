@@ -75,7 +75,7 @@ class RegionMenu(QMenu):
 
     def addItems(self):
         self.removeItems()
-        regionNames = Cache().getFromCache("region_name_range")
+        regionNames = Cache().fetch("region_name_range")
         LOGGER.debug("Updating Region-Menu with {}".format(regionNames))
         if regionNames:
             self.regionNames = [getRegionName(y) for y in regionNames.split(",")]
@@ -86,14 +86,14 @@ class RegionMenu(QMenu):
         self.selectedRegion = self.getSelectedRegion
         if self.selectedRegion not in self.regionNames:
             self.selectedRegion = self.regionNames[0]
-            Cache().putIntoCache("region_name", self.selectedRegion)
+            Cache().put("region_name", self.selectedRegion)
         for region in self.regionNames:
             self.addItem(region)
         self._addRemainder()
 
     @property
     def getSelectedRegion(self) -> str:
-        return Cache().getFromCache("region_name", True)
+        return Cache().fetch("region_name", True)
 
     def removeItems(self):
         try:

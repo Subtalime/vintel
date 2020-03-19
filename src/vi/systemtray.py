@@ -171,7 +171,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         org_sound_volume = None
         if soundlist is None:
             try:
-                soundlist = Cache().getFromCache("sound_setting_list")
+                soundlist = Cache().fetch("sound_setting_list")
                 if soundlist:
                     soundlist = literal_eval(soundlist)
             except (Exception, ValueError) as e:
