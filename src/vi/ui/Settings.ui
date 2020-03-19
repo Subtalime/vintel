@@ -184,9 +184,9 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_map_display">
+        <widget class="QWidget" name="tab_color_display">
          <attribute name="title">
-          <string>Map-Display</string>
+          <string>Color</string>
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
@@ -199,29 +199,29 @@
             </property>
             <layout class="QGridLayout" name="gridLayout_4">
              <item row="2" column="0">
-              <widget class="QPushButton" name="btnMapAddTime">
+              <widget class="QPushButton" name="colorAddTime">
                <property name="text">
                 <string>add Time</string>
                </property>
               </widget>
              </item>
              <item row="0" column="0">
-              <widget class="QComboBox" name="cmbAlertType"/>
+              <widget class="QComboBox" name="colorType"/>
              </item>
              <item row="2" column="1">
-              <widget class="QPushButton" name="btnMapDelTime">
+              <widget class="QPushButton" name="colorDelTime">
                <property name="text">
                 <string>delete Time</string>
                </property>
               </widget>
              </item>
              <item row="1" column="0" colspan="2">
-              <widget class="QTableView" name="tableViewMap"/>
+              <widget class="QTableView" name="colorTable"/>
              </item>
              <item row="0" column="1">
               <widget class="QLabel" name="label_12">
                <property name="text">
-                <string>Colors will blend over from the lowest timeline to the next highest.</string>
+                <string>Background-Colors will blend over from the lowest timeline to the next highest and end up in WHITE</string>
                </property>
                <property name="alignment">
                 <set>Qt::AlignCenter</set>

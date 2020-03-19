@@ -20,16 +20,13 @@
 import time
 import logging
 import six
-from datetime import timedelta, datetime
-import os
-import stat
-import glob
+from datetime import datetime
 
 from six.moves import queue as SixQueue
 import queue
 from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal
-
+from vi.logger.mystopwatch import ViStopwatch as Stopwatch
 from vi import koschecker
 from vi.cache.cache import Cache
 from vi.resources import resourcePath, getVintelDir
@@ -39,8 +36,6 @@ from vi.esi.esihelper import EsiHelper
 STATISTICS_UPDATE_INTERVAL_MSECS = (1 * 60) * 1000  # every hour
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 4  # oldest Chatlog-File to scan (4 hours)
 
-LOGGER = logging.getLogger(__name__)
-
 
 # attempt to run this in a thread rather than a timer
 # to reduce flickering on reload
@@ -49,7 +44,8 @@ class MapUpdateThread(QThread):
 
     def __init__(self, timerInterval: int = 4000):
         QThread.__init__(self)
-        LOGGER.debug("Starting MapUpdate Thread {}".format(timerInterval))
+        self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Starting MapUpdate Thread {}".format(timerInterval))
         self.queue = queue.Queue()
         self._active = False
         self.paused = False
@@ -61,7 +57,7 @@ class MapUpdateThread(QThread):
         self.queue.put((content, zoomfactor, scrollposition))
 
     def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
-        LOGGER.debug("Run-Starting MapUpdate Thread")
+        self.LOGGER.debug("Run-Starting MapUpdate Thread")
         self._active = True
         super(MapUpdateThread, self).start(priority)
 
@@ -86,38 +82,39 @@ class MapUpdateThread(QThread):
                 pass
             if timeout and self.paused:  # we don't have initial Map-Data yet
                 load_map_attempt += 1
-                LOGGER.debug("Map-Content update attempt, but not active")
+                self.LOGGER.debug("Map-Content update attempt, but not active")
                 if load_map_attempt > 10:
-                    LOGGER.critical("Something is stopping the program of progressing. (Map-Attempts > 10\n"
-                                    "If this continues to happen, delete the Cache-File in \"%s\"" % getVintelDir())
+                    self.LOGGER.critical("Something is stopping the program of progressing. (Map-Attempts > 10\n"
+                                         "If this continues to happen, delete the Cache-File in \"%s\"" % (
+                                             getVintelDir(),))
                     self.quit()
                     return
                 continue
             elif self.paused and not content:
-                LOGGER.debug("No Map-Content received. Ending MapUpdate Thread")
+                self.LOGGER.debug("No Map-Content received. Ending MapUpdate Thread")
                 self.quit()
                 return
             try:
                 load_map_attempt = 0
                 if not timeout and content:  # not based on Timeout
-                    LOGGER.debug("Setting Map-Content start")
+                    self.LOGGER.debug("Setting Map-Content start")
                     zoom_factor = zoom_factor if zoom_factor else 1.
                     # zoom_factor = float(zoom_factor)
                     scroll_to = ""
                     if scroll_position:
-                        LOGGER.debug("Current Scroll-Position {}".format(scroll_position))
+                        self.LOGGER.debug("Current Scroll-Position {}".format(scroll_position))
                         scroll_to = str("window.scrollTo({:.0f}, {:.0f});".
                                         format(scroll_position.x() / zoom_factor,
                                                scroll_position.y() / zoom_factor))
                     new_content = injectScrollPosition(content, scroll_to)
                     self.map_update.emit(new_content)
-                    LOGGER.debug("Setting Map-Content complete")
+                    self.LOGGER.debug("Setting Map-Content complete")
             except Exception as e:
-                LOGGER.error("Problem with setMapContent: %r", e)
+                self.LOGGER.error("Problem with setMapContent: %r" % (e,))
 
     def quit(self):
         if self._active:
-            LOGGER.debug("Stopping MapUpdate Thread")
+            self.LOGGER.debug("Stopping MapUpdate Thread")
             self._active = False
             self.pause(False)
             self.addToQueue()
@@ -130,33 +127,39 @@ class AvatarFindThread(QThread):
     def __init__(self):
         QThread.__init__(self)
         self.queue = SixQueue.Queue()
+        self.LOGGER = logging.getLogger(__name__)
         self._active = False
         self.avatar_timeout = 2  # maximum time it should take
         self.avatar_retry_delay = 120  # try again after x seconds
         self.last_try = None
+        self.sw = Stopwatch()
 
-    def addChatEntry(self, chatEntry=None, clearCache=False):
+    def addChatEntry(self, chat_entry=None, clear_cache=False):
         try:
-            if clearCache:
+            if clear_cache:
                 cache = Cache()
-                cache.delete_avatar(chatEntry.message.user)
+                cache.delete_avatar(chat_entry.message.user)
 
             # Enqeue the data to be picked up in run()
-            self.queue.put(chatEntry)
+            self.queue.put(chat_entry)
         except Exception as e:
-            LOGGER.error("Error in AvatarFindThread: %r", e)
+            self.LOGGER.error("Error in AvatarFindThread: %r" % (e,))
 
     def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
-        LOGGER.debug("Starting Avatar-Thread")
+        self.LOGGER.debug("Starting Avatar-Thread")
         self._active = True
         super(AvatarFindThread, self).start(priority)
 
-    def switch_off_avatar(self, start_time):
-        if start_time and self.last_try:
-            if datetime.now() - start_time > self.avatar_timeout * 1000:
+    def switch_off_avatar(self):
+        duration = self.sw.root_time()
+
+        if duration and self.last_try:
+            if duration * 1000 > self.avatar_timeout:
+                self.LOGGER.info("Fetching Avatar took longer than %ds. Suspending a bit..." % (self.avatar_timeout,))
                 self.last_try = datetime.now()
-        elif not start_time:
+        elif not duration:
             if datetime.now() - self.last_try > self.avatar_timeout:
+                self.LOGGER.info("Re-Instating fetching Avatars...")
                 self.last_try = None
 
     def run(self):
@@ -177,25 +180,29 @@ class AvatarFindThread(QThread):
                     # TODO: Seems this causes issues of performance if bad internet connection...
                     #  try to do it with increasing time to skip Avatar-Load
                     #  or even do it within ESI to skip all calls!
-                    start_time = datetime.now()
-                    LOGGER.debug("AvatarFindThread getting avatar for %s at %s", charname, start_time)
-                    avatar = EsiHelper().get_avatarByName(charname)
-                    LOGGER.debug("AvatarFindThread getting avatar for %s took %ds", charname,
-                                 (datetime.now() - start_time).total_seconds())
-                    self.switch_off_avatar(start_time)
-                else:
-                    self.switch_off_avatar(None)
+                    with self.sw.timer("Avatar fetch"):
+                        # start_time = datetime.now()
+                        # LOGGER.debug("AvatarFindThread getting avatar for %s at %s", charname, start_time)
+                        avatar = EsiHelper().get_avatarByName(charname)
+                    # LOGGER.debug("AvatarFindThread getting avatar for %s took %ds", charname,
+                    #              (datetime.now() - start_time).total_seconds())
+                    # self.switch_off_avatar(start_time)
+                    # else:
+                    #     self.switch_off_avatar(None)
+                    self.switch_off_avatar()
                 if avatar:
-                    LOGGER.debug("AvatarFindThread emit avatar_update for %s" % charname)
+                    self.LOGGER.debug(
+                        "AvatarFindThread emit avatar_update for %s: %r" % (charname, self.sw.get_report(),))
                     self.avatar_update.emit(chat_entry, avatar)
                 else:
-                    LOGGER.debug("AvatarFindThread Avator not found for %s" % charname)
+                    self.LOGGER.debug(
+                        "AvatarFindThread Avatar not found for %s: %r" % (charname, self.sw.get_report(),))
             except Exception as e:
-                LOGGER.error("Error in AvatarFindThread : %r", e)
+                self.LOGGER.error("Error in AvatarFindThread : %r" % (e,))
 
     def quit(self):
         if self._active:
-            LOGGER.debug("Stopping Avatar-Thread")
+            self.LOGGER.debug("Stopping Avatar-Thread")
             self._active = False
             self.addChatEntry()
             super(AvatarFindThread, self).quit()
@@ -206,7 +213,9 @@ class KOSCheckerThread(QThread):
 
     def __init__(self):
         QThread.__init__(self)
-        LOGGER.debug("Starting KOSChecker-Thread")
+        self.LOGGER = logging.getLogger(__name__)
+
+        self.LOGGER.debug("Starting KOSChecker-Thread")
         self.queue = SixQueue.Queue()
         self.recentRequestNamesAndTimes = {}
         self._active = False
@@ -224,10 +233,10 @@ class KOSCheckerThread(QThread):
             # Enqeue the data to be picked up in run()
             self.queue.put((names, requestType, onlyKos))
         except Exception as e:
-            logging.error("Error in KOSCheckerThread.addRequest: %r", e)
+            self.LOGGER.error("Error in KOSCheckerThread.addRequest: %r" % (e,))
 
     def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
-        LOGGER.debug("Starting KOSChecker-Thread")
+        self.LOGGER.debug("Starting KOSChecker-Thread")
         self._active = True
         super(KOSCheckerThread, self).start(priority)
 
@@ -251,18 +260,18 @@ class KOSCheckerThread(QThread):
                         hasKos = True
                         break
             except Exception as e:
-                LOGGER.error("Error in KOSCheckerThread.run: %r", e)
+                self.LOGGER.error("Error in KOSCheckerThread.run: %r" % (e,))
                 continue
 
-            logging.info(
-                "KOSCheckerThread emitting kos_result for: state = {0}, text = {1}, requestType = {2}, hasKos = {3}".format(
-                    "ok", text, requestType, hasKos))
+            self.LOGGER.info(
+                "KOSCheckerThread emitting kos_result for: state = {0}, text = {1}, requestType = {2}, hasKos = {3}".
+                    format("ok", text, requestType, hasKos))
             self.kos_result.emit(text, requestType, hasKos)
             # self.emit(PYQT_SIGNAL("kos_result"), "ok", text, requestType, hasKos)
 
     def quit(self):
         if self._active:
-            LOGGER.debug("Stopping KOSChecker-Thread")
+            self.LOGGER.debug("Stopping KOSChecker-Thread")
             self._active = False
             self.addRequest()
             super(KOSCheckerThread, self).quit()
@@ -273,7 +282,8 @@ class MapStatisticsThread(QThread):
 
     def __init__(self):
         QThread.__init__(self)
-        LOGGER.debug("Starting MapStatistics-Thread")
+        self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Starting MapStatistics-Thread")
         self.queue = SixQueue.Queue(maxsize=1)
         self.lastStatisticsUpdate = time.time()
         self.pollRate = STATISTICS_UPDATE_INTERVAL_MSECS
@@ -284,7 +294,7 @@ class MapStatisticsThread(QThread):
         self.queue.put(1)
 
     def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
-        LOGGER.debug("Starting Map-Statistic-Update-Thread")
+        self.LOGGER.debug("Starting Map-Statistic-Update-Thread")
         self._active = True
         super(MapStatisticsThread, self).start(priority)
 
@@ -297,23 +307,23 @@ class MapStatisticsThread(QThread):
             if not self._active:
                 return
             self.refreshTimer.stop()
-            LOGGER.debug("MapStatisticsThread requesting statistics")
+            self.LOGGER.debug("MapStatisticsThread requesting statistics")
             try:
                 statistics = EsiHelper().getSystemStatistics()
                 # statistics = evegate.EveGate().getSystemStatistics()
                 # time.sleep(2)  # sleeping to prevent a "need 2 arguments"-error
                 requestData = {"result": "ok", "statistics": statistics}
             except Exception as e:
-                LOGGER.error("Error in MapStatisticsThread: %r", e)
+                self.LOGGER.error("Error in MapStatisticsThread: %r" % (e,))
                 requestData = {"result": "error", "text": six.text_type(e)}
             self.lastStatisticsUpdate = time.time()
             self.refreshTimer.start(self.pollRate)
             self.statistic_data_update.emit(requestData)
-            LOGGER.debug("MapStatisticsThread emitted statistic_data_update")
+            self.LOGGER.debug("MapStatisticsThread emitted statistic_data_update")
 
     def quit(self):
         if self._active:
-            LOGGER.debug("Stopping MapStatistics-Thread")
+            self.LOGGER.debug("Stopping MapStatistics-Thread")
             self._active = False
             self.requestStatistics()
             super(MapStatisticsThread, self).quit()
@@ -324,14 +334,15 @@ class ChatTidyThread(QThread):
 
     def __init__(self, max_age: int = 20 * 60, interval: float = 60):
         QThread.__init__(self)
-        LOGGER.debug("Starting ChatTidy-Thread")
+        self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Starting ChatTidy-Thread")
         self._active = False
         self.interval = interval
         self.max_age = max_age
         self.queue = SixQueue.Queue(maxsize=1)
 
     def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
-        LOGGER.debug("Starting Chat-Tidy-Up-Thread")
+        self.LOGGER.debug("Starting Chat-Tidy-Up-Thread")
         self._active = True
         super(ChatTidyThread, self).start(priority)
 
@@ -346,7 +357,7 @@ class ChatTidyThread(QThread):
 
     def quit(self):
         if self._active:
-            LOGGER.debug("Stopping ChatTidy-Thread")
+            self.LOGGER.debug("Stopping ChatTidy-Thread")
             self._active = False
             self.queue.put(1)
             super(ChatTidyThread, self).quit()

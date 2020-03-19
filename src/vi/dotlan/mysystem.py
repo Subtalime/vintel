@@ -73,7 +73,9 @@ class MySystem(System):
         return updated
 
     def __repr__(self):
-        ret_str = "%s: Alarm: %f (Diff: -%f=%f)  (%s)" % (
-            self.name, self.lastAlarmTime, time.time(), time.time() - self.lastAlarmTime,
+        la = datetime.datetime.utcfromtimestamp(self.lastAlarmTime)
+        no = datetime.datetime.utcfromtimestamp(time.time())
+        ret_str = "%s: Alarm: %f (%s) (Diff: from NOW %f (%s) = %f)  (%s)" % (
+            self.name, self.lastAlarmTime, la, time.time(), no, time.time() - self.lastAlarmTime,
             (",".join("{}.{}".format(key, val) for key, val in self.statistics.items())),)
         return ret_str

@@ -62,3 +62,17 @@ class ViStopwatch(StopWatch):
             time_msg += "\n" + extra_message
 
         return time_msg
+
+    def root_time(self) -> float:  # ms
+        aggregated_report = self.get_last_aggregated_report()
+        values = aggregated_report.aggregated_values
+
+        log_names = sorted(
+            log_name for log_name in values if "+" not in log_name
+        )
+        if not log_names:
+            return 0.
+
+        root = log_names[0]
+        root_time_ms, root_count, bucket = values[root]
+        return root_time_ms / root_count

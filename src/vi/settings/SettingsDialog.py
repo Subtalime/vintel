@@ -106,20 +106,20 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.setWindowTitle("Vintel Settings")
         # Everything to do with Map-Colors
         self.java_script = ColorJavaScript()
-        self.mapColorList = self.java_script.js_lst.copy()
+        self.color_list = self.java_script.js_lst.copy()
         self.mapColorIndex = 0
-        self.model = JsModel(self.mapColorList['Alarm'], self.java_script.js_header)
-        self.tableViewMap.setModel(self.model)
-        self.tableViewMap.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.tableViewMap.resizeColumnsToContents()
-        self.tableViewMap.setSortingEnabled(True)
-        self.tableViewMap.sortByColumn(0, Qt.AscendingOrder)
-        self.tableViewMap.doubleClicked.connect(self.map_select_color)
-        self.tableViewMap.clicked.connect(self.map_select_color)
-        self.cmbAlertType.addItems(self.mapColorList.keys())
-        self.cmbAlertType.currentIndexChanged.connect(self.set_map_table_model)
-        self.btnMapAddTime.clicked.connect(self.map_add_color_row)
-        self.btnMapDelTime.clicked.connect(self.map_remove_color_row)
+        self.model = JsModel(self.color_list['Alarm'], self.java_script.js_header)
+        self.colorTable.setModel(self.model)
+        self.colorTable.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.colorTable.resizeColumnsToContents()
+        self.colorTable.setSortingEnabled(True)
+        self.colorTable.sortByColumn(0, Qt.AscendingOrder)
+        self.colorTable.doubleClicked.connect(self.select_color)
+        self.colorTable.clicked.connect(self.select_color)
+        self.colorType.addItems(self.color_list.keys())
+        self.colorType.currentIndexChanged.connect(self.set_map_table_model)
+        self.colorAddTime.clicked.connect(self.color_add_row)
+        self.colorDelTime.clicked.connect(self.color_del_row)
         # all General settings
         self.btnColor.clicked.connect(self.color_chooser)
         self.buttonBox.accepted.connect(self.save_settings)
@@ -270,36 +270,36 @@ class SettingsDialog(QDialog, Ui_Dialog):
             if file[0] != '':
                 self.txtSound.setText(file[0])
 
-    def map_add_color_row(self):
-        index = self.tableViewMap.selectionModel().currentIndex()
+    def color_add_row(self):
+        index = self.colorTable.selectionModel().currentIndex()
         if index.isValid():
-            self.tableViewMap.model().insertRows(index.row(), 1)
+            self.colorTable.model().insertRows(index.row(), 1)
 
-    def map_remove_color_row(self):
-        index = self.tableViewMap.selectionModel().currentIndex()
+    def color_del_row(self):
+        index = self.colorTable.selectionModel().currentIndex()
         if index.isValid():
-            self.tableViewMap.model().removeRows(index.row(), 1)
+            self.colorTable.model().removeRows(index.row(), 1)
 
-    def map_select_color(self, sQModelIndex: QModelIndex):
+    def select_color(self, sQModelIndex: QModelIndex):
         if not sQModelIndex.isValid():
             return False
         if sQModelIndex.column() > 0:  # Color column
             color = stringToColor(sQModelIndex.data())
             color = dialogColor(color)
             if color.isValid():
-                self.tableViewMap.model().setData(sQModelIndex, color.name(), Qt.EditRole)
+                self.colorTable.model().setData(sQModelIndex, color.name(), Qt.EditRole)
                 return True
             return False
         return True
 
     def set_map_table_model(self, index):
         # dirty... but somehow the Model doesn't update the dataset...
-        self.mapColorList[self.cmbAlertType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
+        self.color_list[self.colorType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
         self.mapColorIndex = index
-        idx = self.cmbAlertType.itemText(index)
-        # self.tableViewMap.model().submitAll()
-        self.model = JsModel(self.mapColorList[idx], self.java_script.js_header)
-        self.tableViewMap.setModel(self.model)
+        idx = self.colorType.itemText(index)
+        # self.colorTable.model().submitAll()
+        self.model = JsModel(self.color_list[idx], self.java_script.js_header)
+        self.colorTable.setModel(self.model)
 
     def color_chooser(self):
         color = stringToColor(self.color)
@@ -323,7 +323,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.settings_saved.emit()
         # dirty, but make sure the latest Model is copied to our data
         self.set_map_table_model(0)
-        self.java_script.js_lst = self.mapColorList.copy()
+        self.java_script.js_lst = self.color_list.copy()
         self.java_script.save_settings()
         mod = self.lstSound.model()
         sound_set = mod.getDataSet().copy()
@@ -345,5 +345,6 @@ if __name__ == "__main__":
 
     a = QApplication(sys.argv)
     d = SettingsDialog()
+    d.tabWidget.setCurrentIndex(1)
     d.show()
     sys.exit(a.exec_())
