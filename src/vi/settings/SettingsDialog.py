@@ -35,6 +35,12 @@ class SettingsDialog(QDialog, Ui_Dialog):
     new_region_range_chosen = pyqtSignal(str)
     rooms_changed = pyqtSignal(list)
 
+    TAB_GENERAL = 0
+    TAB_COLOR = 1
+    TAB_SOUND = 2
+    TAB_REGIONS = 3
+    TAB_ROOMS = 4
+
     class SoundTableModel(QAbstractTableModel):
         layout_to_be_changed = pyqtSignal()
         layout_changed = pyqtSignal()
@@ -316,8 +322,10 @@ class SettingsDialog(QDialog, Ui_Dialog):
 
     def save_settings(self):
         if not self.region_save():
+            self.tabWidget.setCurrentIndex(self.TAB_REGIONS)
             return
         if not self.isInteger(self.txtJumpDistance.text()):
+            self.tabWidget.setCurrentIndex(self.TAB_GENERAL)
             self.txtJumpDistance.setFocus(Qt.OtherFocusReason)
             return
         self.settings_saved.emit()

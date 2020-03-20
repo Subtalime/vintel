@@ -48,7 +48,6 @@ class JsModel(QAbstractTableModel):
         length = len(self.m_grid_data)
         return length
 
-
     # resolve from dataset
     def columnCount(self, index=QModelIndex(), *args, **kwargs):
         if index.isValid():
@@ -78,6 +77,10 @@ class JsModel(QAbstractTableModel):
             if col == 1:
                 qColor = stringToColor(self.m_grid_data[row][col])
                 return QBrush(qColor)
+        elif role == Qt.ForegroundRole:
+            if col == 1:
+                qColor = stringToColor(self.m_grid_data[row][col+1])
+                return QBrush(qColor)
 
         return QVariant()
 
@@ -88,13 +91,12 @@ class JsModel(QAbstractTableModel):
     were present and user permissions are set to allow the checkbox to be selected, calls 
     would also be made with the role set to Qt::CheckStateRole.
     """
-
     def setData(self, index: QModelIndex, data: QVariant, role: int = None):
         if role == Qt.EditRole and index.isValid():
             row = index.row()
             col = index.column()
             if col > 0 and str(data).startswith("#") and len(str(data)) == 7 and QColor(
-                    data).isValid() or col == 0 and isinstance(data, int) and 0 <= int(data) <= 86400:
+                    data).isValid() or col == 0 and  0 <= int(data) <= 86400:
                 self.m_grid_data[row][col] = str(data)
                 self.dataChanged.emit(index, index, (Qt.DisplayRole,))
                 return True
@@ -108,7 +110,6 @@ class JsModel(QAbstractTableModel):
     If editing one cell modifies more data than the data in that particular cell, the model
     must emit a dataChanged() signal in order for the data that has been changed to be read.
     """
-
     def flags(self, flags: QModelIndex):
         fl = super(self.__class__, self).flags(flags)
         fl |= Qt.ItemIsEditable
@@ -125,14 +126,8 @@ class JsModel(QAbstractTableModel):
 
     def insertRows(self, position: int, rows: int = 1, parent=QModelIndex(), *args, **kwargs):
         self.beginInsertRows(parent, position, position+rows-1)
-        # if position >= self.rowCount()-1:
-        #     for row in range(rows):
-        #         self.m_grid_data.append([86400, "#FFFFFF", "#FFFFFF"])
-        # else:
-        #     for row in range(rows):
-        #         self.m_grid_data.insert(position+1+row, [86400, "#FFFFFF", "#FFFFFF"])
         for row in range(rows):
-            self.m_grid_data.insert(position + 1 + row, [86400, "#FFFFFF", "#FFFFFF"])
+            self.m_grid_data.insert(position + 1 + row, [86400, "#ffffff", "#000000"])
         self.endInsertRows()
         return True
 
@@ -158,7 +153,6 @@ class JsTableView(QTableView):
         self.doubleClicked.connect(self.fn_clickAction)
         self.clicked.connect(self.fn_clickAction)
 
-
     def addRow(self):
         index = self.selectionModel().currentIndex()
         if index.isValid():
@@ -168,7 +162,6 @@ class JsTableView(QTableView):
         index = self.selectionModel().currentIndex()
         if index.isValid():
             self.model().removeRows(index.row())
-
 
     def fn_clickAction(self, sQModelIndex: QModelIndex):
         if not sQModelIndex.isValid():

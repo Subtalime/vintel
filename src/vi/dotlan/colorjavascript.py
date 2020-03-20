@@ -20,7 +20,7 @@ from vi.singleton import Singleton
 from vi import states
 import pickle
 import six
-from colour import Color as CColor
+from colour import Color
 
 
 class ColorJavaScript(six.with_metaclass(Singleton)):
@@ -122,7 +122,7 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
             color_range = self.js_lst[status.capitalize()]
             time_offset = 0
             for index, color_index in enumerate(self.js_lst[status.capitalize()]):
-                start_color = CColor(color_index[1])
+                start_color = Color(color_index[1])
                 if index == len(color_range) - 1:  # last reached
                     end_color = self.WHITE
                 else:
