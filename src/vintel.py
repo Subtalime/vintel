@@ -37,90 +37,93 @@ from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 
 
+class MyMainException(Exception):
+    logging.getLogger().critical(Exception)
+    pass
+
+
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
-        backGroundColor = "#c6d9ec"
-
+        self.LOGGER = logging.getLogger(__name__)
+        self.backGroundColor = "#c6d9ec"
+        self.splash = None
+        self.vintelCache = None
+        self.logLevel = None
+        self.chatLogDirectory = None
+        self.trayIcon = None
+        self.mainWindow = None
 
         if not sys.platform.startswith("darwin"):
             # this may set the Window-Icon in the Taskbar too
             import ctypes
-            myApplicationID = str(
-                "{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT))
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myApplicationID)
+            my_app_id = u"{}.{}.{}".format(version.PROGNAME, version.VERSION, version.SNAPSHOT)
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(my_app_id)
             # and maybe this...
 
         if sys.platform != "win32" and len(sys.argv) <= 2:
-            print("Usage: python vintel.py <chatlogsdir>")
-            sys.exit(1)
+            msg = "Usage: python vintel.py <chatlogsdir>"
+            raise MyMainException(msg, NotImplementedError)
 
-            # Set up paths
-        chatLogDirectory = getEveChatlogDir(passedDir=sys.argv[1] if len(sys.argv) > 1 else None)
-        if not os.path.exists(chatLogDirectory):
+    def configure(self):
+        # Set up paths
+        self.chatLogDirectory = getEveChatlogDir(passedDir=sys.argv[1] if len(sys.argv) > 1 else None)
+        if not os.path.exists(self.chatLogDirectory):
             try:
-                os.makedirs(chatLogDirectory)
+                os.makedirs(self.chatLogDirectory)
             except Exception as e:
-                print("Error while creating %s" % chatLogDirectory, e)
-                raise e
-        if not os.path.exists(chatLogDirectory):
+                raise MyMainException("Error while creating %s" % chatLogDirectory, e)
+        if not os.path.exists(self.chatLogDirectory):
             # None of the paths for logs exist, bailing out
-            print("no path to logs! %s" % chatLogDirectory)
-            QMessageBox.critical(None, "No path to Logs", "No logs found at: " + chatLogDirectory,
+            msg = "no path to logs! %s" % self.chatLogDirectory
+            QMessageBox.critical(None, "No path to Logs", "No logs found at: " + self.chatLogDirectory,
                                  QMessageBox.Ok)
-            sys.exit(1)
+            raise MyMainException(msg, PermissionError)
 
-        # logLevel = logging.DEBUG
-        # logging.getLogger().setLevel(logLevel)
-
-        # Setting local directory for cache, resources and logging
         createResourceDirs(True)
-
+        LogConfiguration()
         try:
-            splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("logo.png")))
+            self.splash = QtWidgets.QSplashScreen(QtGui.QPixmap(resourcePath("logo.png")))
         except Exception as e:
-            print("Failed to load Splash", e)
-            raise e
+            raise MyMainException("Failed to load Splash", e)
 
         cache.Cache.PATH_TO_CACHE = getVintelDir()
         try:
-            vintelCache = Cache(force_version_check=True)
+            self.vintelCache = Cache(force_version_check=True)
         except Exception as e:
-            print("Failed to load Cache", e)
-            raise e
+            raise MyMainException("Failed to load Cache", e)
 
-        logLevel = vintelCache.fetch("logging_level")
-        if not logLevel:
-            logLevel = logging.DEBUG
-        logging.getLogger().setLevel(logLevel)
-        LOGGER.setLevel(logLevel)
-        backColor = vintelCache.fetch("background_color")
-        if backColor:
-            backGroundColor = backColor
-        self.setStyleSheet("QWidget { background-color: %s; }" % backGroundColor)
+        self.logLevel = self.vintelCache.fetch("logging_level")
+        if not self.logLevel:
+            self.logLevel = logging.DEBUG
+        logging.getLogger().setLevel(self.logLevel)
+        background_color = self.vintelCache.fetch("background_color")
+        if background_color:
+            self.backGroundColor = background_color
+        self.setStyleSheet("QWidget { background-color: %s; }" % self.backGroundColor)
 
-        LOGGER.info("------------------- %s %s starting up -------------------", version.PROGNAME,
+        logging.getLogger().info("------------------- %s %s starting up -------------------", version.PROGNAME,
                     version.VERSION)
-        LOGGER.info("Looking for chat logs at: %s", getEveChatlogDir())
-        LOGGER.info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
-        LOGGER.info("Writing logs to: %s", getVintelLogDir())
+        logging.getLogger().info("Looking for chat logs at: %s", getEveChatlogDir())
+        logging.getLogger().info("Cache maintained here: %s", cache.Cache.PATH_TO_CACHE)
+        logging.getLogger().info("Writing logs to: %s", getVintelLogDir())
         # let's hope, this will speed up start-up
         EsiInterface(cache_dir=getVintelDir())
-        splash.show()
+
+    def startup(self):
+        self.splash.show()
         self.processEvents()
-        trayIcon = systemtray.TrayIcon(self)
-        trayIcon.show()
-        self.mainWindow = viui.MainWindow(chatLogDirectory, trayIcon, backGroundColor)
+        self.trayIcon = systemtray.TrayIcon(self)
+        self.trayIcon.show()
+        self.mainWindow = viui.MainWindow(self.chatLogDirectory, self.trayIcon, self.backGroundColor)
         self.mainWindow.show()
         self.mainWindow.raise_()
-        splash.finish(self.mainWindow)
+        self.splash.finish(self.mainWindow)
 
 
 __name__ = PROGNAME
 __author__ = AUTHOR + " (" + AUTHOR_EMAIL + ")"
 __version__ = VERSION
-
-LOGGER = logging.getLogger(__name__)
 
 
 # TODO: Get log file from logconfig!
@@ -131,39 +134,33 @@ def __uploadLog():
     """
     try:
         session = ftplib.FTP("vintel.tschache.com", "vintellog", "jYie93#7")
-        logFilename = LogConfiguration.LOG_FILE_PATH
-        file_hdl = open(logFilename, "rb")
-        dest = str(time.time()) + "_output.log"
-        session.storlines("STOR " + dest, file_hdl)
+        log_filename = LogConfiguration.LOG_FILE_PATH
+        file_hdl = open(log_filename, "rb")
+        destination = str(time.time()) + "_output.log"
+        session.storlines("STOR " + destination, file_hdl)
         file_hdl.close()
         session.quit()
     except Exception as e:
-        LOGGER.error("Problem uploading Log-File", e)
+        logging.getLogger().error("Problem uploading Log-File", e)
         pass
 
 
-def myExceptionHook(exceptionType, exceptionValue, tracebackObject):
+def main_exception_hook(exceptionType, exceptionValue, tracebackObject):
     """
         Global function to catch unhandled exceptions.
     """
-    try:
-        LOGGER.critical("-- Unhandled Exception --")
-        LOGGER.critical(''.join(traceback.format_tb(tracebackObject)))
-        LOGGER.critical('{0}: {1}'.format(exceptionType, exceptionValue))
-        LOGGER.critical("-- ------------------- --")
-        __uploadLog()
-    except Exception:
-        pass
+    logging.getLogger().critical("-- Unhandled Exception --")
+    logging.getLogger().critical(''.join(traceback.format_tb(tracebackObject)))
+    logging.getLogger().critical('{0}: {1}'.format(exceptionType, exceptionValue))
+    logging.getLogger().critical("-- ------------------- --")
+    __uploadLog()
+    pass
 
 
-sys.excepthook = myExceptionHook
+sys.excepthook = main_exception_hook
 
-# app = Application(sys.argv)
-try:
-    LogConfiguration(log_folder=getVintelLogDir())
-except:
-    LOGGER.critical("Error in Logging-Configuration!")
-LOGGER = logging.getLogger(__name__)
+app = Application(sys.argv)
+app.configure()
+app.startup()
+sys.exit(app.exec_())
 
-
-sys.exit(Application(sys.argv).exec_())

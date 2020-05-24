@@ -37,7 +37,7 @@ class ViStopwatch(StopWatch):
             root = log_names[0]
             root_time_ms, root_count, bucket = values[root]
             buf = [
-                "%s    %9.3fms (%4.f%%)" % (root.ljust(20), root_time_ms / root_count, 100),
+                "   %.12s  %25s  %4s  %9.3fms (%3.f%%)" % (root.ljust(12), "", "", root_time_ms / root_count, 100),
             ]
             for log_name in log_names[1:]:
                 delta_ms, count, bucket = values[log_name]
@@ -45,9 +45,9 @@ class ViStopwatch(StopWatch):
                 short_name = log_name[log_name.rfind("#") + 1:]
                 bucket_name = bucket.name if bucket else ""
 
-                buf.append("%s%s    %s %4d  %9.3fms (%4.f%%)" % (
-                    "    " * depth, bucket_name.ljust(12),
-                    short_name.ljust(20),
+                buf.append("%s%.12s  %.25s  %4d  %9.3fms (%3.f%%)" % (
+                    "   " * depth, bucket_name.ljust(12),
+                    short_name.ljust(25),
                     count,
                     delta_ms,
                     delta_ms / root_time_ms * 100.0,
@@ -57,7 +57,7 @@ class ViStopwatch(StopWatch):
             if annotations:
                 buf.append("Annotations: %s" % (', '.join(annotations)))
             return "\n".join(buf)
-        time_msg = "Timing: "+format_report(self.get_last_aggregated_report())
+        time_msg = "Timing:\n"+format_report(self.get_last_aggregated_report())
         if extra_message:
             time_msg += "\n" + extra_message
 

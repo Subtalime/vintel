@@ -18,12 +18,14 @@
 
 import time
 import logging
+import re
 import requests
 import six
 from bs4 import BeautifulSoup
 from vi.esi import EsiInterface
 from vi.dotlan.mysystem import MySystem as System
 from vi.dotlan.exception import DotlanException
+from vi.dotlan.jumpbridge import Jumpbridge
 from vi.cache.cache import Cache
 from vi.version import URL
 
@@ -143,7 +145,7 @@ class Map(object):
         svg.insert(0, group)
 
         # Create jumpbridge markers in a variety of colors
-        for jbColor in JB_COLORS:
+        for jbColor in Jumpbridge.JB_COLORS:
             startPath = soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
             startMarker = soup.new_tag("marker", viewBox="0 0 20 20", id="arrowstart_{0}".format(jbColor),
                                        markerUnits="strokeWidth", markerWidth="20", markerHeight="15", refx="-15",
@@ -190,6 +192,8 @@ class Map(object):
         content = requests.get(url).text
         if content.startswith("region not found"):
             raise Exception(content)
+        content = re.sub(r"<\?xml.*\?>", r'<?xml version="1.0" encoding="ISO-8859-1"?>', content)
+
         return content
 
     def addSystemStatistics(self, statistics):
@@ -203,7 +207,7 @@ class Map(object):
                 system.setStatistics(None)
         LOGGER.info("addSystemStatistics complete")
 
-    def setJumpbridges(self, jumpbridgesData):
+    def setJumpbridges(self, jumpbridgesData, parent=None):
         """
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)

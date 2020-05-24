@@ -1,6 +1,11 @@
 version: 1
 disable_existing_loggers: true
 
+objects:
+  queue:
+    class: queue.Queue
+    maxsize: 5000
+
 formatters:
   mine:
     (): vi.logger.logconfig.MyDateFormatter
@@ -34,25 +39,42 @@ handlers:
     formatter: mine
     stream: ext://sys.stdout
 
+  # this works, but let's try and do this inside the code
+  # that way, we have a listener which catches everything and we can attach to that
+#  queue_listener:
+#    class: vi.logger.logqueue.LogQueueHandler
+#    handlers:
+#      - cfg://handlers.console
+#      - cfg://handlers.file
 
-root:
-  level: DEBUG
-  handlers: [console, file]
-  propagate: yes
 
 loggers:
+
   vi:
     level: DEBUG
-    handlers: [console, file]
-    propagate: no
-
-  root:
-    level: INFO
-    handlers: [console, file]
-    propagate: no
+    handlers:
+#      - queue_listener
+      - console
+      - file
+    propagate: false
 
   vi.MapViewPage:
-    level: DEBUG
-    handlers: [console, file]
-    propagate: no
+    level: INFO
+    handlers:
+#      - queue_listener
+      - console
+      - file
+    propagate: false
 
+  pyswagger.core:
+    level: WARN
+    handlers:
+#      - queue_listener
+      - console
+      - file
+    propagate: false
+
+root:
+  level: WARN
+  handlers:
+    - console

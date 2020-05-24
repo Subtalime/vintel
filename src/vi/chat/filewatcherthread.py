@@ -101,8 +101,9 @@ class FileWatcherThread(QThread):
 
     # scan all configured paths
     def _scanPaths(self):
-        for path in self.filesInFolder.keys():
-            self._addFiles(path)
+        self._addFiles(self.folder)
+        # for path in self.filesInFolder.keys():
+        #     self._addFiles(path)
 
     # check for new files in folder and add if necessary
     # TODO: to filter chat-logs which are kept open over a long time, match it to character...

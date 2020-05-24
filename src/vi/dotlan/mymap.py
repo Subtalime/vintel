@@ -23,24 +23,19 @@ from vi.dotlan.map import Map
 from vi.resources import getVintelMap
 from vi import states
 from vi.dotlan.colorjavascript import ColorJavaScript
+from vi.dotlan.jumpbridge import Jumpbridge
+import re
 import sys
 import time
 import logging
-import math
 import os
 import datetime
 from vi.logger.mystopwatch import ViStopwatch
 
 
-JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
-             "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
-             "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
-
-
 class MyMap(Map):
 
     def addTimerJs(self):
-        self.LOGGER.debug(" Start addTimerJs")
         realtime_js = ColorJavaScript().js_color_all()
         realtime_js += ColorJavaScript().show_timer()
         js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
@@ -49,13 +44,13 @@ class MyMap(Map):
         js.string = CData(realtime_js)
         # js.string = realtime_js
         self.soup.svg.append(js)
-        self.LOGGER.debug(" End addTimerJs")
 
     def time_report(self, extra_msg: str = None):
         self.LOGGER.debug(self.sw.get_report(extra_msg))
 
     @property
     def svg(self):
+        # time this complete block
         with self.sw.timer("SVG"):
             with self.sw.timer("add Timer JS"):
                 self.addTimerJs()
@@ -106,7 +101,7 @@ class MyMap(Map):
                 with self.sw.timer("Dump Map To disc"):
                     # pass
                     self.debugWriteSoup(content)
-        self.time_report("System-Updates: %d" % self.system_updates)
+        self.time_report("\tNumber of timers in SVG: %d" % self.system_updates)
         return content
 
     def __init__(self, parent=None):
@@ -117,12 +112,15 @@ class MyMap(Map):
         self.system_updates = 0
         self.LOGGER = logging.getLogger(__name__)
 
-    def loadMap(self, regionName):
-        testFile = getVintelMap(regionName=regionName)
-        self.region = regionName
+    def loadMap(self, region_name):
+        testFile = getVintelMap(regionName=region_name)
+        self.region = region_name
         try:
             with open(testFile, "r") as f:
                 self.svgData = f.read()
+            # replace the header to show UTF-8
+            self.svgData = re.sub(r"<\?xml.*\?>", r'<?xml version="1.0" encoding="ISO-8859-1"?>', self.svgData)
+
         except FileNotFoundError as e:
             self.svgData = None
             pass
@@ -131,7 +129,7 @@ class MyMap(Map):
                 self.progress = QtWidgets.QProgressDialog("Loading map data...", None, 0, 1, self.parent)
                 self.progress.setModal(False)
 
-        super(MyMap, self).__init__(regionName, self.svgData)
+        super(MyMap, self).__init__(region_name, self.svgData)
         # self.addTimerJs()
         if self.parent:
             # this closes...
@@ -150,76 +148,24 @@ class MyMap(Map):
         except Exception as e:
             self.LOGGER.error(e)
 
-    def setJumpbridges(self, parent, jumpbridgesData):
+    def setJumpbridges(self, jumpbridgesData, parent = None):
         """
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
         """
         if not jumpbridgesData or len(jumpbridgesData) <= 0:
             return
-        try:
-            progress = QtWidgets.QProgressDialog("Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridgesData),
-                                                 parent)
-            progress.setWindowTitle("Jump-Bridge")
-            progress.setModal(True)
-            progress.setValue(0)
-            soup = self.soup
-            # remove existing Jump-Brdiges
-            for bridge in soup.select(".jumpbridge"):
-                bridge.decompose()
-            jumps = soup.select("#jumps")[0]
-            colorCount = 0
-            jumpCount = 0
-            for bridge in jumpbridgesData:
-                jumpCount += 1
-                if jumpCount % 4:
-                    progress.setValue(jumpCount)
-                if progress.wasCanceled():
-                    break
-                sys1 = bridge[0]
-                connection = bridge[1]
-                sys2 = bridge[2]
-                if not (sys1 in self.systems and sys2 in self.systems):
-                    continue
-
-                if colorCount > len(JB_COLORS) - 1:
-                    colorCount = 0
-                jbColor = JB_COLORS[colorCount]
-                colorCount += 1
-                systemOne = self.systems[sys1]
-                systemTwo = self.systems[sys2]
-                systemOneCoords = systemOne.mapCoordinates
-                systemTwoCoords = systemTwo.mapCoordinates
-                systemOneOffsetPoint = systemOne.getTransformOffsetPoint()
-                systemTwoOffsetPoint = systemTwo.getTransformOffsetPoint()
-
-                systemOne.setJumpbridgeColor(jbColor)
-                systemTwo.setJumpbridgeColor(jbColor)
-
-                # Construct the arc, color it and add it to the jumps
-                x1 = systemOneCoords["center_x"] + systemOneOffsetPoint[0]
-                y1 = systemOneCoords["center_y"] + systemOneOffsetPoint[1]
-                x2 = systemTwoCoords["center_x"] + systemTwoOffsetPoint[0]
-                y2 = systemTwoCoords["center_y"] + systemTwoOffsetPoint[1]
-                cx = (x1 + x2) / 2
-                cy = (y1 + y2) / 2
-                dx = (x2 - x1) / 2
-                dy = (y2 - y1) / 2
-                dd = math.sqrt(dx * dx + dy * dy)
-                ex = cx + dy / dd * 40
-                ey = cy - dx / dd * 40
-                line = soup.new_tag("path", d="M{} {}Q{} {} {} {}".format(x1, y1, ex, ey, x2, y2), visibility="hidden",
-                                    style="stroke:#{0}; fill: none".format(jbColor))
-                line["stroke-width"] = 2
-                line["class"] = ["jumpbridge", ]
-                if "<" in connection:
-                    line["marker-start"] = "url(#arrowstart_{0})".format(jbColor)
-                if ">" in connection:
-                    line["marker-end"] = "url(#arrowend_{0})".format(jbColor)
-                jumps.insert(0, line)
-        except Exception:
-            raise
-        finally:
-            if progress:
-                # this will close it
-                progress.setValue(len(jumpbridgesData))
+        jb = Jumpbridge(self.systems, self.soup, jumpbridgesData)
+        progress = QtWidgets.QProgressDialog("Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridgesData),
+                                             parent)
+        progress.setWindowTitle("Jump-Bridge")
+        progress.setModal(True)
+        progress.setValue(0)
+        jumps = 0
+        for data, loc in jb.build():
+            jumps += 1
+            if not jumps % 4:
+                progress.setValue(jumps)
+            if progress.wasCanceled():
+                break
+        progress.setValue(len(jumpbridgesData))

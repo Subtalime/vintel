@@ -57,25 +57,25 @@ class Regions:
     def __repr__(self):
         return ",".join("{}.{}".format(key, val) for key, val in self.regions.items())
 
-def convertRegionName(name):
-    """
-        Converts a (system)name to the format that dotland uses
-    """
-    converted = []
-    nextUpper = False
+    def convertRegionName(self, name):
+        """
+            Converts a (system)name to the format that dotland uses
+        """
+        converted = []
+        nextUpper = False
 
-    for index, char in enumerate(name):
-        if index == 0:
-            converted.append(char.upper())
-        else:
-            if char in (u" ", u"_"):
-                char = "_"
-                nextUpper = True
+        for index, char in enumerate(name):
+            if index == 0:
+                converted.append(char.upper())
             else:
-                if nextUpper:
-                    char = char.upper()
+                if char in (u" ", u"_"):
+                    char = "_"
+                    nextUpper = True
                 else:
-                    char = char.lower()
-                nextUpper = False
-            converted.append(char)
-    return u"".join(converted)
+                    if nextUpper:
+                        char = char.upper()
+                    else:
+                        char = char.lower()
+                    nextUpper = False
+                converted.append(char)
+        return u"".join(converted)

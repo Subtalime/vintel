@@ -20,6 +20,7 @@ from bs4 import NavigableString
 import datetime
 import time
 
+
 class Message(object):
     def __init__(self, room: str, message: str, timestamp: datetime.datetime, user: str,
                  plainText: str = None, status: states = states.ALARM, rtext: NavigableString = None,

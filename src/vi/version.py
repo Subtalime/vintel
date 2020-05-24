@@ -23,7 +23,7 @@ from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
 
-VERSION = "1.2.4"
+VERSION = "1.2.5"
 SNAPSHOT = True  # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 PROGNAME = "Vintel"

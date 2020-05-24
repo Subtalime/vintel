@@ -192,11 +192,11 @@ class AvatarFindThread(QThread):
                     self.switch_off_avatar()
                 if avatar:
                     self.LOGGER.debug(
-                        "AvatarFindThread emit avatar_update for %s: %r" % (charname, self.sw.get_report(),))
+                        "AvatarFindThread emit avatar_update for %s: %s" % (charname, self.sw.get_report(),))
                     self.avatar_update.emit(chat_entry, avatar)
                 else:
                     self.LOGGER.debug(
-                        "AvatarFindThread Avatar not found for %s: %r" % (charname, self.sw.get_report(),))
+                        "AvatarFindThread Avatar not found for %s: %s" % (charname, self.sw.get_report(),))
             except Exception as e:
                 self.LOGGER.error("Error in AvatarFindThread : %r" % (e,))
 

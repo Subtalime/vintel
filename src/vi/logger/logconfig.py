@@ -24,11 +24,10 @@ import six
 import sys
 from logging.config import dictConfig
 from logging.handlers import RotatingFileHandler
-from vi.logger.logwindow import LogWindowHandler, LOG_WINDOW_HANDLER_NAME
+from vi.logger.logwindow import LogDisplayHandler, LOG_WINDOW_HANDLER_NAME
+from vi.logger.logqueue import LogQueueHandler
 from vi.resources import getVintelLogDir, resourcePath
 from vi.singleton import Singleton
-
-LOGGER = logging.getLogger(__name__)
 
 
 class MyDateFormatter(logging.Formatter):
@@ -56,6 +55,10 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         return os.path.join(self.log_folder, value)
 
     def __init__(self, config_file=LOG_CONFIG, log_folder=None):
+        # TODO: Try and set up the Queue-Handler
+        # TODO: Then open the LogWindows which should attach to the Queue-Handler as Queue-Listener
+        # TODO: see https://stackoverflow.com/questions/58592557/how-to-wrap-python-logging-module
+        # TODO: also see below TODO!
         config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                    config_file) if not os.path.exists(config_file) else config_file
         self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
@@ -71,20 +74,27 @@ class LogConfiguration(six.with_metaclass(Singleton)):
                     # Loader MUST be specified, otherwise constructor wont work!
                     config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
-                    logging.config.dictConfig(config)
+                    # TODO: this eliminates ALL current and future Log-Handlers
+                    # TODO: so for the Log-Window we need to add a handler to the Config before loading into the logging class
+                    self.default(log_folder=self.log_folder)
+                    # logging.config.dictConfig(config)
                     # success
                     LogConfiguration.LOG_FILE_PATH = config_path
                 except ImportError:
                     try:
                         # next attempt INI-File format
-                        logging.config.fileConfig(config_path, disable_existing_loggers=True)
+                        try:
+                            logging.config.fileConfig(config_path, disable_existing_loggers=True)
+                        except:
+                            self.default(log_folder=self.log_folder)
                     except Exception as e:
                         # OK, I give up
                         print(e)
                         raise
                 except Exception as e:
-                    print(e)
-                    raise
+                    self.default(log_folder=self.log_folder)
+                    # print(e)
+                    # raise
         else:
             self.default(log_folder=self.log_folder)
 
@@ -93,7 +103,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
 
     def default(self, log_level=logging.INFO, log_folder="."):
         # just in case any loggers are currently active
-        logging.shutdown()
+        # logging.shutdown()
 
         rootLogger = logging.getLogger()
         rootLogger.setLevel(log_level)
@@ -106,12 +116,13 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         logFilename = os.path.join(log_folder, "vintel_default.log")
         fileHandler = RotatingFileHandler(maxBytes=self.MAX_FILE_SIZE,
                                           backupCount=self.MAX_FILE_COUNT, filename=logFilename,
-                                          mode='a')
+                                          mode='a', encoding="utf-8")
         fileHandler.setFormatter(formatter)
         # in the log file, ALWAYS debug
         fileHandler.setLevel(logging.DEBUG)
         rootLogger.addHandler(fileHandler)
 
+        queue_handlers = [fileHandler]
         # stdout
         # only if running from Dev-Environment
         if not getattr(sys, 'frozen', False):
@@ -119,12 +130,17 @@ class LogConfiguration(six.with_metaclass(Singleton)):
             consoleHandler.setFormatter(formatter)
             consoleHandler.setLevel(log_level)
             rootLogger.addHandler(consoleHandler)
+            queue_handlers.append(consoleHandler)
+
+        logQueue = LogQueueHandler(queue_handlers)
+        rootLogger.addHandler(logQueue)
 
 
 class LogConfigurationThread(threading.Thread):
     def __init__(self, log_window=None, **kwargs):
         threading.Thread.__init__(self, *kwargs)
         self.queue = queue.Queue()
+        self.LOGGER = logging.getLogger(__name__)
         self.timeout = 5
         self.active = True
         self.file_stat = None
@@ -148,15 +164,15 @@ class LogConfigurationThread(threading.Thread):
                     if newstat != self.file_stat:
                         self.file_stat = newstat
                         try:
-                            LOGGER.debug("Configuration-Change in \"%s\"", LogConfiguration.LOG_FILE_PATH)
+                            self.LOGGER.debug("Configuration-Change in \"%s\"", LogConfiguration.LOG_FILE_PATH)
                             LogConfiguration(LogConfiguration.LOG_FILE_PATH)
                             # Make sure our LogWindowHandler is still alive!
                             if LOG_WINDOW_HANDLER_NAME not in logging._handlerList:
                                 if self._logWindow:
-                                    self._logWindow.addHandler(LogWindowHandler())
-                            LOGGER.debug("Configuration-Change applied")
+                                    self._logWindow.addHandler(LogDisplayHandler())
+                            self.LOGGER.debug("Configuration-Change applied")
                         except:
-                            LOGGER.error("Error in Configuration!")
+                            self.LOGGER.error("Error in Configuration!")
                             pass
 
     def quit(self) -> None:
@@ -174,6 +190,7 @@ if __name__ == "__main__":
     except:
         raise
 
+    LOGGER = logging.getLogger()
     LogConfiguration(config_file="./logging.yaml", log_folder=".")
     # log = LogConfiguration()
 

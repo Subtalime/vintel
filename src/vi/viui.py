@@ -65,8 +65,6 @@ MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
 CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
 
-LOGGER = logging.getLogger(__name__)
-
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     chat_message_added = pyqtSignal(ChatEntryWidget)
@@ -81,6 +79,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         # set the Splitter-Location
         self.splitter.setStretchFactor(8, 2)
+        self.logWindow = LogWindow()
+
+        self.LOGGER = logging.getLogger(__name__)
         # self.splitter.setSizes([1065, 839])
         self.avatarFindThread = None
         self.filewatcherThread = None
@@ -127,10 +128,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.scanIntelForKosRequestsEnabled = False
         self.mapPositionsDict = {}
         self.content = None
-        self.logWindow = LogWindow()
-        if LogConfiguration().LOG_FILE_PATH is None:
-            LOGGER.warning(
-                "Logging is set to default. Please adjust {}".format(LogConfiguration().getLogFilePath()))
+        # if LogConfiguration().LOG_FILE_PATH is None:
+        #     self.LOGGER.warning("Logging is set to default. Please adjust {}".format(LogConfiguration().getLogFilePath()))
         # Load user's toon names
         self.knownPlayers = Characters()
         # here we are resetting our own menus, not the one from UI
@@ -199,23 +198,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.map_update_interval = self.cache.fetch("map_update_interval", True)
         if not self.map_update_interval:
             self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
-            self.cache.put("map_update_interval", self.map_update_interval)
+            self.cache.put("map_update_interval", str(self.map_update_interval))
         self.clipboard_check_interval = self.cache.fetch("clipboard_check_interval", True)
         if not self.clipboard_check_interval:
             self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
-            self.cache.put("clipboard_check_interval", self.clipboard_check_interval)
+            self.cache.put("clipboard_check_interval", str(self.clipboard_check_interval))
 
     def updateCharacterMenu(self):
         try:
             self.menuCharacters.removeItems()
-            LOGGER.debug("Updating Character-Menu with Players: {}".format(self.knownPlayers))
+            self.LOGGER.debug("Updating Character-Menu with Players: {}".format(self.knownPlayers))
             self.menuCharacters.addItems(self.knownPlayers)
             self.menuCharacters.triggered.connect(self.char_menu_clicked)
         except Exception as e:
-            LOGGER.error("updateCharacterMenu", e)
+            self.LOGGER.error("updateCharacterMenu", e)
 
     def char_menu_clicked(self, action: 'QAction'):
-        LOGGER.debug(
+        self.LOGGER.debug(
             "Setting Character {} to Monitor {}".format(action.text(), action.isChecked()))
         self.knownPlayers[action.text()].setMonitoring(action.isChecked())
 
@@ -233,7 +232,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # TODO: add a button to delete the cache / DB
             self.cache.put("settings", "", 0)
             msg = "Something went wrong loading saved state:\n {0}".format(str(e))
-            LOGGER.error(msg)
+            self.LOGGER.error(msg)
             self.trayIcon.showMessage("Settings error", msg, 1)
 
     def wireUpUIConnections(self):
@@ -286,7 +285,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def settings(self, tabIndex: int = 0):
         def handleRegionsChosen(regionList):
-            LOGGER.debug("Chosen new Regions to monitor")
+            self.LOGGER.debug("Chosen new Regions to monitor")
             self.menuRegion.addItems()
 
         setting = SettingsDialog(self)
@@ -337,14 +336,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # Menu-Selection of Regions
     def processRegionSelectMenu(self, qAction: 'QAction'):
         if qAction.objectName() == "region_select":
-            LOGGER.debug("Opened Region-Selector Dialog")
+            self.LOGGER.debug("Opened Region-Selector Dialog")
             self.showRegionChooser()
         elif qAction.objectName() == "jumpbridge_select":
-            LOGGER.debug("Opened JumpBridge dialog")
+            self.LOGGER.debug("Opened JumpBridge dialog")
             self.showJumpBridgeChooser()
         else:
             self.cache.put("region_name", qAction.text(), Regions.CACHE_TIME)
-            LOGGER.debug("Set Region to {}".format(qAction.text()))
+            self.LOGGER.debug("Set Region to {}".format(qAction.text()))
             self.setupMap()
 
     # Dialog to select Regions to monitor
@@ -363,7 +362,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.updateCharacterMenu()
 
     def setupThreads(self):
-        LOGGER.debug("Creating threads")
+        self.LOGGER.debug("Creating threads")
 
         self.logConfigThread = LogConfigurationThread(self.logWindow)
         self.logConfigThread.start()
@@ -405,7 +404,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # statisticsThread is blocked until first call of requestStatistics
         self.statisticsThread.start()
 
-        LOGGER.debug("Finished Creating threads")
+        self.LOGGER.debug("Finished Creating threads")
 
     # TODO: store each system configured in Regions
     # TODO: therefore if we switch Region, we can update with previously found data
@@ -415,7 +414,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.filewatcherThread.paused = True
         if self.mapUpdateThread:
             self.mapUpdateThread.pause(True)
-        LOGGER.debug("Finding map file")
+        self.LOGGER.debug("Finding map file")
         regionName = self.cache.fetch("region_name")
         if not regionName:
             regionName = "Delve"
@@ -423,7 +422,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         try:
             self.dotlan = self.myMap.loadMap(regionName)
         except DotlanException as e:
-            LOGGER.error(e)
+            self.LOGGER.error(e)
             QMessageBox.critical(None, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
@@ -431,20 +430,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.dotlan = self.myMap.loadMap(regionName)
             else:
                 sys.exit(1)
-        LOGGER.debug("Map File found, Region set to {}".format(regionName))
+        self.LOGGER.debug("Map File found, Region set to {}".format(regionName))
         # self.cache.put("region_name", "Delve")
         if self.dotlan.outdatedCacheError:
             e = self.dotlan.outdatedCacheError
             diagText = "Something went wrong getting map data. Proceeding with older " \
                        "cached data. Check for a newer version and inform the maintainer." \
                        "\n\nError: {0} {1}".format(type(e), six.text_type(e))
-            LOGGER.warning(diagText)
+            self.LOGGER.warning(diagText)
             QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
         # Load the jumpbridges
         with self.sw.timer("setJumpbridges"):
             self.setJumpbridges()
-        LOGGER.debug(self.sw.get_report())
+        self.LOGGER.debug(self.sw.get_report())
         self.systems = self.dotlan.systems
         self.dotlan_systems.emit(self.systems)
         if self.chatThread:
@@ -452,7 +451,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Menus - only once
         if initialize:
-            LOGGER.debug("Initializing contextual menus")
+            self.LOGGER.debug("Initializing contextual menus")
 
             # Add a contextual menu to the mapView
             def mapContextMenuEvent(event):
@@ -467,7 +466,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statisticsButton.setCheckable(True)
             self.statisticsButton.setChecked(False)
             self.mapView.page().link_clicked.connect(self.mapLinkClicked)
-            LOGGER.debug("DONE Initializing contextual menus")
+            self.LOGGER.debug("DONE Initializing contextual menus")
 
             # update Character-Locations
             for char in self.knownPlayers:
@@ -487,7 +486,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Allow the file watcher to run now that all else is set up
         if self.filewatcherThread:
             self.filewatcherThread.paused = False
-        LOGGER.debug("Map setup complete")
+        self.LOGGER.debug("Map setup complete")
 
     def startClipboardTimer(self):
         """
@@ -571,11 +570,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.mapUpdateThread:
                 self.mapUpdateThread.quit()
         except Exception as e:
-            LOGGER.exception("Error while stopping a Thread", e)
+            self.LOGGER.exception("Error while stopping a Thread", e)
         self.trayIcon.hide()
         if self.logWindow:
             self.logWindow.close()
-        sys.exit(0)
+        # sys.exit(0)
 
     def setSoundVolume(self, value):
         SoundManager().setSoundVolume(value)
@@ -586,7 +585,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                          vi.version.VERSION,
                                                          newestVersion,
                                                          vi.version.URL)
-        LOGGER.warning(msg)
+        self.LOGGER.warning(msg)
         self.trayIcon.showMessage("Newer Version", msg)
 
     def changeChatVisibility(self, newValue=None):
@@ -631,7 +630,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         break
             self.setWindowOpacity(action.opacity)
         except Exception as e:
-            LOGGER.error("Error while selecting Opacity", e)
+            self.LOGGER.error("Error while selecting Opacity", e)
 
     def changeSound(self, newValue=None, disable=False):
         if disable:
@@ -651,7 +650,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.activateSoundAction.setChecked(newValue)
             self.soundSetupAction.setEnabled(newValue)
             SoundManager().soundActive = newValue
-            LOGGER.info("Sound activation changed to %r", newValue)
+            self.LOGGER.info("Sound activation changed to %r", newValue)
 
     def changeAlwaysOnTop(self, newValue=None):
         if newValue is None:
@@ -771,7 +770,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             sc.location_set.connect(self.set_player_location)
             sc.show()
         except Exception as e:
-            LOGGER.error("mapLinkClicked problem for \"%s\": %r", systemName, e)
+            self.LOGGER.error("mapLinkClicked problem for \"%s\": %r", systemName, e)
             pass
 
     def markSystemOnMap(self, systemname):
@@ -810,13 +809,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def updateStatisticsOnMap(self, data):
         if not self.statisticsButton.isChecked():
             return
-        LOGGER.debug("Updating statistics on Map")
+        self.LOGGER.debug("Updating statistics on Map")
         if data["result"] == "ok":
             self.dotlan.addSystemStatistics(data["statistics"])
         elif data["result"] == "error":
             text = data["text"]
             self.trayIcon.showMessage("Loading statstics failed", text, 3)
-            LOGGER.error("updateStatisticsOnMap, error: %s" % text)
+            self.LOGGER.error("updateStatisticsOnMap, error: %s" % text)
 
     def inject(self, on):
         if on:
@@ -904,7 +903,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             if len(parts) == 3:
                                 data.append(parts)
                     except Exception as e:
-                        LOGGER.exception("Error querying Jump-Bridge-Data at %s" % (url_or_filepath, ), e)
+                        self.LOGGER.exception("Error querying Jump-Bridge-Data at %s" % (url_or_filepath, ), e)
                 else:
                     data = Import().readGarpaFile(url_or_filepath)
                 if len(data): # valid File/URL
@@ -913,8 +912,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 data = Import().readGarpaFile(clipboard=clipdata)
             else:
                 data = self.cache.fetch_jumpbridge_data()
-            self.dotlan.setJumpbridges(self, data)
-            if len(data):
+            self.dotlan.setJumpbridges(data, self)
+            if data and len(data):
                 self.cache.put_jumpbridge_data(data)
         except Exception as e:
             QMessageBox.warning(None, "Loading Jump-Bridges failed!", "Error: %r" % (e, ), QMessageBox.Ok)
@@ -932,7 +931,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.setupMap()
 
     def addMessageToIntelChat(self, message: Message):
-        LOGGER.debug("Adding message to Intel: %r", message)
+        self.LOGGER.debug("Adding message to Intel: %r", message)
         scrollToBottom = False
         if self.chatListWidget.verticalScrollBar().value() == self.chatListWidget.verticalScrollBar().maximum():
             scrollToBottom = True
@@ -976,7 +975,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.chatEntries.remove(chatEntryWidget)
                     self.chatListWidget.takeItem(0)
         except Exception as e:
-            LOGGER.error(e)
+            self.LOGGER.error(e)
         finally:
             self.chatListWidget.scrollToBottom()
 
@@ -1013,7 +1012,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.chat.collectInitFileData()
 
     def showInfo(self):
-        LOGGER.debug("Opening About-Dialog")
+        self.LOGGER.debug("Opening About-Dialog")
         info_dialog = QDialog(self)
         loadUi("vi/ui/Info.ui", info_dialog)
         info_dialog.setModal(True)
@@ -1021,7 +1020,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         info_dialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("logo.png")))
         info_dialog.closeButton.clicked.connect(info_dialog.accept)
         info_dialog.exec()
-        LOGGER.debug("Closed About-Dialog")
+        self.LOGGER.debug("Closed About-Dialog")
 
     def showSoundSetup(self):
         self.settings(2)
@@ -1062,7 +1061,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             pass
 
     def logFileChanged(self, message: Message):
-        LOGGER.debug("Message received: {}".format(message))
+        self.LOGGER.debug("Message received: {}".format(message))
         # wait for Map to be completly loaded
         if message.status == states.LOCATION:
             self.knownPlayers[message.user].setLocation(message.systems[0])
