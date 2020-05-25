@@ -21,7 +21,7 @@ from vi.dotlan.system import System
 import time
 import datetime
 import math
-from vi import states
+from vi.states import State
 from vi.dotlan.colorjavascript import ColorJavaScript
 import logging
 
@@ -59,9 +59,9 @@ class MySystem(System):
         ndiff = int(minutes * 60 + seconds)
         # if self.status != states.UNKNOWN and (diff < 0 or ndiff > cjs.max_time(self.status)):  # anything older than max color-size
         #     self.setStatus(states.UNKNOWN)
-        if self.status != states.UNKNOWN:
+        if self.status != State['UNKNOWN']:
             self.secondLine.string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
-            self.timerload = (ndiff, self.status, self.secondLine["id"], self.rectId, self.rectIdIce)
+            self.timerload = (ndiff, self.status.value, self.secondLine["id"], self.rectId, self.rectIdIce)
             color, text_color = cjs.color_at(ndiff, self.status)
             updated = True
             for rect in self.svgElement.select("rect"):

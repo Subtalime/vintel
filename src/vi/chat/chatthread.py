@@ -29,6 +29,7 @@ import six
 from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, pyqtSignal
 from vi import states
+from vi.chat.messageparser import MessageParser
 from vi.chat.chatmessage import Message
 from vi.chat.parser_functions import (
     parse_status,
@@ -40,8 +41,6 @@ from vi.chat.parser_functions import (
 from vi.dotlan import mysystem as systems
 
 chat_thread_lock = threading.RLock()
-
-
 
 
 __all_known_messages: Dict[str, datetime.datetime] = {}
@@ -145,7 +144,7 @@ class ChatThread(QThread):
         self.queue = Queue()
         self.active = True
         self.room_names = room_names
-        self.dotlan_systems = []
+        self.dotlan_systems = {}
         if dotlan_systems:
             self.dotlan_systems = dotlan_systems
         self.ship_parser = parent.enableShipParser()
@@ -255,7 +254,7 @@ class ChatThreadProcess(QThread):
         log_file_path: str,
         ship_scanner: bool,
         char_scanner: bool,
-        dotlan_systems: systems = (),
+        dotlan_systems: systems = {},
     ):
         super(__class__, self).__init__()
         self.LOGGER = logging.getLogger(__name__)
@@ -270,12 +269,13 @@ class ChatThreadProcess(QThread):
         self.active = True
         self.charname = None
         self.roomname = None
+        self.message_parser = None
         self.session_start = None
         self.parsed_lines = 0
         self.local_room = False
         self.knownMessages = []
         # locations of this character
-        self.locations = []
+        self.locations = {}
         self.worker_loop = asyncio.new_event_loop()
         self.worker = Thread(target=self._runLoop)
         self.worker.start()
@@ -297,32 +297,35 @@ class ChatThreadProcess(QThread):
             % (self.roomname, self.charname, message,)
         )
         if self.ship_scanner:
-            count = 0
-            while parseShips(message.rtext):
-                count += 1
-                if count > 5:
-                    self.LOGGER.warning(
-                        "parseShips excessive runs on %r" % (message.rtext,)
-                    )
-                    break
-                continue
-        count = 0
-        while parseUrls(message.rtext):
-            count += 1
-            if count > 5:
-                self.LOGGER.warning("parseUrls excessive runs on %r" % (message.rtext,))
-                break
-            continue
+            self.message_parser.process_ships(message)
+            # count = 0
+            # while parseShips(message.rtext):
+            #     count += 1
+            #     if count > 5:
+            #         self.LOGGER.warning(
+            #             "parseShips excessive runs on %r" % (message.rtext,)
+            #         )
+            #         break
+            #     continue
+        self.message_parser.process_urls(message)
+        # count = 0
+        # while parseUrls(message.rtext):
+        #     count += 1
+        #     if count > 5:
+        #         self.LOGGER.warning("parseUrls excessive runs on %r" % (message.rtext,))
+        #         break
+        #     continue
         if self.character_scanner:
-            count = 0
-            while parseCharnames(message.rtext):
-                count += 1
-                if count > 5:
-                    self.LOGGER.warning(
-                        "parseCharnames excessive runs on %r" % (message.rtext,)
-                    )
-                    break
-                continue
+            self.message_parser.process_charnames(message)
+            # count = 0
+            # while parseCharnames(message.rtext):
+            #     count += 1
+            #     if count > 5:
+            #         self.LOGGER.warning(
+            #             "parseCharnames excessive runs on %r" % (message.rtext,)
+            #         )
+            #         break
+            #     continue
 
         # If message says clear and no system? Maybe an answer to a request?
         if message.status == states.CLEAR and not message.systems:
@@ -370,9 +373,9 @@ class ChatThreadProcess(QThread):
             if "Listener:" in line:
                 self.charname = line[line.find(":") + 1 :].strip()
             elif "Session started:" in line:
-                sessionStr = line[line.find(":") + 1 :].strip()
+                session_str = line[line.find(":") + 1 :].strip()
                 self.session_start = datetime.datetime.strptime(
-                    sessionStr, "%Y.%m.%d %H:%M:%S"
+                    session_str, "%Y.%m.%d %H:%M:%S"
                 ).replace(tzinfo=datetime.timezone.utc)
             if self.charname and self.session_start:
                 break
@@ -383,6 +386,7 @@ class ChatThreadProcess(QThread):
             return False
         # tell the world we're monitoring a new character
         self.new_player_s.emit(self.charname)
+        self.message_parser = MessageParser(self.roomname, self.charname, self.locations, self.local_room)
         # first 13 lines are Header information
         self.parsed_lines = 12
         # now head forward until you hit a timestamp, younger then max_age
@@ -434,13 +438,14 @@ class ChatThreadProcess(QThread):
         lines = self._getLines()
         start = datetime.datetime.utcnow()
         self.LOGGER.debug(" processFile start (%s)" % (self.log_file,))
-        for line in lines[self.parsed_lines :]:
+        for line in lines[self.parsed_lines:]:
             line = line.strip()
             if len(line) > 2:
-                if self.local_room:
-                    message = self._parseLocal(line)
-                else:
-                    message = self._lineToMessage(line)
+                message = self.message_parser.process(line)
+                # if self.local_room:
+                #     message = self._parseLocal(line)
+                # else:
+                #     message = self._lineToMessage(line)
                 if message:
                     # multiple clients?
                     if chat_thread_all_messages_contains(message):
@@ -456,6 +461,8 @@ class ChatThreadProcess(QThread):
                         continue
                     # here, I believe, we should add it to the Widget-List and update
                     # the Map. Hence, we emit the Message
+                    # but ONLY after parsing the System-Status in the Message
+                    self.message_parser.process_systems(self.dotlan_systems, message)
                     self.message_added_s.emit(message)
                     self.LOGGER.debug(
                         "%s/%s: Notify new message: %r"

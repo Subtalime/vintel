@@ -31,7 +31,8 @@ from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
 from PyQt5.uic import loadUi
 
-from vi import states
+# from vi import states
+from vi.states import State
 from vi.logger.logwindow import LogWindow
 from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
@@ -1063,13 +1064,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def logFileChanged(self, message: Message):
         self.LOGGER.debug("Message received: {}".format(message))
         # wait for Map to be completly loaded
-        if message.status == states.LOCATION:
+        if message.status == State['LOCATION']:
             self.knownPlayers[message.user].setLocation(message.systems[0])
             self.set_player_location(message.user, message.systems[0])
-        elif message.status == states.SOUND_TEST:
+        elif message.status == State['SOUND_TEST']:
             SoundManager().playSound("alarm", message)
 
-        elif message.status == states.KOS_STATUS_REQUEST:
+        elif message.status == State['KOS_STATUS_REQUEST']:
             # Do not accept KOS requests from any but monitored intel channels
             # as we don't want to encourage the use of xxx in those channels.
             if message.room not in self.roomnames:
@@ -1080,7 +1081,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.kosRequestThread.addRequest(parts, "xxx", False)
         # Otherwise consider it a 'normal' chat message
         elif message.user not in (
-                "EVE-System", "EVE System") and message.status != states.IGNORE:
+                "EVE-System", "EVE System") and message.status != State['IGNORE']:
             self.addMessageToIntelChat(message)
             # For each system that was mentioned in the message, check for alarm distance
             # to the current system and alarm if within alarm distance.
@@ -1095,9 +1096,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     activePlayers = self.knownPlayers.getActiveNames()
                     # notify User if we don't have locations for active Players
                     self.checkPlayerLocations()
-                    if message.status in (states.REQUEST,
-                                          states.ALARM) and (message.user not in activePlayers or self.selfNotify):
-                        alarmDistance = self.alarmDistance if message.status == states.ALARM else 0
+                    if message.status in (State['REQUEST'],
+                                          State['ALARM']) and (message.user not in activePlayers or self.selfNotify):
+                        alarmDistance = self.alarmDistance if message.status == State['ALARM'] else 0
                         for nSystem, data in system.getNeighbours(alarmDistance).items():
                             distance = data["distance"]
                             chars = nSystem.getLocatedCharacters()

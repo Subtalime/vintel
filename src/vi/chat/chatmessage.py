@@ -15,15 +15,21 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
-from vi import states
+from vi.states import State
 from bs4 import NavigableString
 import datetime
 import time
 
 
 class Message(object):
-    def __init__(self, room: str, message: str, timestamp: datetime.datetime, user: str,
-                 plainText: str = None, status: states = states.ALARM, rtext: NavigableString = None,
+    def __init__(self,
+                 room: str,
+                 message: str,
+                 timestamp: datetime.datetime,
+                 user: str,
+                 plainText: str = None,
+                 status: State = State['ALARM'],
+                 rtext: NavigableString = None,
                  currsystems: list = None,
                  upperText: str = None):
         self.room = room  # chatroom the message was posted
@@ -39,6 +45,18 @@ class Message(object):
         # if you add the message to a widget, please add it to widgets
         self.widgets = []
 
+    # @property
+    # def navigable_string(self) -> NavigableString:
+    #     return self.rtext
+    #
+    # @navigable_string.setter
+    # def navigable_string(self, value):
+    #     self.rtext = value
+
+    @property
+    def utc_time(self):
+        return self.timestamp.replace(tzinfo=datetime.timezone.utc)
+
     def __key(self):
         return (self.room, self.plainText, self.timestamp, self.user)
 
@@ -46,7 +64,7 @@ class Message(object):
         return x.__key() == y.__key()
 
     def __repr__(self):
-        return "{} {}/'{}' {}: {}".format(self.timestamp, self.room, self.user, self.status.upper(), self.plainText)
+        return "{} {}/'{}' {}: {}".format(self.timestamp, self.room, self.user, self.status.value, self.plainText)
 
     def __hash__(self):
         return hash(self.__key())

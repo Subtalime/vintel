@@ -21,7 +21,7 @@ from bs4.element import CData
 from PyQt5 import QtWidgets
 from vi.dotlan.map import Map
 from vi.resources import getVintelMap
-from vi import states
+from vi.states import State
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.dotlan.jumpbridge import Jumpbridge
 import re
@@ -61,7 +61,7 @@ class MyMap(Map):
                 cjs = ColorJavaScript()
                 for system in self.systems.values():
                     if len(system.timerload) and system.timerload[0] >= 60 * 60 * 2:  # remove timers older than 2 hours
-                        system.setStatus(states.UNKNOWN)
+                        system.setStatus(State['UNKNOWN'])
                     #TODO: when changing System, rescan all Chats and update markers that way
                     if system.update(cjs):
                         count += 1

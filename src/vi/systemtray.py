@@ -25,7 +25,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QActionGroup, QMenu
 from vi.resources import resourcePath
-from vi import states
+from vi.states import State
 from ast import literal_eval
 from vi.cache.cache import Cache
 from vi.sound.soundmanager import SoundManager
@@ -180,18 +180,18 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         if soundlist:
             # set the sound which has been preconfigured
             org_sound_volume = SoundManager().soundVolume
-            if message.status == states.ALARM:
+            if message.status == State['ALARM']:
                 row = soundlist[distance]
                 SoundManager().setSoundVolume(row[2])
                 sound_file = row[1]
-            elif message.status == states.REQUEST:
+            elif message.status == State['REQUEST']:
                 if "Request" in soundlist:
                     SoundManager().setSoundVolume(soundlist["Request"][2])
                     sound_file = soundlist["Request"][1]
                 else:
                     LOGGER.error("No \"Request\" sound configured! %r", soundlist)
-        if message.status == states.ALARM and self.showAlarm and self.lastNotifications.get(
-                states.ALARM, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
+        if message.status == State['ALARM'] and self.showAlarm and self.lastNotifications.get(
+                State['ALARM'], 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "ALARM!"
             icon = 2
             speech_text = (
@@ -202,13 +202,13 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
                 SoundManager().setSoundVolume(org_sound_volume)
             else:
                 SoundManager().playSound("alarm", text, speech_text)
-            self.lastNotifications[states.ALARM] = time.time()
-        elif message.status == states.REQUEST and self.showRequest and self.lastNotifications.get(
-                states.REQUEST, 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
+            self.lastNotifications[State['ALARM']] = time.time()
+        elif message.status == State['REQUEST'] and self.showRequest and self.lastNotifications.get(
+                State['REQUEST'], 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
             title = "Status request"
             icon = 1
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
-            self.lastNotifications[states.REQUEST] = time.time()
+            self.lastNotifications[State['REQUEST']] = time.time()
             if sound_file:
                 SoundManager().playSoundFile(sound_file, text)
                 SoundManager().setSoundVolume(org_sound_volume)

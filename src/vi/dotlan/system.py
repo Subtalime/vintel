@@ -20,7 +20,7 @@
 import time
 import datetime
 import math
-from vi import states
+from vi.states import State
 
 
 class System(object):
@@ -34,7 +34,7 @@ class System(object):
     CLEAR_COLOR = "#59FF6C"
 
     def __init__(self, name, svgElement, mapSoup, mapCoordinates, transform, systemId):
-        self.status = states.UNKNOWN
+        self.status = State['UNKNOWN']
         self.name = name
         self.svgElement = svgElement
         self.mapSoup = mapSoup
@@ -44,7 +44,7 @@ class System(object):
         self.secondLine = svgElement.select("text")[1]
         self.lastAlarmTime = 0
         self.messages = []
-        self.setStatus(states.UNKNOWN)
+        self.setStatus(State['UNKNOWN'])
         self._locatedCharacters = []
         self.backgroundColor = "#FFFFFF"
         self.mapCoordinates = mapCoordinates
@@ -173,21 +173,21 @@ class System(object):
             if isinstance(alarm_time, datetime.datetime):
                 alarm_time = time.mktime(alarm_time.timetuple()) + alarm_time.microsecond / 1E6
                 # alarm_time = (alarm_time - datetime.datetime(1970, 1, 1)).total_seconds()
-        if new_status in (states.ALARM, states.CLEAR, states.REQUEST):
+        if new_status in (State['ALARM'], State['CLEAR'], State['REQUEST']):
             self.lastAlarmTime = alarm_time
-            if new_status == states.ALARM:
+            if new_status == State['ALARM']:
                 self.secondLine["alarmtime"] = self.lastAlarmTime
-            elif new_status == states.CLEAR:
+            elif new_status == State['CLEAR']:
                 self.secondLine["alarmtime"] = self.lastAlarmTime
-                self.secondLine.string = "clear"
-            elif new_status == states.REQUEST:
+                self.secondLine.string = State['CLEAR'].value
+            elif new_status == State['REQUEST']:
                 self.secondLine.string = "status"
-        elif new_status == states.UNKNOWN:
+        elif new_status == State['UNKNOWN']:
             self.secondLine.string = "?"
         # if new_status not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
-        if new_status not in (states.NOT_CHANGE,):  # unknown not affect system status
+        if new_status not in (State['NOT_CHANGE'],):  # unknown not affect system status
             self.status = new_status
-            self.secondLine["state"] = str(self.status)
+            self.secondLine["state"] = State['NOT_CHANGE'].value
 
     def setStatistics(self, statistics):
         if statistics is None:
@@ -210,12 +210,12 @@ class System(object):
                                 rect["style"] = "fill: {0};".format(self.backgroundColor)
                         self.secondLine["style"] = "fill: {0};".format(secondLineColor)
                     break
-        if self.status in (states.ALARM, states.WAS_ALARMED, states.CLEAR):  # timer
+        if self.status in (State['ALARM'], State['WAS_ALARMED'], State['CLEAR']):  # timer
             diff = math.floor(time.time() - self.lastAlarmTime)
             minutes = int(math.floor(diff / 60))
             seconds = int(diff - minutes * 60)
             string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
-            if self.status == states.CLEAR:
+            if self.status == State['CLEAR']:
                 secondsUntilWhite = 10 * 60
                 calcValue = int(diff / (secondsUntilWhite / 255.0))
                 if calcValue > 255:

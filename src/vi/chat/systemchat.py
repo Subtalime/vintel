@@ -38,7 +38,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QListWidgetItem
 from PyQt5.QtCore import pyqtSignal, QObject
 from vi.chat.chatentrywidget import ChatEntryWidget
-from vi import states
+from vi.states import State
 from vi.character.Characters import Characters
 import vi.ui.SystemChat
 
@@ -113,11 +113,11 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
                 entry.updateAvatar(avatarData)
 
     def setSystemAlarm(self):
-        self.system.setStatus(states.ALARM)
+        self.system.setStatus(State['ALARM'])
         self.parent.updateMapView()
 
     def setSystemClear(self):
-        self.system.setStatus(states.CLEAR)
+        self.system.setStatus(State['CLEAR'])
         self.parent.updateMapView()
 
     def closeDialog(self):

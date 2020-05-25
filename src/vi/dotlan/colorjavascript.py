@@ -17,7 +17,7 @@
 #
 from vi.cache.cache import Cache
 from vi.singleton import Singleton
-from vi import states
+from vi.states import State
 import pickle
 import six
 from colour import Color
@@ -26,6 +26,7 @@ from colour import Color
 class ColorJavaScript(six.with_metaclass(Singleton)):
     WHITE = "#ffffff"
     BLACK = "#000000"
+    CACHE_KEY = "js_alarm_colors"
 
     def __init__(self):
         self.cache = Cache()
@@ -98,14 +99,14 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
             return_str += self.js_color_string(color)
         return return_str
 
-    def js_color_string(self, status: str = states.ALARM):
+    def js_color_string(self, status: State):
         """create a JS-Line with a Color-Definition.
 
         The JS-Array is of the following format:
         up-to-duration, duration, start-color, end-color, text-color, [ <duration> list of colors ]
         """
         color_array = self.color_array(status)
-        output = "var %s_COLORS = [" % (status.upper(),)
+        output = "var %s_COLORS = [" % (status.name.upper(),)
         for color_range in color_array:
             s_color = "\n   %d, %d, '%s', '%s', '%s' , %s," % (
                 color_range[0], color_range[1], color_range[2], color_range[3],
@@ -114,14 +115,14 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
         output = output.rstrip(",") + "\n];\n"
         return output
 
-    def color_array(self, status: str = states.ALARM) -> list:
-        if not status.capitalize() in self.js_lst.keys():
+    def color_array(self, status: State) -> list:
+        if status not in self.js_lst.keys():
             return []
-        if not status.capitalize() in self.js_output_array.keys():
+        if status not in self.js_output_array.keys():
             color_array = []
-            color_range = self.js_lst[status.capitalize()]
+            color_range = self.js_lst[status]
             time_offset = 0
-            for index, color_index in enumerate(self.js_lst[status.capitalize()]):
+            for index, color_index in enumerate(self.js_lst[status]):
                 start_color = Color(color_index[1])
                 if index == len(color_range) - 1:  # last reached
                     end_color = self.WHITE
@@ -132,16 +133,16 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
                 color_array.append([color_index[0], length, color_index[1], end_color,
                                     color_index[2], [c.get_hex_l() for c in set_color]])
                 time_offset = color_index[0]
-            self.js_output_array[status.capitalize()] = color_array
-        return self.js_output_array[status.capitalize()]
+            self.js_output_array[status] = color_array
+        return self.js_output_array[status]
 
-    def max_time(self, status: str) -> int:
+    def max_time(self, status: State) -> int:
         check_arr = self.color_array(status)
         if check_arr:
             return check_arr[-1][0]
         return 60 * 60 * 24
 
-    def color_at(self, time_in_secs: int, status: str = states.ALARM) -> tuple:
+    def color_at(self, time_in_secs: int, status: State) -> tuple:
         # get the colors
         check_array = self.color_array(status)
         if not check_array or time_in_secs >= check_array[-1][0]:
@@ -153,26 +154,26 @@ class ColorJavaScript(six.with_metaclass(Singleton)):
             return section[5][offset], section[4]
         return self.WHITE, self.BLACK
 
-    def get_last(self, status: str = states.ALARM) -> tuple:
+    def get_last(self, status: State) -> tuple:
         return self.color_at(60 * 60 * 24, status)
 
     def load_settings(self):
         # content = None
         self.js_output_array = {}
-        content = self.cache.fetch("js_alarms")
+        content = self.cache.fetch(self.CACHE_KEY)
         if content:
             self.js_lst = pickle.loads(content)
         else:
-            self.js_lst = {"Alarm": [[60 * 5, "#FF0000", "#FFFFFF"],
+            self.js_lst = {State['ALARM']: [[60 * 5, "#FF0000", "#FFFFFF"],
                                      [60 * 10, "#FF9B0F", "#000000"],
                                      [60 * 15, "#FFFA0F", "#000000"],
                                      ],
-                           "Request": [[60 * 2, "#ffaaff", "#000000"], ],
-                           "Clear": [[60 * 2, "#59FF6C", "#000000"], ],
+                           State['REQUEST']: [[60 * 2, "#ffaaff", "#000000"], ],
+                           State['CLEAR']: [[60 * 2, "#59FF6C", "#000000"], ],
                            }
 
     def save_settings(self):
-        self.cache.put("js_alarms", pickle.dumps(self.js_lst))
+        self.cache.put(self.CACHE_KEY, pickle.dumps(self.js_lst))
         # may have changed, so reload new string output
         self.js_output_array = {}
 
@@ -182,7 +183,7 @@ if __name__ == "__main__":
     # print(cjs.get_last('alarm'))
     al = cjs.color_array()
     print(al[-1][0] + al[-1][1])
-    sum = cjs.js_output_array['Alarm'.capitalize()][-1][0] + cjs.js_output_array['alarm'.capitalize()][-1][1]
+    sum = cjs.js_output_array['Alarm'.upper()][-1][0] + cjs.js_output_array['alarm'.upper()][-1][1]
     print(sum)
     print(cjs.js_output_array.keys())
     print("Max-Time alarm: %d" % cjs.max_time('alarm'))
