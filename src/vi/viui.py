@@ -107,7 +107,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.clipboardCheckInterval()
         self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
         self.setConstants()
-        self.myMap = MyMap(self)
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("logo_small_green.png"))
         self.setWindowIcon(self.taskbarIconQuiescent)
@@ -421,25 +420,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             regionName = "Delve"
 
         try:
-            self.dotlan = self.myMap.loadMap(regionName)
+            self.dotlan = MyMap(parent=self, region=regionName)
         except DotlanException as e:
             self.LOGGER.error(e)
             QMessageBox.critical(None, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 self.cache.put("region_name", "Delve")
-                self.dotlan = self.myMap.loadMap(regionName)
+                self.dotlan = MyMap(parent=self, region=regionName)
             else:
                 sys.exit(1)
         self.LOGGER.debug("Map File found, Region set to {}".format(regionName))
-        # self.cache.put("region_name", "Delve")
-        if self.dotlan.outdatedCacheError:
-            e = self.dotlan.outdatedCacheError
-            diagText = "Something went wrong getting map data. Proceeding with older " \
-                       "cached data. Check for a newer version and inform the maintainer." \
-                       "\n\nError: {0} {1}".format(type(e), six.text_type(e))
-            self.LOGGER.warning(diagText)
-            QMessageBox.warning(None, "Using map from cache", diagText, QMessageBox.Ok)
 
         # Load the jumpbridges
         with self.sw.timer("setJumpbridges"):

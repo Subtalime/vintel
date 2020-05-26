@@ -181,22 +181,15 @@ class AvatarFindThread(QThread):
                     #  try to do it with increasing time to skip Avatar-Load
                     #  or even do it within ESI to skip all calls!
                     with self.sw.timer("Avatar fetch"):
-                        # start_time = datetime.now()
-                        # LOGGER.debug("AvatarFindThread getting avatar for %s at %s", charname, start_time)
                         avatar = EsiHelper().get_avatarByName(charname)
-                    # LOGGER.debug("AvatarFindThread getting avatar for %s took %ds", charname,
-                    #              (datetime.now() - start_time).total_seconds())
-                    # self.switch_off_avatar(start_time)
-                    # else:
-                    #     self.switch_off_avatar(None)
                     self.switch_off_avatar()
                 if avatar:
                     self.LOGGER.debug(
                         "AvatarFindThread emit avatar_update for %s: %s" % (charname, self.sw.get_report(),))
                     self.avatar_update.emit(chat_entry, avatar)
                 else:
-                    self.LOGGER.debug(
-                        "AvatarFindThread Avatar not found for %s: %s" % (charname, self.sw.get_report(),))
+                    self.LOGGER.warning(
+                        "AvatarFindThread Avatar not found for \"%s\": %s" % (charname, self.sw.get_report(),))
             except Exception as e:
                 self.LOGGER.error("Error in AvatarFindThread : %r" % (e,))
 

@@ -24,21 +24,12 @@ import threading
 from queue import Queue
 from threading import Thread
 from typing import Dict, Any
-from dataclasses import dataclass
 import six
-from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, pyqtSignal
-from vi import states
-from vi.chat.messageparser import MessageParser
+from vi.states import State
+from vi.chat.messageparser import MessageParser, parse_line
 from vi.chat.chatmessage import Message
-from vi.chat.parser_functions import (
-    parse_status,
-    parseCharnames,
-    parseShips,
-    parseSystems,
-    parseUrls,
-)
-from vi.dotlan import mysystem as systems
+from vi.dotlan import system as systems
 
 chat_thread_lock = threading.RLock()
 
@@ -81,7 +72,7 @@ def _chat_thread_all_messages_tidy_up():
     # 20 minutes storage is enough
     # remember to adjust if increasing in ChatThreadProcess.__init__
     message_age = 1200
-    ts = datetime.datetime.now().astimezone()
+    ts = datetime.datetime.now()
     for key, message_time in list(__all_known_messages.items()):
         if (ts - message_time).total_seconds() > message_age:
             del __all_known_messages[key]
@@ -254,7 +245,7 @@ class ChatThreadProcess(QThread):
         log_file_path: str,
         ship_scanner: bool,
         char_scanner: bool,
-        dotlan_systems: systems = {},
+        dotlan_systems: systems,
     ):
         super(__class__, self).__init__()
         self.LOGGER = logging.getLogger(__name__)
@@ -298,44 +289,19 @@ class ChatThreadProcess(QThread):
         )
         if self.ship_scanner:
             self.message_parser.process_ships(message)
-            # count = 0
-            # while parseShips(message.rtext):
-            #     count += 1
-            #     if count > 5:
-            #         self.LOGGER.warning(
-            #             "parseShips excessive runs on %r" % (message.rtext,)
-            #         )
-            #         break
-            #     continue
         self.message_parser.process_urls(message)
-        # count = 0
-        # while parseUrls(message.rtext):
-        #     count += 1
-        #     if count > 5:
-        #         self.LOGGER.warning("parseUrls excessive runs on %r" % (message.rtext,))
-        #         break
-        #     continue
         if self.character_scanner:
             self.message_parser.process_charnames(message)
-            # count = 0
-            # while parseCharnames(message.rtext):
-            #     count += 1
-            #     if count > 5:
-            #         self.LOGGER.warning(
-            #             "parseCharnames excessive runs on %r" % (message.rtext,)
-            #         )
-            #         break
-            #     continue
 
         # If message says clear and no system? Maybe an answer to a request?
-        if message.status == states.CLEAR and not message.systems:
+        if message.status == State['CLEAR'] and not message.systems:
             max_search = 4  # we search only max_search messages in the room
             for count, oldMessage in enumerate(
                 oldMessage
                 for oldMessage in self.knownMessages[-1::-1]
                 if oldMessage.room == self.roomname
             ):
-                if oldMessage.systems and oldMessage.status == states.REQUEST:
+                if oldMessage.systems and oldMessage.status == State['REQUEST']:
                     for system in oldMessage.systems:
                         message.systems.append(system)
                     break
@@ -392,7 +358,7 @@ class ChatThreadProcess(QThread):
         # now head forward until you hit a timestamp, younger then max_age
         for line in lines[self.parsed_lines :]:
             if len(str(line).strip(" ")):
-                utctime, username, text, timestamp = self._parseLine(line)
+                utctime, username, text, timestamp = parse_line(line)
                 if (
                     datetime.datetime.utcnow() - utctime
                 ).total_seconds() <= self.message_age:
@@ -400,29 +366,6 @@ class ChatThreadProcess(QThread):
             self.parsed_lines += 1
         self.LOGGER.debug("Registered %s in %s" % (self.charname, self.roomname,))
         return True
-
-    def _parseLine(self, line) -> tuple:
-        # finding the timestamp
-        timeStart = line.find("[") + 1
-        timeEnds = line.find("]")
-        timeStr = line[timeStart:timeEnds].strip()
-        try:
-            utc_timestamp = datetime.datetime.strptime(timeStr, "%Y.%m.%d %H:%M:%S")
-        except ValueError:
-            self.LOGGER.error(
-                'Invalid Timestamp in "%s" Line %s' % (self.log_file, line)
-            )
-            raise
-        # all Log-Lines are logged in UTC format, so make it Local time
-        timestamp = utc_timestamp.replace(tzinfo=datetime.timezone.utc).astimezone(
-            tz=None
-        )
-        # finding the username of the poster
-        userEnds = line.find(">")
-        username = line[timeEnds + 1 : userEnds].strip()
-        # finding the pure message
-        text = line[userEnds + 1 :].strip()  # text will the text to work an
-        return utc_timestamp, username, text, timestamp
 
     def _getLines(self) -> list:
         try:
@@ -475,120 +418,6 @@ class ChatThreadProcess(QThread):
             % (len(lines), (datetime.datetime.utcnow() - start).total_seconds()),
         )
         self.parsed_lines = len(lines) - 1
-
-    def _parseLocal(self, line) -> Message:
-        """
-        Parsing a line from the local chat. Can contain the system of the char
-        """
-        message = None
-        if len(self.locations) == 0:
-            self.locations = {
-                "system": "?",
-                "timestamp": datetime.datetime(1970, 1, 1, 0, 0, 0, 0),
-            }
-
-        utctime, username, text, timestamp = self._parseLine(line)
-        # anything older than max_age, ignore
-        if (datetime.datetime.utcnow() - utctime).total_seconds() > self.message_age:
-            self.LOGGER.debug(
-                "%s/%s: Message-Line too old" % (self.roomname, self.charname,)
-            )
-            return None
-
-        if username in ("EVE-System", "EVE System"):
-            if ":" in text:
-                system = text.split(":")[1].strip().replace("*", "").upper()
-                status = states.LOCATION
-            else:
-                # We could not determine if the message was system-change related
-                system = "?"
-                status = states.IGNORE
-            if timestamp > self.locations["timestamp"]:
-                self.locations["system"] = system
-                self.locations["timestamp"] = timestamp
-                message = Message(
-                    self.roomname,
-                    text,
-                    timestamp,
-                    self.charname,
-                    currsystems=[system,],
-                    status=status,
-                )
-        return message
-
-    def _lineToMessage(self, line) -> Message:
-        utctime, username, text, timestamp = self._parseLine(line)
-        message = None
-        originalText = text
-        formattedText = u"<rtext>{0}</rtext>".format(text)
-        soup = BeautifulSoup(formattedText, "html.parser")
-        rtext = soup.select("rtext")[0]
-        upperText = text.upper()
-        # anything older than max_age, ignore
-        if (datetime.datetime.utcnow() - utctime).total_seconds() > self.message_age:
-            self.LOGGER.debug(
-                "%s/%s: Message-Line too old" % (self.roomname, self.charname,)
-            )
-            return message
-        # KOS request
-        if upperText.startswith("XXX "):
-            return Message(
-                self.roomname,
-                text,
-                timestamp,
-                username,
-                rtext=rtext,
-                status=states.KOS_STATUS_REQUEST,
-                plainText=originalText,
-                upperText=upperText,
-            )
-        elif self.roomname.startswith("="):
-            return Message(
-                self.roomname,
-                "xxx " + text,
-                timestamp,
-                username,
-                status=states.KOS_STATUS_REQUEST,
-                rtext=rtext,
-                plainText=originalText,
-                upperText=upperText,
-            )
-        elif upperText.startswith("VINTELSOUND_TEST"):
-            return Message(
-                self.roomname,
-                text,
-                timestamp,
-                username,
-                status=states.SOUND_TEST,
-                rtext=rtext,
-                plainText=originalText,
-                upperText=upperText,
-            )
-        parsedStatus = parse_status(rtext)
-        status = parsedStatus if parsedStatus is not None else states.ALARM
-        message = Message(
-            self.roomname,
-            text,
-            timestamp,
-            username,
-            status=status,
-            rtext=rtext,
-            plainText=originalText,
-            upperText=upperText,
-        )
-        count = 0
-        while parseSystems(self.dotlan_systems, rtext, message.systems):
-            count += 1
-            if count > 5:
-                self.LOGGER.error(
-                    "parseSystems excessive runs on %r" % (message.rtext,)
-                )
-                break
-            continue
-        self.LOGGER.debug(
-            "%s/%s: Message created: %r" % (self.roomname, self.charname, message,)
-        )
-        return message
 
     def logfileChanged(self, val=1):
         self.queue.put(val)
@@ -649,8 +478,7 @@ if __name__ == "__main__":
     # t = ChatThread(rooms, dotlan_systems=(), ship_parser_change, char_parser_change)
 
     EsiInterface(cache_dir=getVintelDir())
-    dotlan = MyMap()
-    dotlan.loadMap("Delve")
+    dotlan = MyMap("Delve")
 
     t = ChatThread(rooms, dotlan_systems=dotlan.systems)
     t.start()

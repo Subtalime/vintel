@@ -35,7 +35,7 @@ class State(Enum):
     KOS_STATUS_REQUEST = 'kos request'
     SOUND_TEST = 'soundtest'
 
-
+"""
 IGNORE = 'ignore'
 UNKNOWN = 'unknown'
 NOT_CHANGE = 'no change'
@@ -46,3 +46,4 @@ REQUEST = 'request'
 LOCATION = 'location'
 KOS_STATUS_REQUEST = 'kos request'
 SOUND_TEST = 'soundtest'
+"""

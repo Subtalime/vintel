@@ -27,31 +27,41 @@ class Message(object):
                  message: str,
                  timestamp: datetime.datetime,
                  user: str,
-                 plainText: str = None,
+                 plain_text: str = None,
                  status: State = State['ALARM'],
                  rtext: NavigableString = None,
                  currsystems: list = None,
-                 upperText: str = None):
+                 upper_text: str = None):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
         self.timestamp_float = time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1E6
         self.user = user  # user who posted the message
-        self.systems = currsystems if currsystems is not None else [] # list of systems mentioned in the message
         self.status = status  # status related to the message
-        self.upperText = upperText if upperText else message.upper()  # the text in UPPER CASE
-        self.plainText = plainText if plainText else message  # plain text of the message, as posted
         self.rtext = rtext
+        self.systems = currsystems if currsystems is not None else [] # list of systems mentioned in the message
+        self.upper_text = upper_text if upper_text else message.upper()  # the text in UPPER CASE
+        self.plain_text = plain_text if plain_text else message  # plain text of the message, as posted
         # if you add the message to a widget, please add it to widgets
         self.widgets = []
 
-    # @property
-    # def navigable_string(self) -> NavigableString:
-    #     return self.rtext
-    #
-    # @navigable_string.setter
-    # def navigable_string(self, value):
-    #     self.rtext = value
+    @property
+    def plainText(self):
+        return self.plain_text
+
+    @property
+    def upperText(self):
+        return self.upper_text
+
+    @property
+    def navigable_string(self) -> NavigableString:
+        return self.rtext
+
+    @navigable_string.setter
+    def navigable_string(self, value: NavigableString):
+        if not isinstance(value, NavigableString):
+            raise ValueError("Must be of type NavigableString")
+        self.rtext = value
 
     @property
     def utc_time(self):

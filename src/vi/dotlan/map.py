@@ -23,7 +23,7 @@ import requests
 import six
 from bs4 import BeautifulSoup
 from vi.esi import EsiInterface
-from vi.dotlan.mysystem import MySystem as System
+from vi.dotlan.system import System
 from vi.dotlan.exception import DotlanException
 from vi.dotlan.jumpbridge import Jumpbridge
 from vi.cache.cache import Cache

@@ -17,42 +17,54 @@
 #
 #
 
-import time
 import datetime
 import math
+import time
+
+from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.states import State
 
 
-class System(object):
-    """
-        A System on the Map
-    """
-    ALARM_COLORS = [(60 * 4, "#FF0000", "#FFFFFF"), (60 * 10, "#FF9B0F", "#FFFFFF"), (60 * 15, "#FFFA0F", "#000000"),
-                    (60 * 25, "#FFFDA2", "#000000"), (60 * 60 * 24, "#FFFFFF", "#000000")]
-    ALARM_COLOR = ALARM_COLORS[0][1]
-    UNKNOWN_COLOR = "#FFFFFF"
-    CLEAR_COLOR = "#59FF6C"
-
-    def __init__(self, name, svgElement, mapSoup, mapCoordinates, transform, systemId):
+class System:
+    def __init__(self, name, svg_element, map_soup, map_coordinates, transform, system_id):
         self.status = State['UNKNOWN']
         self.name = name
-        self.svgElement = svgElement
-        self.mapSoup = mapSoup
-        self.origSvgElement = svgElement
-        self.rect = svgElement.select("rect")[0]
-        self.firstLine = svgElement.select("text")[0]
-        self.secondLine = svgElement.select("text")[1]
+        self.svg_element = svg_element
+        self.map_soup = map_soup
+        self.origsvg_element = svg_element
+        self.rect = svg_element.select("rect")[0]
+        self.firstLine = svg_element.select("text")[0]
+        self.secondLine = svg_element.select("text")[1]
         self.lastAlarmTime = 0
         self.messages = []
         self.setStatus(State['UNKNOWN'])
         self._locatedCharacters = []
         self.backgroundColor = "#FFFFFF"
-        self.mapCoordinates = mapCoordinates
-        self.systemId = systemId
+        self.map_coordinates = map_coordinates
+        self.system_id = system_id
         self.transform = transform
         self.cachedOffsetPoint = None
         self._neighbours = set()
         self.statistics = {"jumps": "?", "shipkills": "?", "factionkills": "?", "podkills": "?"}
+        self.timerload = ()
+        self.name_label = self.name.replace("-", "_").lower()
+        self.rectId = self.svg_element.select("rect")[0]["id"]
+        if len(self.svg_element.select("rect")) > 1:
+            self.rectIce = self.svg_element.select("rect")[1]
+        else:
+            self.rectIce = self.rect
+        if not self.rectIce.has_attr("id"):
+            self.rectIce["id"] = "icerect{}".format(self.name_label)
+        self.rectIdIce = self.rectIce["id"]
+        if not self.secondLine.has_attr("id"):
+            self.secondLine["id"] = "watch{}".format(self.name_label)
+        # set default to White
+        for rect in self.svg_element.select("rect"):
+            rect["style"] = "fill: #ffffff"
+
+    @property
+    def mapCoordinates(self):
+        return self.map_coordinates
 
     def getTransformOffsetPoint(self):
         if not self.cachedOffsetPoint:
@@ -66,44 +78,43 @@ class System(object):
 
     def setJumpbridgeColor(self, color):
         idName = u"JB_" + self.name + u"_jb_marker"
-        for element in self.mapSoup.select(u"#" + idName):
+        for element in self.map_soup.select(u"#" + idName):
             element.decompose()
-        coords = self.mapCoordinates
+        coords = self.map_coordinates
         offsetPoint = self.getTransformOffsetPoint()
         x = coords["x"] - 3 + offsetPoint[0]
         y = coords["y"] + offsetPoint[1]
         style = "fill:{0};stroke:{0};stroke-width:2;fill-opacity:0.4"
-        tag = self.mapSoup.new_tag("rect", x=x, y=y, width=coords["width"] + 1.5, height=coords["height"], id=idName,
+        tag = self.map_soup.new_tag("rect", x=x, y=y, width=coords["width"] + 1.5, height=coords["height"], id=idName,
                                    style=style.format(color), visibility="hidden")
         tag["class"] = ["jumpbridge", ]
-        jumps = self.mapSoup.select("#jumps")[0]
+        jumps = self.map_soup.select("#jumps")[0]
         jumps.insert(0, tag)
 
     def mark(self):
-        marker = self.mapSoup.select("#select_marker")[0]
+        marker = self.map_soup.select("#select_marker")[0]
         offsetPoint = self.getTransformOffsetPoint()
-        x = self.mapCoordinates["center_x"] + offsetPoint[0]
-        y = self.mapCoordinates["center_y"] + offsetPoint[1]
+        x = self.map_coordinates["center_x"] + offsetPoint[0]
+        y = self.map_coordinates["center_y"] + offsetPoint[1]
         marker["transform"] = "translate({x},{y})".format(x=x, y=y)
         marker["opacity"] = "1"
         marker["activated"] = time.time()
 
     def addLocatedCharacter(self, charname):
         idName = self.getSoupId()
-        # idName = self.name + u"_loc"
         wasLocated = bool(self._locatedCharacters)
         if charname not in self._locatedCharacters:
             self._locatedCharacters.append(charname)
         if not wasLocated:
-            coords = self.mapCoordinates
-            newTag = self.mapSoup.new_tag("ellipse", cx=coords["center_x"] - 2.5, cy=coords["center_y"], id=idName,
+            coords = self.map_coordinates
+            newTag = self.map_soup.new_tag("ellipse", cx=coords["center_x"] - 2.5, cy=coords["center_y"], id=idName,
                                           rx=coords["width"] / 2 + 4, ry=coords["height"] / 2 + 4, style="fill:#8b008d",
                                           transform=self.transform)
-            jumps = self.mapSoup.select("#jumps")[0]
+            jumps = self.map_soup.select("#jumps")[0]
             jumps.insert(0, newTag)
 
     def setBackgroundColor(self, color):
-        for rect in self.svgElement("rect"):
+        for rect in self.svg_element("rect"):
             if "location" not in rect.get("class", []) and "marked" not in rect.get("class", []):
                 rect["style"] = "fill: {0};".format(color)
 
@@ -124,7 +135,7 @@ class System(object):
         if charname in self._locatedCharacters:
             self._locatedCharacters.remove(charname)
             if not self._locatedCharacters:
-                for element in self.mapSoup.select("#" + idName):
+                for element in self.map_soup.select("#" + idName):
                     element.decompose()
 
     def addNeighbour(self, neighbourSystem):
@@ -168,6 +179,14 @@ class System(object):
         if self in system._neighbours:
             system._neigbours.remove(self)
 
+    def setStatistics(self, statistics):
+        if statistics is None:
+            text = "stats n/a"
+        else:
+            text = "j-{jumps} f-{factionkills} s-{shipkills} p-{podkills}".format(**statistics)
+        svgtext = self.map_soup.select("#stats_" + str(self.system_id))[0]
+        svgtext.string = text
+
     def setStatus(self, new_status, alarm_time: float = time.time()):
         if not isinstance(alarm_time, float):
             if isinstance(alarm_time, datetime.datetime):
@@ -189,41 +208,49 @@ class System(object):
             self.status = new_status
             self.secondLine["state"] = State['NOT_CHANGE'].value
 
-    def setStatistics(self, statistics):
-        if statistics is None:
-            text = "stats n/a"
+    def update(self, cjs: ColorJavaScript) -> bool:
+        updated = False
+        # calc the new timer for injecting into JS
+        diff = max(0, math.floor(time.time() - self.lastAlarmTime))
+        # diff = time.time() - self.lastAlarmTime
+        minutes = int(math.floor(diff / 60))
+        seconds = int(diff - minutes * 60)
+        ndiff = int(minutes * 60 + seconds)
+        # if self.status != states.UNKNOWN and (diff < 0 or ndiff > cjs.max_time(self.status)):  # anything older than max color-size
+        #     self.setStatus(states.UNKNOWN)
+        if self.status != State["UNKNOWN"]:
+            self.secondLine.string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
+            self.timerload = (
+                ndiff,
+                self.status.value,
+                self.secondLine["id"],
+                self.rectId,
+                self.rectIdIce,
+            )
+            color, text_color = cjs.color_at(ndiff, self.status)
+            updated = True
+            for rect in self.svg_element.select("rect"):
+                rect["style"] = "fill: " + color
+            self.secondLine["style"] = "fill: " + text_color
         else:
-            text = "j-{jumps} f-{factionkills} s-{shipkills} p-{podkills}".format(**statistics)
-        svgtext = self.mapSoup.select("#stats_" + str(self.systemId))[0]
-        svgtext.string = text
-
-    def update(self):
-        # state changed?
-        if self.status == states.ALARM:
-            alarmTime = time.time() - self.lastAlarmTime
-            for maxDiff, alarmColor, secondLineColor in self.ALARM_COLORS:
-                if alarmTime < maxDiff:
-                    if self.backgroundColor != alarmColor:
-                        self.backgroundColor = alarmColor
-                        for rect in self.svgElement("rect"):
-                            if "location" not in rect.get("class", []) and "marked" not in rect.get("class", []):
-                                rect["style"] = "fill: {0};".format(self.backgroundColor)
-                        self.secondLine["style"] = "fill: {0};".format(secondLineColor)
-                    break
-        if self.status in (State['ALARM'], State['WAS_ALARMED'], State['CLEAR']):  # timer
-            diff = math.floor(time.time() - self.lastAlarmTime)
-            minutes = int(math.floor(diff / 60))
-            seconds = int(diff - minutes * 60)
-            string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
-            if self.status == State['CLEAR']:
-                secondsUntilWhite = 10 * 60
-                calcValue = int(diff / (secondsUntilWhite / 255.0))
-                if calcValue > 255:
-                    calcValue = 255
-                    self.secondLine["style"] = "fill: #008100;"
-                string = "clr: {m:02d}:{s:02d}".format(m=minutes, s=seconds)
-                self.setBackgroundColor("rgb({r},{g},{b})".format(r=calcValue, g=255, b=calcValue))
-            self.secondLine.string = string
+            self.secondLine.string = "??"
+            self.timerload = ()
+        return updated
 
     def __repr__(self):
-        return "{}:".format(self.name) + (",".join("{}.{}".format(key, val) for key, val in self.statistics.items()))
+        la = datetime.datetime.utcfromtimestamp(self.lastAlarmTime)
+        no = datetime.datetime.utcfromtimestamp(time.time())
+        ret_str = "%s: Alarm: %f (%s) (Diff: from NOW %f (%s) = %f)  (%s)" % (
+            self.name,
+            self.lastAlarmTime,
+            la,
+            time.time(),
+            no,
+            time.time() - self.lastAlarmTime,
+            (
+                ",".join(
+                    "{}.{}".format(key, val) for key, val in self.statistics.items()
+                )
+            ),
+        )
+        return ret_str

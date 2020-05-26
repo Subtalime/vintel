@@ -33,8 +33,8 @@ class Bridge:
             return None
         systemOne = self.systems[self.sys1]
         systemTwo = self.systems[self.sys2]
-        systemOneCoords = systemOne.mapCoordinates
-        systemTwoCoords = systemTwo.mapCoordinates
+        systemOneCoords = systemOne.map_coordinates
+        systemTwoCoords = systemTwo.map_coordinates
         systemOneOffsetPoint = systemOne.getTransformOffsetPoint()
         systemTwoOffsetPoint = systemTwo.getTransformOffsetPoint()
 
