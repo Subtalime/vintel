@@ -20,8 +20,10 @@
 import os
 import sys
 import logging
+from vi.version import ROOT_DIR
 
 LOGGER = logging.getLogger(__name__)
+
 
 def resourcePath(relativePath=None):
     """ Get absolute path to resource, works for dev and for PyInstaller
@@ -30,31 +32,30 @@ def resourcePath(relativePath=None):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         basePath = os.path.dirname(sys.executable)
     else:
-        basePath = os.path.join(os.path.abspath("."), "vi", "ui", "res")
+        basePath = os.path.join(ROOT_DIR, "vi", "ui", "res")
     if not relativePath:
         return basePath
     returnpath = os.path.join(basePath, relativePath)
     return returnpath
 
 
-def soundPath(relativePath=None):
+def build_resource_path(resource_dir, relative_dir) -> str:
+    base_path = resourcePath(resource_dir)
+    if relative_dir:
+        base_path = os.path.join(base_path, relative_dir)
+    return base_path
+
+
+def soundPath(relative_path=None):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
-    basePath = resourcePath("sound")
-    if not relativePath:
-        return basePath
-    returnpath = os.path.join(basePath, relativePath)
-    return returnpath
+    return build_resource_path("sound", relative_path)
 
 
 def mapPath(relativePath=None):
     """ Get absolute path to resource, works for dev and for PyInstaller
     """
-    basePath = resourcePath("mapdata")
-    if not relativePath:
-        return basePath
-    returnpath = os.path.join(basePath, relativePath)
-    return returnpath
+    return build_resource_path("mapdata", relativePath)
 
 
 def getEveDir() -> str:

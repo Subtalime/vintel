@@ -20,9 +20,9 @@ from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import QTableView, QAbstractItemView, QColorDialog
 
 
-def stringToColor(sQColor: str = None) -> QColor:
-    if str(sQColor).startswith("#"):
-        color = str(sQColor).lstrip("#")
+def string_to_color(string_color: str = None) -> QColor:
+    if str(string_color).startswith("#"):
+        color = str(string_color).lstrip("#")
         lv = len(color)
         cs = tuple(int(color[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
     else:
@@ -30,7 +30,7 @@ def stringToColor(sQColor: str = None) -> QColor:
     return QColor(cs[0], cs[1], cs[2])
 
 
-def dialogColor(color=QColor()):
+def color_dialog(color=QColor()):
     return QColorDialog().getColor(initial=color)
 
 
@@ -43,44 +43,38 @@ class JsModel(QAbstractTableModel):
 
     # resolve from dataset
     def rowCount(self, index=QModelIndex(), *args, **kwargs):
-        if index.isValid():
-            return 0
         length = len(self.m_grid_data)
         return length
 
     # resolve from dataset
     def columnCount(self, index=QModelIndex(), *args, **kwargs):
-        if index.isValid():
-            return 0
-
         length = len(self.m_grid_data[0])
         return length
 
     # Table-Column headers
-    def headerData(self, column: int, Qt_Orientation, role: int = Qt.DisplayRole):
+    def headerData(self, column: int, Qt_Orientation, role: int = Qt.DisplayRole) -> QVariant:
         if role == Qt.DisplayRole and Qt_Orientation == Qt.Horizontal:
             return QVariant(self.m_header[column])
         return QVariant()
 
+    def getData(self):
+        return self.m_grid_data
+
     # this returns the data to the Viewer
     def data(self, index: QModelIndex, role=None):
-        if not index.isValid() or not (
-                0 <= index.row() < self.rowCount() and 0 <= index.column() < self.columnCount()):
-            return QVariant()
-
-        row = index.row()
-        col = index.column()
-        if role == Qt.DisplayRole:
-            data = self.m_grid_data[row][col]
-            return data
-        elif role == Qt.BackgroundRole:
-            if col == 1:
-                qColor = stringToColor(self.m_grid_data[row][col])
-                return QBrush(qColor)
-        elif role == Qt.ForegroundRole:
-            if col == 1:
-                qColor = stringToColor(self.m_grid_data[row][col+1])
-                return QBrush(qColor)
+        # if not index.isValid() or not (
+        #         0 <= index.row() < self.rowCount() and 0 <= index.col() < self.columnCount()):
+        #     return QVariant()
+        #
+        if index.isValid() and 0 <= index.row() < self.rowCount() and 0 <= index.column() < self.columnCount():
+            if role == Qt.DisplayRole:
+                return self.m_grid_data[index.row()][index.column()]
+            elif role == Qt.BackgroundRole:
+                if index.column() == 1:
+                    return QBrush(string_to_color(self.m_grid_data[index.row()][index.column()]))
+            elif role == Qt.ForegroundRole:
+                if index.column() == 1:
+                    return QBrush(string_to_color(self.m_grid_data[index.row()][index.column()+1]))
 
         return QVariant()
 
@@ -91,12 +85,12 @@ class JsModel(QAbstractTableModel):
     were present and user permissions are set to allow the checkbox to be selected, calls 
     would also be made with the role set to Qt::CheckStateRole.
     """
-    def setData(self, index: QModelIndex, data: QVariant, role: int = None):
+    def setData(self, index: QModelIndex, data: QVariant, role: int = Qt.EditRole):
         if role == Qt.EditRole and index.isValid():
             row = index.row()
             col = index.column()
             if col > 0 and str(data).startswith("#") and len(str(data)) == 7 and QColor(
-                    data).isValid() or col == 0 and  0 <= int(data) <= 86400:
+                    data).isValid() or col == 0 and 0 <= int(data) <= 86400:
                 self.m_grid_data[row][col] = str(data)
                 self.dataChanged.emit(index, index, (Qt.DisplayRole,))
                 return True
@@ -131,11 +125,11 @@ class JsModel(QAbstractTableModel):
         self.endInsertRows()
         return True
 
-    def sort(self, Ncol: int, order=None):
-        if Ncol != 0:
+    def sort(self, column_number: int, order=None):
+        if column_number != 0:
             return
         self.layoutAboutToBeChanged.emit()
-        self.m_grid_data = sorted(self.m_grid_data, key=lambda operator: operator[Ncol])
+        self.m_grid_data = sorted(self.m_grid_data, key=lambda operator: operator[column_number])
         if order == Qt.DescendingOrder:
             self.m_grid_data.reverse()
         self.layoutChanged.emit()
@@ -167,8 +161,8 @@ class JsTableView(QTableView):
         if not sQModelIndex.isValid():
             return False
         if sQModelIndex.column() > 0:  # Color column
-            color = stringToColor(sQModelIndex.data())
-            color = dialogColor(color)
+            color = string_to_color(sQModelIndex.data())
+            color = color_dialog(color)
             if color.isValid():
                 self.model().setData(sQModelIndex, color.name(), Qt.EditRole)
                 return True

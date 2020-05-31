@@ -19,6 +19,7 @@
 import requests
 import logging
 import queue
+import os
 from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
@@ -34,6 +35,9 @@ MAINTAINER = AUTHOR
 MAINTAINER_EMAIL = AUTHOR_EMAIL
 
 LOGGER = logging.getLogger(__name__)
+
+ROOT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
 
 
 def getNewestVersion():

@@ -126,6 +126,8 @@ class ChatThread(QThread):
         self,
         parent,
         room_names: list,
+        # ship_parser,
+        # char_parser,
         dotlan_systems: systems = None,
         known_players: list = None,
     ):
@@ -138,6 +140,8 @@ class ChatThread(QThread):
         self.dotlan_systems = {}
         if dotlan_systems:
             self.dotlan_systems = dotlan_systems
+        # self.ship_parser = ship_parser
+        # self.char_parser = char_parser
         self.ship_parser = parent.enableShipParser()
         self.char_parser = parent.enableCharacterParser()
         parent.ship_parser.connect(self.ship_parser_enabled)
@@ -158,7 +162,7 @@ class ChatThread(QThread):
         self.room_names = room_names
         self._tidy_logs()
 
-    def add_character(self, player_name):
+    def add_known_player(self, player_name):
         if player_name not in self.known_players:
             self.known_players.append(player_name)
             self.player_added_signal.emit(self.known_players)
@@ -217,7 +221,7 @@ class ChatThread(QThread):
                     self.process_pool[logfile].message_updated_s.connect(
                         self.message_updated
                     )
-                    self.process_pool[logfile].new_player_s.connect(self.add_character)
+                    self.process_pool[logfile].new_player_s.connect(self.add_known_player)
                     self.process_pool[logfile].start()
                 if delete and logfile in self.process_pool.keys():
                     self.process_pool[logfile].quit()

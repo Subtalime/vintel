@@ -108,7 +108,7 @@ class Cache(object):
                 raise CacheError(e)
         updateDatabase(version, self.con)
 
-    def put(self, key: str, value: str, maxAge = MAX_DEFAULT):
+    def put(self, key: str, value: object, maxAge = MAX_DEFAULT):
         """
         Putting something in the cache maxAge is maximum age in seconds
         """

@@ -236,7 +236,6 @@ class MessageParser:
         :return: bool: systems found in Message
         """
         system_names = dotlan_systems.keys()
-        # navigable_string = message.rtext
         # words to ignore on the system parser. use UPPER CASE
         WORDS_TO_IGNORE = ("IN", "IS", "AS")
 
@@ -244,7 +243,7 @@ class MessageParser:
             new_text = u"""<a style="color:#CC8800;font-weight:bold" href="mark_system/{0}">{1}</a>"""
             return f_text.replace(f_word, new_text.format(f_system, f_word))
 
-        texts = [t for t in message.navigable_string if isinstance(t, NavigableString)]
+        texts = [t for t in message.navigable_string if isinstance(t, NavigableString) and t is not None]
         for wtIdx, text in enumerate(texts):
             work_text = text
             for char in self.CHARS_TO_IGNORE:
@@ -343,9 +342,9 @@ class MessageParser:
                 f_word, new_text.format(f_realShipName, f_word, f_tooltip)
             )
 
-        navigable_string = message.navigable_string
+        # navigable_string = message.navigable_string
 
-        texts = [t for t in navigable_string.contents if isinstance(t, NavigableString)]
+        texts = [t for t in message.navigable_string if isinstance(t, NavigableString) and t is not None]
         for text in texts:
             if len(text.strip(" ")) == 0:
                 continue
@@ -414,8 +413,8 @@ class MessageParser:
             )
             return f_text.replace(f_url, new_text.format(f_url))
 
-        navigable_string = message.navigable_string
-        texts = [t for t in navigable_string.contents if isinstance(t, NavigableString)]
+        # navigable_string = message.navigable_string
+        texts = [t for t in message.navigable_string if isinstance(t, NavigableString) and t is not None]
         for text in texts:
             urls = find_urls(text)
             for url in urls:
@@ -508,7 +507,7 @@ class MessageParser:
         """
         parse the Chat-Line to see if there are any System-Statuses triggered
         """
-        texts = [t for t in navigable_string.contents if isinstance(t, NavigableString)]
+        texts = [t for t in navigable_string if isinstance(t, NavigableString) and t is not None]
         for text in texts:
             upper_text = text.strip().upper()
             original_text = upper_text

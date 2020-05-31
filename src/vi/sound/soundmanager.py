@@ -37,6 +37,7 @@ from vi.singleton import Singleton
 import pyglet
 import pyglet.clock
 import pyglet.resource
+from vi.settings.settings import SoundSettings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -82,6 +83,14 @@ class SoundManager(six.with_metaclass(Singleton)):
         self.soundVolume = max(0, min(100, newValue))
         if self.soundThread:
             self.soundThread.setVolume(self.soundVolume)
+
+    @property
+    def enable_sound(self) -> bool:
+        return self.soundActive
+
+    @enable_sound.setter
+    def enable_sound(self, value: bool):
+        self.soundActive = value
 
     def playSoundFile(self, path, message="", abbreviatedMessage=""):
         if self.soundAvailable and self.soundActive:
@@ -132,6 +141,7 @@ class SoundManager(six.with_metaclass(Singleton)):
             self.player = pyglet.media.Player()
             self.player.loop = False
             self.active = True
+            self.currently_playing = False
 
         def setVolume(self, volume):
             self.volume = volume
@@ -175,9 +185,6 @@ class SoundManager(six.with_metaclass(Singleton)):
                 return False
             return True
 
-        def handleIdleTasks(self):
-            self.speakRandomChuckNorrisJoke()
-
         # Audio subsytem access
         def playAudioFile(self, filename, stream=False):
             try:
@@ -186,11 +193,13 @@ class SoundManager(six.with_metaclass(Singleton)):
                     with wave.open(filename, "r") as f:
                         duration = (f.getnframes() / float(f.getnchannels() * f.getframerate()) / 2)
                     src = pyglet.media.load(filename, streaming=stream)
+                    self.currently_playing = True
                     self.player.queue(src)
                     self.player.volume = volume
                     self.player.play()
                     time.sleep(duration)
                     self.player.next_source()
+                    self.currently_playing = False
                 elif self.isDarwin:
                     subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
             except Exception as e:

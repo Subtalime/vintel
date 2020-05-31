@@ -38,7 +38,7 @@ from vi.logger.logconfig import LogConfiguration
 
 
 class MyMainException(Exception):
-    logging.getLogger().critical(Exception)
+    # logging.getLogger().critical(Exception)
     pass
 
 

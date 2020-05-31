@@ -21,16 +21,21 @@ from ast import literal_eval
 from os.path import isfile
 from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
-from vi.settings.JsModel import stringToColor, dialogColor, JsModel
+from vi.settings.JsModel import string_to_color, color_dialog, JsModel
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.ui.Settings import Ui_Dialog
 from vi.cache.cache import Cache
 from vi.dotlan.regions import Regions
 from vi.resources import soundPath, resourcePath, getVintelMap
 from vi.sound.soundmanager import SoundManager
+from vi.states import State
+from PyQt5 import QtWidgets, QtCore
+from vi.settings import ChatroomsForm, ColorForm, GeneralForm, RegionsForm, SoundForm
 
 
-class SettingsDialog(QDialog, Ui_Dialog):
+
+
+class SettingsDialogOld(QDialog, Ui_Dialog):
     settings_saved = pyqtSignal()
     new_region_range_chosen = pyqtSignal(str)
     rooms_changed = pyqtSignal(list)
@@ -114,7 +119,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.java_script = ColorJavaScript()
         self.color_list = self.java_script.js_lst.copy()
         self.mapColorIndex = 0
-        self.model = JsModel(self.color_list['Alarm'], self.java_script.js_header)
+        self.model = JsModel(self.color_list[State['ALARM']], self.java_script.js_header)
         self.colorTable.setModel(self.model)
         self.colorTable.setSelectionMode(QAbstractItemView.SingleSelection)
         self.colorTable.resizeColumnsToContents()
@@ -308,7 +313,7 @@ class SettingsDialog(QDialog, Ui_Dialog):
         self.colorTable.setModel(self.model)
 
     def color_chooser(self):
-        color = stringToColor(self.color)
+        color = string_to_color(self.color)
         color = dialogColor(color)
         if color.isValid():
             self.color = color.name()
@@ -345,14 +350,86 @@ class SettingsDialog(QDialog, Ui_Dialog):
     def cancel_setting(self):
         self.reject()
 
+from vi.ui.NewSettings import Ui_Dialog as New_Ui_Dialog
+
+
+class SettingsDialog(QDialog, New_Ui_Dialog):
+    def __init__(self, parent=None, activate_index=0):
+        QDialog.__init__(self, parent)
+        self.setupUi(self)
+        self.setWindowTitle("Vintel Settings")
+        self.applyButton = self.buttonBox.button(QtWidgets.QDialogButtonBox.Apply)
+        self.applyButton.clicked.connect(self.apply_settings)
+        self.applyButton.setEnabled(False)
+        self.tabWidget.removeTab(self.tabWidget.indexOf(self.tab))
+        self.tabWidget.removeTab(self.tabWidget.indexOf(self.tab_2))
+        self.tab_general = GeneralForm.GeneralForm()
+        self.tab_general.setObjectName("tab_general")
+        self.tab_general.signal_content_changed.connect(self.apply_enable)
+        self.tabWidget.addTab(self.tab_general, "General")
+        self.tab_color_display = ColorForm.ColorForm()
+        self.tab_color_display.setObjectName("tab_color")
+        self.tab_color_display.signal_content_changed.connect(self.apply_enable)
+        self.tabWidget.addTab(self.tab_color_display, "Color")
+        self.tab_sound = SoundForm.SoundForm()
+        self.tab_sound.setObjectName("tab_sound")
+        self.tab_sound.signal_content_changed.connect(self.apply_enable)
+        self.tabWidget.addTab(self.tab_sound, "Sound")
+        self.tab_regions = RegionsForm.RegionsForm()
+        self.tab_regions.setObjectName("tab_regions")
+        self.tab_regions.signal_content_changed.connect(self.apply_enable)
+        self.tabWidget.addTab(self.tab_regions, "Regions")
+        self.tab_chatroom = ChatroomsForm.ChatroomsForm()
+        self.tab_chatroom.setObjectName("tab_chatroom")
+        self.tab_chatroom.signal_content_changed.connect(self.apply_enable)
+        self.tabWidget.addTab(self.tab_chatroom, "Chat")
+        self.buttonBox.accepted.connect(self.save_settings)
+        self.buttonBox.rejected.connect(self.cancel_settings)
+        self.tabWidget.setCurrentIndex(activate_index)
+
+    def apply_enable(self):
+        self.applyButton.setEnabled(True)
+
+    def save_settings(self):
+        self.save_all()
+        self.accept()
+
+    def save_all(self):
+        if self.tab_general.data_changed:
+            self.tab_general.save_data()
+        if self.tab_color_display.data_changed:
+            self.tab_color_display.save_data()
+        if self.tab_sound.data_changed:
+            self.tab_sound.save_data()
+        if self.tab_regions.data_changed:
+            self.tab_regions.save_data()
+        if self.tab_chatroom.data_changed:
+            self.tab_chatroom.save_data()
+
+    def cancel_settings(self) -> None:
+        if self.applyButton.isEnabled():
+            res = QMessageBox.warning(self,
+                                      "Cancel edit",
+                                      "You have unsaved changes! Are you sure you wish to Cancel?",
+                                      buttons=QMessageBox.Ok | QMessageBox.Cancel,
+                                      defaultButton=QMessageBox.Cancel,
+                                      )
+            if res != QMessageBox.Ok:
+                return
+        self.reject()
+
+    def apply_settings(self):
+        self.save_all()
+        self.applyButton.setEnabled(False)
+
 
 if __name__ == "__main__":
     import sys
     from PyQt5.Qt import QApplication
-    from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QComboBox, QPushButton
 
     a = QApplication(sys.argv)
-    d = SettingsDialog()
-    d.tabWidget.setCurrentIndex(1)
+    d = SettingsDialog(None)
     d.show()
-    sys.exit(a.exec_())
+    r = d.exec_()
+    # r = a.exec_()
+    sys.exit(r)

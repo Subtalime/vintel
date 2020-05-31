@@ -30,6 +30,7 @@ from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
 from PyQt5.uic import loadUi
+from vi.settings.settings import GeneralSettings, ColorSettings, ChatroomSettings, SoundSettings, RegionSettings
 
 # from vi import states
 from vi.states import State
@@ -57,7 +58,7 @@ from vi.ui.MainWindow import Ui_MainWindow
 from vi.logger.logconfig import LogConfigurationThread, LogConfiguration
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
-from vi.settings.JsModel import stringToColor
+from vi.settings.JsModel import string_to_color
 from vi.systemtray import TrayIcon
 from vi.logger.mystopwatch import ViStopwatch
 
@@ -102,10 +103,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.backgroundColor = background_color
         self.cache = Cache()
         self.setWindowTitle(vi.version.DISPLAY)
-        self.setColor(self.backgroundColor)
-        self.message_expiry = MESSAGE_EXPIRY_SECS
+        self.message_expiry = GeneralSettings().message_expiry
+        self.setColor(GeneralSettings().background_color)
+        # self.message_expiry = MESSAGE_EXPIRY_SECS
         self.clipboardCheckInterval()
-        self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
+        self.map_update_interval = GeneralSettings().map_update_interval
         self.setConstants()
         self.taskbarIconQuiescent = QtGui.QIcon(resourcePath("logo_small.png"))
         self.taskbarIconWorking = QtGui.QIcon(resourcePath("logo_small_green.png"))
@@ -118,7 +120,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.trayIcon.activated.connect(self.systemTrayActivated)
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
-        self.changeAlarmDistance(2)
+        self.changeAlarmDistance(GeneralSettings().alarm_distance)
         self.initialMapPosition = None
         self.initialZoom = None
         self.lastStatisticsUpdate = 0
@@ -141,13 +143,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.menuRegion = RegionMenu("Regions", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
         # Set up user's intel rooms
-        roomnames = self.cache.fetch("room_names")
+        roomnames = ChatroomSettings().setting
         if roomnames:
-            roomnames = roomnames.split(",")
-        else:
-            roomnames = (u"delve.imperium", u"querious.imperium")
-            self.cache.put("room_names", u",".join(roomnames), 60 * 60 * 24 * 365 * 5)
-        self.roomnames = roomnames
+            self.roomnames = roomnames.split(",")
 
         # Disable the sound UI if sound is not available
         if not SoundManager().soundAvailable:
@@ -185,7 +183,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setColor(self, color: str = None) -> str:
         if color:
             self.backgroundColor = color
-            color = stringToColor(self.backgroundColor)
+            color = string_to_color(self.backgroundColor)
             p = self.palette()
             p.setColor(self.backgroundRole(), color)
             self.setAutoFillBackground(True)
@@ -195,14 +193,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return self.backgroundColor
 
     def setConstants(self):
-        self.map_update_interval = self.cache.fetch("map_update_interval", True)
+        self.map_update_interval = GeneralSettings().map_update_interval
         if not self.map_update_interval:
             self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
-            self.cache.put("map_update_interval", str(self.map_update_interval))
-        self.clipboard_check_interval = self.cache.fetch("clipboard_check_interval", True)
+            GeneralSettings().map_update_interval = self.map_update_interval
+        self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
         if not self.clipboard_check_interval:
             self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
-            self.cache.put("clipboard_check_interval", str(self.clipboard_check_interval))
+            GeneralSettings.clipboard_check_interval = self.clipboard_check_interval
 
     def updateCharacterMenu(self):
         try:
@@ -289,28 +287,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.menuRegion.addItems()
 
         setting = SettingsDialog(self)
-        setting.new_region_range_chosen.connect(handleRegionsChosen)
-        setting.rooms_changed.connect(self.changedRoomnames)
-        setting.checkScanCharacter.setChecked(self.character_parser_enabled)
-        setting.checkShipNames.setChecked(self.ship_parser_enabled)
-        setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
-        setting.txtMessageExpiry.setText(str(self.messageExpiry()))
-        setting.checkNotifyOwn.setChecked(self.selfNotify)
-        setting.checkPopupNotification.setChecked(self.popup_notification)
-        setting.color = self.setColor()
-        setting.tabWidget.setCurrentIndex(tabIndex)
-        setting.txtJumpDistance.setText(str(self.alarmDistance))
+        # setting.new_region_range_chosen.connect(handleRegionsChosen)
+        # setting.rooms_changed.connect(self.changedRoomnames)
+        # setting.checkScanCharacter.setChecked(self.character_parser_enabled)
+        # setting.checkShipNames.setChecked(self.ship_parser_enabled)
+        # setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
+        # setting.txtMessageExpiry.setText(str(self.messageExpiry()))
+        # setting.checkNotifyOwn.setChecked(self.selfNotify)
+        # setting.checkPopupNotification.setChecked(self.popup_notification)
+        # setting.color = self.setColor()
+        # setting.tabWidget.setCurrentIndex(tabIndex)
+        # setting.txtJumpDistance.setText(str(self.alarmDistance))
 
         setting.show()
+        # return True if Changes have been applied
         if setting.exec_():
-            self.setColor(setting.color)
-            self.enableCharacterParser(setting.checkScanCharacter.isChecked())
-            self.enableShipParser(setting.checkShipNames.isChecked())
-            self.enablePopupNotification(setting.checkPopupNotification.isChecked())
-            self.clipboardCheckInterval(int(setting.txtKosInterval.text()) * 1000)
-            self.messageExpiry(int(setting.txtMessageExpiry.text()))
-            self.enableSelfNotify(setting.checkNotifyOwn.isChecked())
-            self.changeAlarmDistance(setting.txtJumpDistance.text())
+            self.setColor(ColorSettings().setting)
+            self.enableCharacterParser(GeneralSettings().character_parser)
+            self.enableShipParser(GeneralSettings().ship_parser)
+            self.enablePopupNotification(GeneralSettings().popup_notification)
+            self.clipboardCheckInterval(GeneralSettings().clipboard_check_interval)
+            self.messageExpiry(GeneralSettings().message_expiry)
+            self.enableSelfNotify(GeneralSettings().self_notify)
+            self.changeAlarmDistance(GeneralSettings().alarm_distance)
 
     def enableSelfNotify(self, enable: bool = None) -> bool:
         if enable is not None:
@@ -324,12 +323,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def clipboardCheckInterval(self, value: int = None):
         if value:
-            self.clipboard_check_interval = value
-            self.cache.put("clipboard_check_interval", self.clipboard_check_interval)
+            self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
         if self.clipboard_check_interval is None:
-            self.clipboard_check_interval = self.cache.fetch("clipboard_check_interval")
-        if self.clipboard_check_interval is None:
-            self.clipboard_check_interval = 4
+            self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
 
         return self.clipboard_check_interval
 
@@ -342,7 +338,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.LOGGER.debug("Opened JumpBridge dialog")
             self.showJumpBridgeChooser()
         else:
-            self.cache.put("region_name", qAction.text(), Regions.CACHE_TIME)
+            RegionSettings().selected_region = qAction.text()
             self.LOGGER.debug("Set Region to {}".format(qAction.text()))
             self.setupMap()
 
@@ -384,7 +380,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.kos_result.connect(self.showKosResult)
         # self.kosRequestThread.start()
 
-        self.chatThread = ChatThread(self, self.roomnames, {})
+        self.chatThread = ChatThread(self, room_names=self.roomnames)
+        # self.chatThread = ChatThread(room_names=self.roomnames, ship_parser=self.enableShipParser(), char_parser=self.enableCharacterParser())
         self.chatThread.message_added_signal.connect(self.logFileChanged)
         self.chatThread.message_updated_signal.connect(self.updateMessageDetailsOnChatEntry)
         self.chatThread.player_added_signal.connect(self.updatePlayers)
@@ -415,7 +412,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.mapUpdateThread:
             self.mapUpdateThread.pause(True)
         self.LOGGER.debug("Finding map file")
-        regionName = self.cache.fetch("region_name")
+        regionName = RegionSettings().selected_region
         if not regionName:
             regionName = "Delve"
 
@@ -426,7 +423,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(None, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
-                self.cache.put("region_name", "Delve")
+                regionName = RegionSettings().selected_region = "Delve"
                 self.dotlan = MyMap(parent=self, region=regionName)
             else:
                 sys.exit(1)
@@ -638,10 +635,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.soundSetupAction.setEnabled(True)
             if newValue is None:
-                newValue = self.activateSoundAction.isChecked()
+                newValue = GeneralSettings().sound_active
             self.activateSoundAction.setChecked(newValue)
             self.soundSetupAction.setEnabled(newValue)
-            SoundManager().soundActive = newValue
+            SoundManager().enable_sound = newValue
+            GeneralSettings().sound_active = newValue
             self.LOGGER.info("Sound activation changed to %r", newValue)
 
     def changeAlwaysOnTop(self, newValue=None):
@@ -732,24 +730,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if newValue:
             self.statisticsThread.requestStatistics()
 
-    def clipboardChanged(self, mode=0):
-        if not (mode == 0 and self.kosClipboardActiveAction.isChecked() and
-                self.clipboard.mimeData().hasText()):
-            return
-        content = six.text_type(self.clipboard.text())
-        contentTuple = tuple(content)
-        # Limit redundant kos checks
-        if contentTuple != self.oldClipboardContent:
-            parts = tuple(content.split("\n"))
-            for part in parts:
-                # Make sure user is in the content (this is a check of the local system in Eve).
-                # also, special case for when you have no knonwnPlayers (initial use)
-                if not self.knownPlayers or part in self.knownPlayers:
-                    self.trayIcon.setIcon(self.taskbarIconWorking)
-                    self.kosRequestThread.addRequest(parts, "clipboard", True)
-                    break
-            self.oldClipboardContent = contentTuple
-
+    # def clipboardChanged(self, mode=0):
+    #     if not (mode == 0 and self.kosClipboardActiveAction.isChecked() and
+    #             self.clipboard.mimeData().hasText()):
+    #         return
+    #     content = six.text_type(self.clipboard.text())
+    #     contentTuple = tuple(content)
+    #     # Limit redundant kos checks
+    #     if contentTuple != self.oldClipboardContent:
+    #         parts = tuple(content.split("\n"))
+    #         for part in parts:
+    #             # Make sure user is in the content (this is a check of the local system in Eve).
+    #             # also, special case for when you have no knonwnPlayers (initial use)
+    #             if not self.knownPlayers or part in self.knownPlayers:
+    #                 self.trayIcon.setIcon(self.taskbarIconWorking)
+    #                 self.kosRequestThread.addRequest(parts, "clipboard", True)
+    #                 break
+    #         self.oldClipboardContent = contentTuple
+    #
     # emitted by MapView
     def mapLinkClicked(self, url):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
@@ -852,7 +850,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             pass
 
     def mapPositionChanged(self, qPointF):
-        regionName = self.cache.fetch("region_name")
+        regionName = RegionSettings().selected_region
         if regionName:
             scrollPosition = self.mapView.page().scrollPosition()
             self.mapPositionsDict[regionName] = (
@@ -867,11 +865,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings(4)
 
     def showJumpBridgeChooser(self):
-        url = self.cache.fetch("jumpbridge_url")
-        chooser = JumpbridgeDialog(self, url)
+        chooser = JumpbridgeDialog(self)
         chooser.set_jump_bridge_url.connect(self.setJumpbridges)
         chooser.exec_()
 
+    # TODO: new settings
     def checkJumpbridges(self):
         data = self.cache.fetch_jumpbridge_data()
         if data:
@@ -883,6 +881,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.jumpbridgesButton.setCheckable(False)
             self.jumpbridgesButton.setChecked(False)
 
+    # TODO: new settings
     def setJumpbridges(self, url_or_filepath: str = None, clipdata: str = None):
         data = []
         try:
@@ -919,7 +918,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             menuAction.setChecked(True)
             regionName = six.text_type(menuAction.property("regionName"))
             regionName = Regions.convertRegionName(regionName)
-            Cache().put("region_name", regionName, 60 * 60 * 24 * 365)
+            RegionSettings().selected_region = regionName
             self.setupMap()
 
     def addMessageToIntelChat(self, message: Message):
@@ -995,6 +994,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #         pass
     #     self.trayIcon.setIcon(self.taskbarIconQuiescent)
     #
+
+    # TODO: new settings
     def changedRoomnames(self, newRoomnames: list):
         self.cache.put("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
         if self.chatThread:
