@@ -153,10 +153,19 @@ class SoundSettings(_Settings):
         self._defaults()
 
     def _defaults(self):
+        self.defaults = {}
         listing = []
+        listing2 = []
+        dict = {}
         for distance in range(0, 6):
             entry = ["{} Jumps".format(distance), "alert.wav", 25]
             listing.append(entry)
+            listing2.append(entry)
+
+        dict["Alarm"] = listing2
+        dict["KOS"] = ["KOS", "warning.wav", 25]
+        dict["Request"] = ["Request", "request.wav", 25]
+        self.defaults["sound_dict"] = dict
         listing.append(['KOS', "warning.wav", 25])
         listing.append(['Request', "request.wav", 25])
         self.defaults["sound"] = listing

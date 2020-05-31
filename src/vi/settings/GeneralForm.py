@@ -16,7 +16,7 @@
 #
 #
 from PyQt5.QtGui import QIntValidator
-from vi.settings.JsModel import color_dialog, string_to_color
+from vi.color.helpers import color_dialog, string_to_color
 from vi.ui.GeneralForm import Ui_Form
 from vi.settings.SettingsFormTemplate import SettingsFormTemplate
 from vi.settings.settings import GeneralSettings

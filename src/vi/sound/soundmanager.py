@@ -49,7 +49,7 @@ class SoundManager(six.with_metaclass(Singleton)):
               "stop": "Empty.wav"}
 
     soundVolume = 25  # Must be an integer between 0 and 100
-    soundActive = False
+    _soundActive = False
     soundAvailable = False
     useDarwinSound = False
     useSpokenNotifications = True
@@ -77,23 +77,16 @@ class SoundManager(six.with_metaclass(Singleton)):
         if newValue is not None:
             self.useSpokenNotifications = newValue
 
-    def setSoundVolume(self, newValue):
-        """ Accepts and stores a number between 0 and 100.
-        """
-        self.soundVolume = max(0, min(100, newValue))
-        if self.soundThread:
-            self.soundThread.setVolume(self.soundVolume)
-
     @property
     def enable_sound(self) -> bool:
-        return self.soundActive
+        return self._soundActive
 
     @enable_sound.setter
     def enable_sound(self, value: bool):
-        self.soundActive = value
+        self._soundActive = value
 
-    def playSoundFile(self, path, message="", abbreviatedMessage=""):
-        if self.soundAvailable and self.soundActive:
+    def playSoundFile(self, path, volume=25, message="", abbreviatedMessage=""):
+        if self.soundAvailable and self.enable_sound:
             if self.useSpokenNotifications:
                 path = None
             if path and not os.path.exists(path):
@@ -105,18 +98,18 @@ class SoundManager(six.with_metaclass(Singleton)):
                 else:
                     path = None
             if self.soundThread:
-                self.soundThread.queue.put((path, message, abbreviatedMessage))
+                self.soundThread.queue.put((path, volume, message, abbreviatedMessage))
 
-    def playSound(self, name="alarm", message="", abbreviatedMessage="", loop=False):
+    def playSound(self, name="alarm", volume=25, message="", abbreviatedMessage=""):
         """ Schedules the work, which is picked up by SoundThread.run()
         """
-        if self.soundAvailable and self.soundActive:
+        if self.soundAvailable and self.enable_sound:
             if self.useSpokenNotifications:
                 audioFile = None
             else:
                 audioFile = soundPath("{0}".format(self.SOUNDS[name]))
             if self.soundThread:
-                self.soundThread.queue.put((audioFile, message, abbreviatedMessage))
+                self.soundThread.queue.put((audioFile, volume, message, abbreviatedMessage))
 
     def quit(self):
         if self.soundAvailable:
@@ -148,7 +141,7 @@ class SoundManager(six.with_metaclass(Singleton)):
 
         def run(self):
             while True:
-                audioFile, message, abbreviatedMessage = self.queue.get()
+                audioFile, volume, message, abbreviatedMessage = self.queue.get()
                 if not self.active:
                     return
                 if SoundManager().useSpokenNotifications and (
@@ -156,12 +149,12 @@ class SoundManager(six.with_metaclass(Singleton)):
                     if abbreviatedMessage != "":
                         message = abbreviatedMessage
                     if not self.speak(message):
-                        self.playAudioFile(audioFile, False)
+                        self.playAudioFile(audioFile, volume, False)
                         LOGGER.error(
                             "SoundThread: sorry, speech not yet implemented on this platform")
                 # elif audioFile is not None:
                 else:
-                    self.playAudioFile(audioFile, False)
+                    self.playAudioFile(audioFile, volume, False)
 
         def quit(self):
             self.active = False
@@ -186,20 +179,20 @@ class SoundManager(six.with_metaclass(Singleton)):
             return True
 
         # Audio subsytem access
-        def playAudioFile(self, filename, stream=False):
+        def playAudioFile(self, filename, set_volume, stream=False):
             try:
-                volume = float(self.volume) / 100.0
+                if not set_volume:
+                    set_volume = 25
+                volume = float(set_volume) / 100.0
                 if self.player:
                     with wave.open(filename, "r") as f:
                         duration = (f.getnframes() / float(f.getnchannels() * f.getframerate()) / 2)
                     src = pyglet.media.load(filename, streaming=stream)
-                    self.currently_playing = True
                     self.player.queue(src)
                     self.player.volume = volume
                     self.player.play()
                     time.sleep(duration)
                     self.player.next_source()
-                    self.currently_playing = False
                 elif self.isDarwin:
                     subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
             except Exception as e:
@@ -209,15 +202,15 @@ class SoundManager(six.with_metaclass(Singleton)):
                 # self.player = media.Player()
                 # self.player.loop = False
 
+        #
+        #  Experimental text-to-speech stuff below
+        #
         def darwinSpeak(self, message):
             try:
                 os.system("say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message))
             except Exception as e:
                 LOGGER.error("SoundThread.darwinSpeak exception: %s" % message, e)
 
-        #
-        #  Experimental text-to-speech stuff below
-        #
 
         # VoiceRss
 

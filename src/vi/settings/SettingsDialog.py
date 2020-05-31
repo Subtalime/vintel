@@ -21,7 +21,7 @@ from ast import literal_eval
 from os.path import isfile
 from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
-from vi.settings.JsModel import string_to_color, color_dialog, JsModel
+from vi.color.helpers import string_to_color, JsModel
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.ui.Settings import Ui_Dialog
 from vi.cache.cache import Cache
@@ -29,10 +29,12 @@ from vi.dotlan.regions import Regions
 from vi.resources import soundPath, resourcePath, getVintelMap
 from vi.sound.soundmanager import SoundManager
 from vi.states import State
-from PyQt5 import QtWidgets, QtCore
-from vi.settings import ChatroomsForm, ColorForm, GeneralForm, RegionsForm, SoundForm
-
-
+from PyQt5 import QtWidgets
+from vi.settings import GeneralForm
+from vi.sound import SoundForm
+from vi.region import RegionsForm
+from vi.chat import ChatroomsForm
+from vi.color import ColorForm
 
 
 class SettingsDialogOld(QDialog, Ui_Dialog):

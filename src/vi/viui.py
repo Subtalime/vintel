@@ -30,7 +30,7 @@ from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
 from PyQt5.QtWidgets import QMessageBox, QAction, QMainWindow, \
     QStyleOption, QActionGroup, QStyle, QStylePainter, QSystemTrayIcon, QDialog
 from PyQt5.uic import loadUi
-from vi.settings.settings import GeneralSettings, ColorSettings, ChatroomSettings, SoundSettings, RegionSettings
+from vi.settings.settings import GeneralSettings, ColorSettings, ChatroomSettings, RegionSettings
 
 # from vi import states
 from vi.states import State
@@ -55,10 +55,10 @@ from vi.dotlan.regions import Regions
 from vi.dotlan.mymap import MyMap
 from vi.dotlan.exception import DotlanException
 from vi.ui.MainWindow import Ui_MainWindow
-from vi.logger.logconfig import LogConfigurationThread, LogConfiguration
+from vi.logger.logconfig import LogConfigurationThread
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
-from vi.settings.JsModel import string_to_color
+from vi.color.helpers import string_to_color
 from vi.systemtray import TrayIcon
 from vi.logger.mystopwatch import ViStopwatch
 
@@ -255,7 +255,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.showChatAction.triggered.connect(self.changeChatVisibility)
         self.soundSetupAction.triggered.connect(self.showSoundSetup)
-        self.activateSoundAction.triggered.connect(self.changeSound)
+        self.activateSoundAction.triggered.connect(self.trayIcon.soundActive)
         self.useSpokenNotificationsAction.triggered.connect(self.changeUseSpokenNotifications)
         self.trayIcon.alarm_distance.connect(self.changeAlarmDistance)
         self.framelessWindowAction.triggered.connect(self.changeFrameless)
@@ -514,17 +514,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     (None, "changeOpacity", self.opacityGroup.checkedAction().opacity),
                     (None, "changeAlwaysOnTop", self.alwaysOnTopAction.isChecked()),
                     (None, "changeShowAvatars", self.showChatAvatarsAction.isChecked()),
-                    (None, "changeAlarmDistance", self.alarmDistance),
-                    (None, "enableCharacterParser", self.character_parser_enabled),
-                    (None, "enableShipParser", self.ship_parser_enabled),
-                    (None, "enableSelfNotify", self.selfNotify),
-                    (None, "enablePopupNotification", self.popup_notification),
-                    (None, "messageExpiry", self.message_expiry),
+                    # (None, "changeAlarmDistance", self.alarmDistance),
+                    # (None, "enableCharacterParser", self.character_parser_enabled),
+                    # (None, "enableShipParser", self.ship_parser_enabled),
+                    # (None, "enableSelfNotify", self.selfNotify),
+                    # (None, "enablePopupNotification", self.popup_notification),
+                    # (None, "messageExpiry", self.message_expiry),
                     (None, "changeSound", self.activateSoundAction.isChecked()),
                     (None, "changeChatVisibility", self.showChatAction.isChecked()),
                     (None, "loadInitialMapPositions", self.mapPositionsDict),
                     (None, "setColor", self.backgroundColor),
-                    (None, "setSoundVolume", SoundManager().soundVolume),
                     (None, "changeFrameless", self.framelessWindowAction.isChecked()),
                     (None, "changeUseSpokenNotifications",
                      self.useSpokenNotificationsAction.isChecked()),
@@ -564,9 +563,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.logWindow:
             self.logWindow.close()
         # sys.exit(0)
-
-    def setSoundVolume(self, value):
-        SoundManager().setSoundVolume(value)
 
     def notifyNewerVersion(self, newestVersion):
         msg = "An update is available for {}. Current V{} to V{}\n" \

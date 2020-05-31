@@ -1,105 +1,35 @@
-###########################################################################
-#																		  #
-#  This program is free software: you can redistribute it and/or modify	  #
-#  it under the terms of the GNU General Public License as published by	  #
-#  the Free Software Foundation, either version 3 of the License, or	  #
-#  (at your option) any later version.									  #
-#																		  #
-#  This program is distributed in the hope that it will be useful,		  #
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of		  #
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the		  #
-#  GNU General Public License for more details.							  #
-#																		  #
-#																		  #
-#  You should have received a copy of the GNU General Public License	  #
-#  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
-###########################################################################
 
-import time
+#     Vintel - Visual Intel Chat Analyzer
+#     Copyright (c) 2019. Steven Tschache (github@tschache.com)
+#
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
+
 import logging
-import sys
+import time
 
-from six.moves import range
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QSystemTrayIcon, QAction, QActionGroup, QMenu
+from PyQt5.QtWidgets import QAction, QActionGroup, QMenu, QSystemTrayIcon
+
+from vi.chat.chatmessage import Message
 from vi.resources import resourcePath
-from vi.states import State
-from ast import literal_eval
-from vi.cache.cache import Cache
+from vi.settings.settings import SoundSettings, GeneralSettings
 from vi.sound.soundmanager import SoundManager
-
-LOGGER = logging.getLogger(__name__)
-
-
-class TrayContextMenu(QtWidgets.QMenu):
-    instances = set()
-
-    def __init__(self, trayIcon=None):
-        """ trayIcon = the object with the methods to call
-        """
-        QMenu.__init__(self)
-        TrayContextMenu.instances.add(self)
-        if trayIcon:
-            self.trayIcon = trayIcon
-        self._buildMenu()
-
-    def _buildMenu(self):
-        self.framelessCheck = QAction("Frameless Window", self)
-        self.framelessCheck.setCheckable(True)
-        self.framelessCheck.triggered.connect(self.trayIcon.changeFrameless)
-        # self.connect(self.framelessCheck, PYQT_SIGNAL("triggered()"), self.trayIcon.changeFrameless)
-        self.addAction(self.framelessCheck)
-        self.addSeparator()
-        self.requestCheck = QAction("Show status request notifications", self)
-        self.requestCheck.setCheckable(True)
-        self.requestCheck.setChecked(True)
-        self.addAction(self.requestCheck)
-        self.requestCheck.triggered.connect(self.trayIcon.switchRequest)
-        # self.connect(self.requestCheck, PYQT_SIGNAL("triggered()"), self.trayIcon.switchRequest)
-        self.alarmCheck = QAction("Show alarm notifications", self)
-        self.alarmCheck.setCheckable(True)
-        self.alarmCheck.setChecked(True)
-        self.alarmCheck.triggered.connect(self.trayIcon.switchAlarm)
-        # self.connect(self.alarmCheck, PYQT_SIGNAL("triggered()"), self.trayIcon.switchAlarm)
-        self.addAction(self.alarmCheck)
-        distanceMenu = self.addMenu("Alarm Distance")
-        self.distanceGroup = QActionGroup(self)
-        for i in range(0, 6):
-            action = QAction("{0} Jumps".format(i), None)
-            action.setCheckable(True)
-            if i == 0:
-                action.setChecked(True)
-            action.alarmDistance = i
-            action.triggered.connect(self.changeAlarmDistance)
-            # self.connect(action, PYQT_SIGNAL("triggered()"), self.changeAlarmDistance)
-            self.distanceGroup.addAction(action)
-            distanceMenu.addAction(action)
-        self.addMenu(distanceMenu)
-        self.addSeparator()
-        self.quitAction = QAction("Quit", self)
-        self.quitAction.triggered.connect(self.trayIcon.quit)
-        # self.connect(self.quitAction, PYQT_SIGNAL("triggered()"), self.trayIcon.quit)
-        self.addAction(self.quitAction)
-        self.viewChats = QAction("View Chat-Logs", self)
-        self.viewChats.triggered.connect(self.trayIcon.viewChatlogs)
-        self.addAction(self.viewChats)
-        f = getattr(sys, 'frozen', False)
-        if not f:
-            self.addSeparator()
-            self.viewSource = QAction("View source", self)
-            self.viewSource.triggered.connect(self.trayIcon.viewSource)
-            self.addAction(self.viewSource)
-            self.refreshMap = QAction("Refresh Map", self)
-            self.refreshMap.triggered.connect(self.trayIcon.refreshMap)
-            self.addAction(self.refreshMap)
-
-    def changeAlarmDistance(self):
-        for action in self.distanceGroup.actions():
-            if action.isChecked():
-                self.trayIcon.alarmDistance = action.alarmDistance
-                self.trayIcon.changeAlarmDistance()
+from vi.states import State
 
 
 class TrayIcon(QtWidgets.QSystemTrayIcon):
@@ -110,32 +40,35 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     quit_me = pyqtSignal()
     view_chatlogs = pyqtSignal()
     refresh_map = pyqtSignal()
-
+    view_map_source = pyqtSignal()
+    sound_active = pyqtSignal()
 
     def __init__(self, app):
+        self.LOGGER = logging.getLogger(__name__)
         self.resource_path = resourcePath()
-        LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small.png"))
+        self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small.png"))
         self.icon = QIcon(resourcePath("logo_small.png"))
-        QSystemTrayIcon.__init__(self, self.icon, app)
+        super().__init__(self.icon, app)
         self.setToolTip("Your Vintel-Information-Service!")
         self.lastNotifications = {}
-        self.setContextMenu(TrayContextMenu(self))
-        self.showAlarm = True
-        self.showRequest = True
-        self.alarmDistance = 0
+        self.showAlarm = GeneralSettings().popup_notification
+        self.showRequest = GeneralSettings().show_requests
+        self.alarmDistance = GeneralSettings().alarm_distance
+        self.soundActive = GeneralSettings().sound_active
 
-    def viewSource(self):
-        pass
+        self.setContextMenu(TrayContextMenu(self))
+
+    def viewMapSource(self):
+        self.view_map_source.emit()
 
     def refreshMap(self):
         self.refresh_map.emit()
 
-    def viewChatlogs(self):
+    def viewChatLogs(self):
         self.view_chatlogs.emit()
 
     def changeAlarmDistance(self):
-        distance = self.alarmDistance
-        self.alarm_distance.emit(distance)
+        self.alarm_distance.emit(self.alarmDistance)
 
     def changeFrameless(self):
         self.change_frameless.emit()
@@ -144,7 +77,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     def distanceGroup(self):
         return self.contextMenu().distanceGroup
 
-    def quit(self):
+    def f_quit(self):
         self.quit_me.emit()
 
     def switchAlarm(self):
@@ -159,63 +92,164 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             cm.requestCheck.setChecked(newValue)
         self.showRequest = newValue
 
-    def showNotification(self, message, system, char, distance, soundlist: list = None):
+    def switchSound(self):
+        newValue = not self.soundActive
+        for cm in TrayContextMenu.instances:
+            cm.requestCheck.setChecked(newValue)
+        self.soundActive = newValue
+        GeneralSettings().sound_active = newValue
+        self.sound_active.emit()
+
+    def _get_sound(self, soundlist, status, distance) -> [str, int]:
+        sound_setting_row = None
+        if status == State["ALARM"]:
+            sound_setting_row = soundlist[distance]
+        elif status == State["REQUEST"]:
+            for sub_list in soundlist:
+                if "Request" in set(sub_list):
+                    sound_setting_row = sub_list
+        if sound_setting_row:
+            sound_file = sound_setting_row[1]
+            volume = sound_setting_row[2]
+            return sound_file, volume
+        self.LOGGER.error("No sound configured! %r", soundlist)
+        return "", 0
+
+    def showNotification(
+        self,
+        message: Message,
+        system: str,
+        char: str,
+        distance: int,
+        soundlist: list = None,
+    ):
         if message is None:
             return
         room = message.room
         title = None
         text = None
-        icon = None
+        icon = QSystemTrayIcon.MessageIcon
         text = ""
         sound_file = None
-        org_sound_volume = None
+        volume = None
+        sound_setting_row = None
         if soundlist is None:
-            try:
-                soundlist = Cache().fetch("sound_setting_list")
-                if soundlist:
-                    soundlist = literal_eval(soundlist)
-            except (Exception, ValueError) as e:
-                LOGGER.error("Error while unpacking Cache for sound_setting_list: %r", e)
-                soundlist = None
-        if soundlist:
-            # set the sound which has been preconfigured
-            org_sound_volume = SoundManager().soundVolume
-            if message.status == State['ALARM']:
-                row = soundlist[distance]
-                SoundManager().setSoundVolume(row[2])
-                sound_file = row[1]
-            elif message.status == State['REQUEST']:
-                if "Request" in soundlist:
-                    SoundManager().setSoundVolume(soundlist["Request"][2])
-                    sound_file = soundlist["Request"][1]
-                else:
-                    LOGGER.error("No \"Request\" sound configured! %r", soundlist)
-        if message.status == State['ALARM'] and self.showAlarm and self.lastNotifications.get(
-                State['ALARM'], 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
+            soundlist = SoundSettings().sound
+        # set the sound which has been preconfigured
+        sound_file, volume = self._get_sound(soundlist, message.status, distance)
+        if (
+            message.status == State["ALARM"]
+            and self.showAlarm
+            and self.lastNotifications.get(State["ALARM"], 0)
+            < time.time() - self.MIN_WAIT_NOTIFICATION
+        ):
             title = "ALARM!"
-            icon = 2
-            speech_text = (
-                u"{0} alarmed in {1}, {2} jumps from {3}".format(system, room, distance, char))
+            icon = QSystemTrayIcon.Warning
+            speech_text = u"{0} alarmed in {1}, {2} jumps from {3}".format(
+                system, room, distance, char
+            )
             text = (u"%s\n" % message.plainText) + speech_text
             if sound_file:
-                SoundManager().playSoundFile(sound_file, text, speech_text)
-                SoundManager().setSoundVolume(org_sound_volume)
+                SoundManager().playSoundFile(sound_file, volume, text, speech_text)
             else:
-                SoundManager().playSound("alarm", text, speech_text)
-            self.lastNotifications[State['ALARM']] = time.time()
-        elif message.status == State['REQUEST'] and self.showRequest and self.lastNotifications.get(
-                State['REQUEST'], 0) < time.time() - self.MIN_WAIT_NOTIFICATION:
+                SoundManager().playSound("alarm", volume, text, speech_text)
+            self.lastNotifications[State["ALARM"]] = time.time()
+        elif (
+            message.status == State["REQUEST"]
+            and self.showRequest
+            and self.lastNotifications.get(State["REQUEST"], 0)
+            < time.time() - self.MIN_WAIT_NOTIFICATION
+        ):
             title = "Status request"
-            icon = 1
+            icon = QSystemTrayIcon.Trigger
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
-            self.lastNotifications[State['REQUEST']] = time.time()
+            self.lastNotifications[State["REQUEST"]] = time.time()
             if sound_file:
-                SoundManager().playSoundFile(sound_file, text)
-                SoundManager().setSoundVolume(org_sound_volume)
+                SoundManager().playSoundFile(sound_file, volume, text)
             else:
-                SoundManager().playSound("request", text)
-        if not (title is None or text is None) or icon:
-            if text == "":
+                SoundManager().playSound("request", volume, text)
+        if title or text:
+            if not text or text == "":
                 text = "{}".format(**locals())
-            LOGGER.debug("Trayicon-Message: \"%s\"", text)
+            self.LOGGER.debug('Systemtray-Message: "%s"', text)
             self.showMessage(title, text, icon)
+
+
+class TrayContextMenu(QtWidgets.QMenu):
+    instances = set()
+
+    def __init__(self, tray_icon: TrayIcon):
+        """ trayIcon = the object with the methods to call
+        """
+        QMenu.__init__(self)
+        TrayContextMenu.instances.add(self)
+        self.trayIcon = tray_icon
+        self.framelessCheck = QAction("Frameless Window", self)
+        self.framelessCheck.setCheckable(True)
+        self.framelessCheck.triggered.connect(self.trayIcon.changeFrameless)
+        self.addAction(self.framelessCheck)
+        self.addSeparator()
+        self.requestCheck = QAction("Show status request notifications", self)
+        self.requestCheck.setCheckable(True)
+        self.requestCheck.setChecked(self.trayIcon.showRequest)
+        self.addAction(self.requestCheck)
+        self.requestCheck.triggered.connect(self.trayIcon.switchRequest)
+        self.alarmCheck = QAction("Show alarm notifications", self)
+        self.alarmCheck.setCheckable(True)
+        self.alarmCheck.setChecked(self.trayIcon.showAlarm)
+        self.alarmCheck.triggered.connect(self.trayIcon.switchAlarm)
+        self.addAction(self.alarmCheck)
+        distance_menu = self.addMenu("set Alarm Distance to ...")
+        self.distanceGroup = QActionGroup(self)
+        for distance in range(6):
+            action = QAction("{0} Jumps".format(distance), None)
+            action.setCheckable(True)
+            if distance == self.trayIcon.alarmDistance:
+                action.setChecked(True)
+            action.alarmDistance = distance
+            action.triggered.connect(self._change_alarm_distance)
+            self.distanceGroup.addAction(action)
+            distance_menu.addAction(action)
+        self.addMenu(distance_menu)
+        action = QAction("sound enabled", self)
+        action.setCheckable(True)
+        action.setChecked(self.trayIcon.soundActive)
+        action.triggered.connect(self.trayIcon.switchSound)
+        self.addAction(action)
+        # are we in development mode
+        if not getattr(sys, "frozen", False):
+            self.addSeparator()
+            debug_menu = self.addMenu("DEBUG ...")
+            action = QAction("show monitored Chat-Logs", self)
+            action.triggered.connect(self.trayIcon.viewChatLogs)
+            debug_menu.addAction(action)
+            action = QAction("view Map source", self)
+            action.triggered.connect(self.trayIcon.viewMapSource)
+            debug_menu.addAction(action)
+            action = QAction("refresh Map", self)
+            action.triggered.connect(self.trayIcon.refreshMap)
+            debug_menu.addAction(action)
+            self.addMenu(debug_menu)
+        self.addSeparator()
+        self.quitAction = QAction("Quit", self)
+        self.quitAction.triggered.connect(self.trayIcon.f_quit)
+        self.addAction(self.quitAction)
+
+    def _change_alarm_distance(self):
+        for action in self.distanceGroup.actions():
+            if action.isChecked():
+                self.trayIcon.alarmDistance = action.alarmDistance
+                self.trayIcon.changeAlarmDistance()
+
+
+if __name__ == "__main__":
+    import sys
+    import datetime
+    from PyQt5.Qt import QApplication
+
+    a = QApplication(sys.argv)
+    d = TrayIcon(a)
+    d.show()
+    msg = Message("room", "message", datetime.datetime.now(), "Zedan")
+    d.showNotification(msg, "Earth", "Zedan", 3)
+    sys.exit(a.exec_())
