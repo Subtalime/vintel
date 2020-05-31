@@ -158,7 +158,7 @@ class SoundManager(six.with_metaclass(Singleton)):
 
         def quit(self):
             self.active = False
-            self.queue.put((None, None, None))
+            self.queue.put((None, None, None, None))
             if self.player:
                 self.player.pause()
                 self.player.delete()

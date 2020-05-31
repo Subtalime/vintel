@@ -30,6 +30,7 @@ from vi.states import State
 from vi.chat.messageparser import MessageParser, parse_line
 from vi.chat.chatmessage import Message
 from vi.dotlan import system as systems
+from vi.settings.settings import GeneralSettings, ChatroomSettings
 
 chat_thread_lock = threading.RLock()
 
@@ -124,8 +125,8 @@ class ChatThread(QThread):
 
     def __init__(
         self,
-        parent,
-        room_names: list,
+        # parent,
+        # room_names: list,
         # ship_parser,
         # char_parser,
         dotlan_systems: systems = None,
@@ -136,20 +137,25 @@ class ChatThread(QThread):
         self.LOGGER.debug("Creating ChatThread")
         self.queue = Queue()
         self.active = True
-        self.room_names = room_names
+        # self.room_names = room_names
         self.dotlan_systems = {}
         if dotlan_systems:
             self.dotlan_systems = dotlan_systems
         # self.ship_parser = ship_parser
         # self.char_parser = char_parser
-        self.ship_parser = parent.enableShipParser()
-        self.char_parser = parent.enableCharacterParser()
-        parent.ship_parser.connect(self.ship_parser_enabled)
-        parent.character_parser.connect(self.char_parser_enabled)
+        # self.ship_parser = parent.enableShipParser()
+        # self.char_parser = parent.enableCharacterParser()
+        # parent.ship_parser.connect(self.ship_parser_enabled)
+        # parent.character_parser.connect(self.char_parser_enabled)
         self.process_pool = {}
         self.known_players = []
         if known_players:
             self.known_players = known_players
+
+    @property
+    def room_names(self):
+        room_str = ChatroomSettings().room_names
+        return room_str.split(",")
 
     # if file changed or file newly discovered
     def add_log_file(self, file_path: str, remove: bool = False):
@@ -186,20 +192,20 @@ class ChatThread(QThread):
     def message_updated(self, message: Message):
         self.message_updated_signal.emit(message)
 
-    def ship_parser_enabled(self, value):
-        self.LOGGER.debug("Informing Chat-Threads of new Ship-Parser %r" % (value,))
-        self.ship_parser = value
-        for thread in self.process_pool.keys():
-            self.process_pool[thread].ship_parser_enabled(value)
-
-    def char_parser_enabled(self, value):
-        self.LOGGER.debug(
-            "Informing Chat-Threads of new Character-Parser %r" % (value,)
-        )
-        self.char_parser = value
-        for thread in self.process_pool.keys():
-            self.process_pool[thread].char_parser_enabled(value)
-
+    # def ship_parser_enabled(self, value):
+    #     self.LOGGER.debug("Informing Chat-Threads of new Ship-Parser %r" % (value,))
+    #     self.ship_parser = value
+    #     for thread in self.process_pool.keys():
+    #         self.process_pool[thread].ship_parser_enabled(value)
+    #
+    # def char_parser_enabled(self, value):
+    #     self.LOGGER.debug(
+    #         "Informing Chat-Threads of new Character-Parser %r" % (value,)
+    #     )
+    #     self.char_parser = value
+    #     for thread in self.process_pool.keys():
+    #         self.process_pool[thread].char_parser_enabled(value)
+    #
     def run(self):
         while self.active:
             logfile, delete = self.queue.get()
@@ -212,8 +218,11 @@ class ChatThread(QThread):
                             % (logfile,)
                         )
                         continue
+                    # self.process_pool[logfile] = ChatThreadProcess(
+                    #     logfile, self.ship_parser, self.char_parser, self.dotlan_systems
+                    # )
                     self.process_pool[logfile] = ChatThreadProcess(
-                        logfile, self.ship_parser, self.char_parser, self.dotlan_systems
+                        logfile, self.dotlan_systems
                     )
                     self.process_pool[logfile].message_added_s.connect(
                         self.message_added
@@ -247,16 +256,16 @@ class ChatThreadProcess(QThread):
     def __init__(
         self,
         log_file_path: str,
-        ship_scanner: bool,
-        char_scanner: bool,
+        # ship_scanner: bool,
+        # char_scanner: bool,
         dotlan_systems: systems,
     ):
         super(__class__, self).__init__()
         self.LOGGER = logging.getLogger(__name__)
         self.queue = Queue()
         self.log_file = log_file_path
-        self.ship_scanner = ship_scanner
-        self.character_scanner = char_scanner
+        # self.ship_scanner = ship_scanner
+        # self.character_scanner = char_scanner
         self.dotlan_systems = dotlan_systems
         # any messages older than this will be ignored
         # this is if Vintal has started AFTER the EVE-Client started
@@ -275,12 +284,20 @@ class ChatThreadProcess(QThread):
         self.worker = Thread(target=self._runLoop)
         self.worker.start()
 
-    def ship_parser_enabled(self, value: bool):
-        self.ship_scanner = value
+    @property
+    def ship_scanner(self):
+        return GeneralSettings().ship_parser
 
-    def char_parser_enabled(self, value: bool):
-        self.character_scanner = value
+    @property
+    def character_scanner(self):
+        return GeneralSettings().character_parser
 
+    # def ship_parser_enabled(self, value: bool):
+    #     self.ship_scanner = value
+    #
+    # def char_parser_enabled(self, value: bool):
+    #     self.character_scanner = value
+    #
     def update_dotlan_systems(self, dotlan_systems: systems):
         self.dotlan_systems = dotlan_systems
         # required to rescan all files, so map gets redrawn with current data

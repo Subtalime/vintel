@@ -19,7 +19,7 @@
 
 import logging
 import time
-
+import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QIcon
@@ -41,7 +41,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     view_chatlogs = pyqtSignal()
     refresh_map = pyqtSignal()
     view_map_source = pyqtSignal()
-    sound_active = pyqtSignal()
+    sound_active = pyqtSignal(bool)
 
     def __init__(self, app):
         self.LOGGER = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             cm.requestCheck.setChecked(newValue)
         self.soundActive = newValue
         GeneralSettings().sound_active = newValue
-        self.sound_active.emit()
+        self.sound_active.emit(newValue)
 
     def _get_sound(self, soundlist, status, distance) -> [str, int]:
         sound_setting_row = None

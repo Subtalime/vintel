@@ -21,7 +21,7 @@ from ast import literal_eval
 from os.path import isfile
 from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
-from vi.color.helpers import string_to_color, JsModel
+from vi.color.helpers import string_to_color
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.ui.Settings import Ui_Dialog
 from vi.cache.cache import Cache

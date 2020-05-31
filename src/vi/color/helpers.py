@@ -31,3 +31,18 @@ def string_to_color(string_color: str = None) -> QColor:
 
 def color_dialog(color=QColor()):
     return QColorDialog().getColor(initial=color)
+
+
+def contrast_color(one_color: QColor) -> str:
+    # Calculate the perceptive luminance (aka luma) - human eye favors green color...
+    luma = ((0.299 * one_color.red()) + (0.587 * one_color.green()) + (0.114 * one_color.blue())) / 255
+    print(luma)
+    # Return black for bright colors, white for dark colors
+    return "#000000" if luma > 0.5 else "#ffffff"
+
+
+if __name__ == "__main__":
+    test = string_to_color("#ff3355")
+    res = contrast_color(test)
+    print(test.value(), res)
+

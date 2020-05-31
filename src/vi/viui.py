@@ -61,6 +61,8 @@ from vi.version import NotifyNewVersionThread
 from vi.color.helpers import string_to_color
 from vi.systemtray import TrayIcon
 from vi.logger.mystopwatch import ViStopwatch
+from vi.color.helpers import contrast_color, string_to_color
+
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -143,7 +145,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.menuRegion = RegionMenu("Regions", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
         # Set up user's intel rooms
-        roomnames = ChatroomSettings().setting
+        roomnames = ChatroomSettings().room_names
         if roomnames:
             self.roomnames = roomnames.split(",")
 
@@ -188,7 +190,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             p.setColor(self.backgroundRole(), color)
             self.setAutoFillBackground(True)
             self.setPalette(p)
-            self.setStyleSheet("QWidget { background-color: %s; }" % self.backgroundColor)
+            self.setStyleSheet("QWidget { background-color: %s; color: %s; }" %
+                               (self.backgroundColor,
+                                contrast_color(string_to_color(self.backgroundColor))))
 
         return self.backgroundColor
 
@@ -255,7 +259,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.showChatAction.triggered.connect(self.changeChatVisibility)
         self.soundSetupAction.triggered.connect(self.showSoundSetup)
-        self.activateSoundAction.triggered.connect(self.trayIcon.soundActive)
+        self.activateSoundAction.triggered.connect(self.trayIcon.sound_active)
         self.useSpokenNotificationsAction.triggered.connect(self.changeUseSpokenNotifications)
         self.trayIcon.alarm_distance.connect(self.changeAlarmDistance)
         self.framelessWindowAction.triggered.connect(self.changeFrameless)
@@ -286,7 +290,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.LOGGER.debug("Chosen new Regions to monitor")
             self.menuRegion.addItems()
 
-        setting = SettingsDialog(self)
+        setting = SettingsDialog(self, tabIndex)
         # setting.new_region_range_chosen.connect(handleRegionsChosen)
         # setting.rooms_changed.connect(self.changedRoomnames)
         # setting.checkScanCharacter.setChecked(self.character_parser_enabled)
@@ -302,7 +306,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.show()
         # return True if Changes have been applied
         if setting.exec_():
-            self.setColor(ColorSettings().setting)
+            self.setColor(GeneralSettings().background_color)
             self.enableCharacterParser(GeneralSettings().character_parser)
             self.enableShipParser(GeneralSettings().ship_parser)
             self.enablePopupNotification(GeneralSettings().popup_notification)
@@ -380,7 +384,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.kos_result.connect(self.showKosResult)
         # self.kosRequestThread.start()
 
-        self.chatThread = ChatThread(self, room_names=self.roomnames)
+        self.chatThread = ChatThread()
         # self.chatThread = ChatThread(room_names=self.roomnames, ship_parser=self.enableShipParser(), char_parser=self.enableCharacterParser())
         self.chatThread.message_added_signal.connect(self.logFileChanged)
         self.chatThread.message_updated_signal.connect(self.updateMessageDetailsOnChatEntry)
@@ -634,7 +638,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 newValue = GeneralSettings().sound_active
             self.activateSoundAction.setChecked(newValue)
             self.soundSetupAction.setEnabled(newValue)
-            SoundManager().enable_sound = newValue
+            # SoundManager().enable_sound = newValue
             GeneralSettings().sound_active = newValue
             self.LOGGER.info("Sound activation changed to %r", newValue)
 
@@ -726,24 +730,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if newValue:
             self.statisticsThread.requestStatistics()
 
-    # def clipboardChanged(self, mode=0):
-    #     if not (mode == 0 and self.kosClipboardActiveAction.isChecked() and
-    #             self.clipboard.mimeData().hasText()):
-    #         return
-    #     content = six.text_type(self.clipboard.text())
-    #     contentTuple = tuple(content)
-    #     # Limit redundant kos checks
-    #     if contentTuple != self.oldClipboardContent:
-    #         parts = tuple(content.split("\n"))
-    #         for part in parts:
-    #             # Make sure user is in the content (this is a check of the local system in Eve).
-    #             # also, special case for when you have no knonwnPlayers (initial use)
-    #             if not self.knownPlayers or part in self.knownPlayers:
-    #                 self.trayIcon.setIcon(self.taskbarIconWorking)
-    #                 self.kosRequestThread.addRequest(parts, "clipboard", True)
-    #                 break
-    #         self.oldClipboardContent = contentTuple
-    #
+    def clipboardChanged(self, mode=0):
+        if not (mode == 0 and self.kosClipboardActiveAction.isChecked() and
+                self.clipboard.mimeData().hasText()):
+            return
+        content = six.text_type(self.clipboard.text())
+        contentTuple = tuple(content)
+        # Limit redundant kos checks
+        if contentTuple != self.oldClipboardContent:
+            parts = tuple(content.split("\n"))
+            for part in parts:
+                # Make sure user is in the content (this is a check of the local system in Eve).
+                # also, special case for when you have no knonwnPlayers (initial use)
+                if not self.knownPlayers or part in self.knownPlayers:
+                    self.trayIcon.setIcon(self.taskbarIconWorking)
+                    self.kosRequestThread.addRequest(parts, "clipboard", True)
+                    break
+            self.oldClipboardContent = contentTuple
+
     # emitted by MapView
     def mapLinkClicked(self, url):
         systemName = six.text_type(url.path().split("/")[-1]).upper()
@@ -990,15 +994,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #         pass
     #     self.trayIcon.setIcon(self.taskbarIconQuiescent)
     #
-
-    # TODO: new settings
-    def changedRoomnames(self, newRoomnames: list):
-        self.cache.put("room_names", u",".join(newRoomnames), 60 * 60 * 24 * 365 * 5)
-        if self.chatThread:
-            self.chatThread.update_room_names(newRoomnames)
-        # TODO: this is new (ST) to update the Rooms after changes
-        # TODO: otherwise it wont have effect until restart of program
-        # self.chat.collectInitFileData()
 
     def showInfo(self):
         self.LOGGER.debug("Opening About-Dialog")

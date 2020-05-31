@@ -100,6 +100,9 @@
      </item>
      <item>
       <widget class="QGroupBox" name="groupBox_5">
+       <property name="toolTip">
+        <string/>
+       </property>
        <property name="title">
         <string>Other</string>
        </property>
@@ -167,6 +170,9 @@
         </item>
         <item row="4" column="1">
          <widget class="QPushButton" name="btnColor">
+          <property name="toolTip">
+           <string>change background color of all Windows (may require restart)</string>
+          </property>
           <property name="text">
            <string>Color...</string>
           </property>

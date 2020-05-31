@@ -55,6 +55,7 @@ class Ui_Form(object):
         self.gridLayout_9.addWidget(self.groupBox_6, 2, 0, 1, 1)
         self.horizontalLayout.addWidget(self.groupBox_3)
         self.groupBox_5 = QtWidgets.QGroupBox(Form)
+        self.groupBox_5.setToolTip("")
         self.groupBox_5.setFlat(True)
         self.groupBox_5.setObjectName("groupBox_5")
         self.gridLayout_8 = QtWidgets.QGridLayout(self.groupBox_5)
@@ -117,4 +118,5 @@ class Ui_Form(object):
         self.checkPopupNotification.setToolTip(_translate("Form", "Pop-Up the Tray-Icon with a brief notification about an Alert"))
         self.checkPopupNotification.setText(_translate("Form", "enabled"))
         self.label_17.setText(_translate("Form", "Window Background Color :"))
+        self.btnColor.setToolTip(_translate("Form", "change background color of all Windows (may require restart)"))
         self.btnColor.setText(_translate("Form", "Color..."))

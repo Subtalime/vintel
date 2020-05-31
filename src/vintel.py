@@ -35,7 +35,8 @@ from vi.cache.cache import Cache
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
-
+from vi.settings.settings import GeneralSettings
+from vi.color.helpers import contrast_color, string_to_color
 
 class MyMainException(Exception):
     # logging.getLogger().critical(Exception)
@@ -46,7 +47,7 @@ class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
         self.LOGGER = logging.getLogger(__name__)
-        self.backGroundColor = "#c6d9ec"
+        self.backGroundColor = "#ffffff"
         self.splash = None
         self.vintelCache = None
         self.logLevel = None
@@ -72,7 +73,7 @@ class Application(QApplication):
             try:
                 os.makedirs(self.chatLogDirectory)
             except Exception as e:
-                raise MyMainException("Error while creating %s" % chatLogDirectory, e)
+                raise MyMainException("Error while creating %s" % self.chatLogDirectory, e)
         if not os.path.exists(self.chatLogDirectory):
             # None of the paths for logs exist, bailing out
             msg = "no path to logs! %s" % self.chatLogDirectory
@@ -97,10 +98,9 @@ class Application(QApplication):
         if not self.logLevel:
             self.logLevel = logging.DEBUG
         logging.getLogger().setLevel(self.logLevel)
-        background_color = self.vintelCache.fetch("background_color")
-        if background_color:
-            self.backGroundColor = background_color
-        self.setStyleSheet("QWidget { background-color: %s; }" % self.backGroundColor)
+        self.backGroundColor = GeneralSettings().background_color
+        foreground = contrast_color(string_to_color(self.backGroundColor))
+        self.setStyleSheet("QWidget { background-color: %s; color: %s; }" % (self.backGroundColor, foreground))
 
         logging.getLogger().info("------------------- %s %s starting up -------------------", version.PROGNAME,
                     version.VERSION)

@@ -195,6 +195,7 @@ class GeneralSettings(_Settings):
             "background_color": "#c6d9ec",
             "map_update_interval": 4 * 1000,
             "sound_active": True,
+            "show_requests": True,
         }
 
     @property
@@ -205,6 +206,16 @@ class GeneralSettings(_Settings):
     def sound_active(self, value: bool):
         v = {"sound_active": value}
         self.setting = v
+
+    @property
+    def show_requests(self) -> bool:
+        return self.setting["show_requests"]
+
+    @show_requests.setter
+    def show_requests(self, value: bool):
+        v = {"show_requests": value}
+        self.setting = v
+
 
     @property
     def character_parser(self) -> bool:
