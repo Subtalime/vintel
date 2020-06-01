@@ -1,18 +1,18 @@
 ###########################################################################
 #  Vintel - Visual Intel Chat Analyzer									  #
 #  Copyright (C) 2014-15 Sebastian Meyer (sparrow.242.de+eve@gmail.com )  #
-#																		  #
+# 																		  #
 #  This program is free software: you can redistribute it and/or modify	  #
 #  it under the terms of the GNU General Public License as published by	  #
 #  the Free Software Foundation, either version 3 of the License, or	  #
 #  (at your option) any later version.									  #
-#																		  #
+# 																		  #
 #  This program is distributed in the hope that it will be useful,		  #
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of		  #
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the		  #
 #  GNU General Public License for more details.							  #
-#																		  #
-#																		  #
+# 																		  #
+# 																		  #
 #  You should have received a copy of the GNU General Public License	  #
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
@@ -56,7 +56,7 @@ class MapUpdateThread(QThread):
     def addToQueue(self, content=None, zoomfactor=None, scrollposition=None):
         self.queue.put((content, zoomfactor, scrollposition))
 
-    def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Run-Starting MapUpdate Thread")
         self._active = True
         super(MapUpdateThread, self).start(priority)
@@ -76,7 +76,9 @@ class MapUpdateThread(QThread):
         while self._active:
             try:
                 timeout = False
-                content, zoom_factor, scroll_position = self.queue.get(timeout=self.timeout)
+                content, zoom_factor, scroll_position = self.queue.get(
+                    timeout=self.timeout
+                )
             except queue.Empty as e:
                 timeout = True
                 pass
@@ -84,9 +86,11 @@ class MapUpdateThread(QThread):
                 load_map_attempt += 1
                 self.LOGGER.debug("Map-Content update attempt, but not active")
                 if load_map_attempt > 10:
-                    self.LOGGER.critical("Something is stopping the program of progressing. (Map-Attempts > 10\n"
-                                         "If this continues to happen, delete the Cache-File in \"%s\"" % (
-                                             getVintelDir(),))
+                    self.LOGGER.critical(
+                        "Something is stopping the program of progressing. (Map-Attempts > 10\n"
+                        'If this continues to happen, delete the Cache-File in "%s"'
+                        % (getVintelDir(),)
+                    )
                     self.quit()
                     return
                 continue
@@ -98,14 +102,19 @@ class MapUpdateThread(QThread):
                 load_map_attempt = 0
                 if not timeout and content:  # not based on Timeout
                     self.LOGGER.debug("Setting Map-Content start")
-                    zoom_factor = zoom_factor if zoom_factor else 1.
+                    zoom_factor = zoom_factor if zoom_factor else 1.0
                     # zoom_factor = float(zoom_factor)
                     scroll_to = ""
                     if scroll_position:
-                        self.LOGGER.debug("Current Scroll-Position {}".format(scroll_position))
-                        scroll_to = str("window.scrollTo({:.0f}, {:.0f});".
-                                        format(scroll_position.x() / zoom_factor,
-                                               scroll_position.y() / zoom_factor))
+                        self.LOGGER.debug(
+                            "Current Scroll-Position {}".format(scroll_position)
+                        )
+                        scroll_to = str(
+                            "window.scrollTo({:.0f}, {:.0f});".format(
+                                scroll_position.x() / zoom_factor,
+                                scroll_position.y() / zoom_factor,
+                            )
+                        )
                     new_content = injectScrollPosition(content, scroll_to)
                     self.map_update.emit(new_content)
                     self.LOGGER.debug("Setting Map-Content complete")
@@ -145,7 +154,7 @@ class AvatarFindThread(QThread):
         except Exception as e:
             self.LOGGER.error("Error in AvatarFindThread: %r" % (e,))
 
-    def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting Avatar-Thread")
         self._active = True
         super(AvatarFindThread, self).start(priority)
@@ -155,7 +164,10 @@ class AvatarFindThread(QThread):
 
         if duration and self.last_try:
             if duration * 1000 > self.avatar_timeout:
-                self.LOGGER.info("Fetching Avatar took longer than %ds. Suspending a bit..." % (self.avatar_timeout,))
+                self.LOGGER.info(
+                    "Fetching Avatar took longer than %ds. Suspending a bit..."
+                    % (self.avatar_timeout,)
+                )
                 self.last_try = datetime.now()
         elif not duration:
             if datetime.now() - self.last_try > self.avatar_timeout:
@@ -185,11 +197,15 @@ class AvatarFindThread(QThread):
                     self.switch_off_avatar()
                 if avatar:
                     self.LOGGER.debug(
-                        "AvatarFindThread emit avatar_update for %s: %s" % (charname, self.sw.get_report(),))
+                        "AvatarFindThread emit avatar_update for %s: %s"
+                        % (charname, self.sw.get_report(),)
+                    )
                     self.avatar_update.emit(chat_entry, avatar)
                 else:
                     self.LOGGER.warning(
-                        "AvatarFindThread Avatar not found for \"%s\": %s" % (charname, self.sw.get_report(),))
+                        'AvatarFindThread Avatar not found for "%s": %s'
+                        % (charname, self.sw.get_report(),)
+                    )
             except Exception as e:
                 self.LOGGER.error("Error in AvatarFindThread : %r" % (e,))
 
@@ -228,7 +244,7 @@ class KOSCheckerThread(QThread):
         except Exception as e:
             self.LOGGER.error("Error in KOSCheckerThread.addRequest: %r" % (e,))
 
-    def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting KOSChecker-Thread")
         self._active = True
         super(KOSCheckerThread, self).start(priority)
@@ -257,8 +273,10 @@ class KOSCheckerThread(QThread):
                 continue
 
             self.LOGGER.info(
-                "KOSCheckerThread emitting kos_result for: state = {0}, text = {1}, requestType = {2}, hasKos = {3}".
-                    format("ok", text, requestType, hasKos))
+                "KOSCheckerThread emitting kos_result for: state = {0}, text = {1}, requestType = {2}, hasKos = {3}".format(
+                    "ok", text, requestType, hasKos
+                )
+            )
             self.kos_result.emit(text, requestType, hasKos)
             # self.emit(PYQT_SIGNAL("kos_result"), "ok", text, requestType, hasKos)
 
@@ -286,7 +304,7 @@ class MapStatisticsThread(QThread):
     def requestStatistics(self):
         self.queue.put(1)
 
-    def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting Map-Statistic-Update-Thread")
         self._active = True
         super(MapStatisticsThread, self).start(priority)
@@ -334,7 +352,7 @@ class ChatTidyThread(QThread):
         self.max_age = max_age
         self.queue = SixQueue.Queue(maxsize=1)
 
-    def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting Chat-Tidy-Up-Thread")
         self._active = True
         super(ChatTidyThread, self).start(priority)

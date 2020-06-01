@@ -44,7 +44,7 @@ class RegionMenu(QMenu):
 
     @staticmethod
     def _actionName(region: str) -> str:
-        return str(region).replace(' ', '_').replace('-', '_') + "_action"
+        return str(region).replace(" ", "_").replace("-", "_") + "_action"
 
     def addItem(self, regionName: str) -> QAction:
         if regionName in self._menu_actions.keys():

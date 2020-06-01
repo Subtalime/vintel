@@ -42,24 +42,33 @@ if os.path.exists("dist"):
     except FileNotFoundError:
         pass
 
-executables = [Executable("vintel.py", base=base, icon="icon.ico", shortcutName="Vintel", shortcutDir="DesktopFolder" )]
+executables = [
+    Executable(
+        "vintel.py",
+        base=base,
+        icon="icon.ico",
+        shortcutName="Vintel",
+        shortcutDir="DesktopFolder",
+    )
+]
 
-move_files = (('mapdata', 'mapdata'),
-              # (os.path.join('vi/ui/res/mapdata', 'Querious.svg'), 'mapdata'),
-              # (os.path.join('vi/ui/res/mapdata', 'Providencecatch.svg'), 'mapdata'),
-              ('sound', 'sound'),
-              ('docs', 'docs'),
-              # (os.path.join('docs', 'regionselect.txt'),),
-              ('logo.png',),
-              ('logo_small_green.png',),
-              ('logo_small.png',),
-              ('qmark.png',),
-              ('logging.yaml', 'logging.yaml.example'),
-              )
+move_files = (
+    ("mapdata", "mapdata"),
+    # (os.path.join('vi/ui/res/mapdata', 'Querious.svg'), 'mapdata'),
+    # (os.path.join('vi/ui/res/mapdata', 'Providencecatch.svg'), 'mapdata'),
+    ("sound", "sound"),
+    ("docs", "docs"),
+    # (os.path.join('docs', 'regionselect.txt'),),
+    ("logo.png",),
+    ("logo_small_green.png",),
+    ("logo_small.png",),
+    ("qmark.png",),
+    ("logging.yaml", "logging.yaml.example"),
+)
 
 include_files = [
-    os.path.join(sys.base_prefix, 'DLLs', "tcl86t.dll"),
-    os.path.join(sys.base_prefix, 'DLLs', "tk86t.dll"),
+    os.path.join(sys.base_prefix, "DLLs", "tcl86t.dll"),
+    os.path.join(sys.base_prefix, "DLLs", "tk86t.dll"),
     ("vi/ui/res/logging.yaml", "logging.yaml.example"),
     ("docs/regionselect.txt", "docs/regionselect.txt"),
     ("docs/jumpbridgeformat.txt", "docs/jumpbridgeformat.txt"),
@@ -72,29 +81,42 @@ for pack in move_files:
         dest = pack[1]
     include_files.append((os.path.join(resourcePath(), src), dest))
 
-requires = ['requests', "PyQt5", "pyqtwebengine", "pyglet", 'beautifulsoup4', 'six', 'packaging', 'clipboard', 'esipy',
-            'pyswagger', 'PyYAML', 'colour', "dbx-stopwatch"]
+requires = [
+    "requests",
+    "PyQt5",
+    "pyqtwebengine",
+    "pyglet",
+    "beautifulsoup4",
+    "six",
+    "packaging",
+    "clipboard",
+    "esipy",
+    "pyswagger",
+    "PyYAML",
+    "colour",
+    "dbx-stopwatch",
+]
 packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
 
-replace_paths = [(os.path.join(resourcePath(), "mapdata"), "mapdata"),
-                 (os.path.join(resourcePath(), "sound"), "sound"),
-                 (os.path.join(resourcePath(), "docs"), "docs"),
-                 ]
+replace_paths = [
+    (os.path.join(resourcePath(), "mapdata"), "mapdata"),
+    (os.path.join(resourcePath(), "sound"), "sound"),
+    (os.path.join(resourcePath(), "docs"), "docs"),
+]
 
 build_exe_options = {
-    'build_exe': "{}/Vintel-{}".format(destination, str(VERSION)),
-    'packages': packages,
-    'include_files': include_files,
-    'replace_paths': replace_paths,
-    'includes': 'atexit',
+    "build_exe": "{}/Vintel-{}".format(destination, str(VERSION)),
+    "packages": packages,
+    "include_files": include_files,
+    "replace_paths": replace_paths,
+    "includes": "atexit",
 }
 bdist_msi_options = {
-    'install_icon': "icon.ico",
-    'product_code': '{A34EE3A5-832B-4E7A-8FCE-71DDC4BC7E1B}',
-    'upgrade_code': '{A34EE3A5-832B-4E7A-8FCE-71DDC4BC7E1C}',
-    'add_to_path': False,
-
-    'initial_target_dir': r'[ProgramFilesFolder]\%s\%s' % (PROGNAME, PROGNAME),
+    "install_icon": "icon.ico",
+    "product_code": "{A34EE3A5-832B-4E7A-8FCE-71DDC4BC7E1B}",
+    "upgrade_code": "{A34EE3A5-832B-4E7A-8FCE-71DDC4BC7E1C}",
+    "add_to_path": False,
+    "initial_target_dir": r"[ProgramFilesFolder]\%s\%s" % (PROGNAME, PROGNAME),
 }
 
 try:
@@ -103,10 +125,7 @@ try:
         version=VERSION,
         description=DISPLAY,
         executables=executables,
-        options={
-            'build_exe': build_exe_options,
-            'bdist_msi': bdist_msi_options,
-        },
+        options={"build_exe": build_exe_options, "bdist_msi": bdist_msi_options,},
         requires=requires,
         author=AUTHOR,
         author_email=AUTHOR_EMAIL,

@@ -19,7 +19,13 @@
 import os
 from ast import literal_eval
 from os.path import isfile
-from PyQt5.QtWidgets import QDialog, QAbstractItemView, QFileDialog, QListWidgetItem, QMessageBox
+from PyQt5.QtWidgets import (
+    QDialog,
+    QAbstractItemView,
+    QFileDialog,
+    QListWidgetItem,
+    QMessageBox,
+)
 from PyQt5.QtCore import pyqtSignal, QModelIndex, Qt, QAbstractTableModel, QVariant
 from vi.color.helpers import string_to_color
 from vi.dotlan.colorjavascript import ColorJavaScript
@@ -121,7 +127,9 @@ class SettingsDialogOld(QDialog, Ui_Dialog):
         self.java_script = ColorJavaScript()
         self.color_list = self.java_script.js_lst.copy()
         self.mapColorIndex = 0
-        self.model = JsModel(self.color_list[State['ALARM']], self.java_script.js_header)
+        self.model = JsModel(
+            self.color_list[State["ALARM"]], self.java_script.js_header
+        )
         self.colorTable.setModel(self.model)
         self.colorTable.setSelectionMode(QAbstractItemView.SingleSelection)
         self.colorTable.resizeColumnsToContents()
@@ -193,16 +201,23 @@ class SettingsDialogOld(QDialog, Ui_Dialog):
                 content = content.replace("<mapdir>", getVintelMap())
                 QMessageBox.information(None, "Region-Help", content)
         except FileNotFoundError:
-            QMessageBox.warning(None, "Help-File",
-                                "Unable to find Help-File \n{}".format(
-                                    resourcePath("docs/regionselect.txt")))
+            QMessageBox.warning(
+                None,
+                "Help-File",
+                "Unable to find Help-File \n{}".format(
+                    resourcePath("docs/regionselect.txt")
+                ),
+            )
 
     def region_save(self) -> bool:
         if not self.region_check_mapfile():
-            QMessageBox.critical(None, "Region selection",
-                                 "Regions must end with \".svg\" and exist in \"{}\"\n{}".format(
-                                     getVintelMap(),
-                                     self.txtRegions.text()))
+            QMessageBox.critical(
+                None,
+                "Region selection",
+                'Regions must end with ".svg" and exist in "{}"\n{}'.format(
+                    getVintelMap(), self.txtRegions.text()
+                ),
+            )
             self.txtRegions.setFocus()
             return False
 
@@ -228,10 +243,16 @@ class SettingsDialogOld(QDialog, Ui_Dialog):
         if not self.soundset:
             self.soundset = []
             for dist in range(0, 6):
-                entry = ["{} Jumps".format(dist), os.path.join(soundPath(), "alert.wav"), 25]
+                entry = [
+                    "{} Jumps".format(dist),
+                    os.path.join(soundPath(), "alert.wav"),
+                    25,
+                ]
                 self.soundset.append(entry)
-            self.soundset.append(['KOS', os.path.join(soundPath(), "warning.wav"), 25])
-            self.soundset.append(['Request', os.path.join(soundPath(), "request.wav"), 25])
+            self.soundset.append(["KOS", os.path.join(soundPath(), "warning.wav"), 25])
+            self.soundset.append(
+                ["Request", os.path.join(soundPath(), "request.wav"), 25]
+            )
         header = ["Trigger", "Sound-File", "Volume"]
         self.lstSound.setModel(self.SoundTableModel(self.soundset, header, self))
         self.lstSound.resizeColumnsToContents()
@@ -279,8 +300,10 @@ class SettingsDialogOld(QDialog, Ui_Dialog):
             soundFile = self.txtSound.text()
             if not os.path.exists(soundFile):
                 soundFile = os.path.join(soundPath(), os.path.basename(soundFile))
-            file = QFileDialog.getOpenFileName(self, "Sound File", soundFile, "Sound Files (*.wav)")
-            if file[0] != '':
+            file = QFileDialog.getOpenFileName(
+                self, "Sound File", soundFile, "Sound Files (*.wav)"
+            )
+            if file[0] != "":
                 self.txtSound.setText(file[0])
 
     def color_add_row(self):
@@ -307,7 +330,9 @@ class SettingsDialogOld(QDialog, Ui_Dialog):
 
     def set_map_table_model(self, index):
         # dirty... but somehow the Model doesn't update the dataset...
-        self.color_list[self.colorType.itemText(self.mapColorIndex)] = self.model.m_grid_data.copy()
+        self.color_list[
+            self.colorType.itemText(self.mapColorIndex)
+        ] = self.model.m_grid_data.copy()
         self.mapColorIndex = index
         idx = self.colorType.itemText(index)
         # self.colorTable.model().submitAll()
@@ -351,6 +376,7 @@ class SettingsDialogOld(QDialog, Ui_Dialog):
 
     def cancel_setting(self):
         self.reject()
+
 
 from vi.ui.NewSettings import Ui_Dialog as New_Ui_Dialog
 
@@ -410,12 +436,13 @@ class SettingsDialog(QDialog, New_Ui_Dialog):
 
     def cancel_settings(self) -> None:
         if self.applyButton.isEnabled():
-            res = QMessageBox.warning(self,
-                                      "Cancel edit",
-                                      "You have unsaved changes! Are you sure you wish to Cancel?",
-                                      buttons=QMessageBox.Ok | QMessageBox.Cancel,
-                                      defaultButton=QMessageBox.Cancel,
-                                      )
+            res = QMessageBox.warning(
+                self,
+                "Cancel edit",
+                "You have unsaved changes! Are you sure you wish to Cancel?",
+                buttons=QMessageBox.Ok | QMessageBox.Cancel,
+                defaultButton=QMessageBox.Cancel,
+            )
             if res != QMessageBox.Ok:
                 return
         self.reject()

@@ -31,7 +31,7 @@ class Character:
     def __init__(self, charname: str, status: bool = True, location: str = None):
         self.charname = charname
         self.monitor = bool(eval(str(status)))
-        self.location = None if location == 'None' else location
+        self.location = None if location == "None" else location
 
     def update(self, monitor: bool = None, location: str = None):
         if monitor:
@@ -82,10 +82,15 @@ class Characters(dict):
         elif len(args) > 0:
             self.pop(args[0])
 
-    def addName(self, charname: str, status: bool = True, location: str = None,
-                store: bool = False) -> bool:
+    def addName(
+        self,
+        charname: str,
+        status: bool = True,
+        location: str = None,
+        store: bool = False,
+    ) -> bool:
         if not isinstance(charname, str):
-            LOGGER.critical("addName(charname) must be of type \"str\"")
+            LOGGER.critical('addName(charname) must be of type "str"')
             return False
         if charname not in self.keys():
             self[charname] = Character(charname, status, location)
@@ -97,7 +102,7 @@ class Characters(dict):
 
     def addNames(self, charnames: list) -> bool:
         if not isinstance(charnames, list):
-            LOGGER.critical("addNames(charnames) must be of type \"list\"")
+            LOGGER.critical('addNames(charnames) must be of type "list"')
             return False
         newAddition = False
         for charname in charnames:
@@ -107,7 +112,7 @@ class Characters(dict):
 
     def addCharacter(self, character: Character, store: bool = False) -> bool:
         if not isinstance(character, Character):
-            LOGGER.critical("addCharacter(character) needs to be type of \"Character\"")
+            LOGGER.critical('addCharacter(character) needs to be type of "Character"')
             return False
         if character.getName() not in self.keys():
             self[character.getName()] = character
@@ -119,17 +124,19 @@ class Characters(dict):
 
     def pop(self, charname: str, store: bool = False):
         if not isinstance(charname, str):
-            LOGGER.critical("pop(charname) is to be of type \"str\"")
+            LOGGER.critical('pop(charname) is to be of type "str"')
         elif charname in self.keys():
             del self[charname]
             if store:
                 self.storeData()
         else:
-            LOGGER.warning("tried to remove character \"{}\" which does not exist".format(charname))
+            LOGGER.warning(
+                'tried to remove character "{}" which does not exist'.format(charname)
+            )
 
     def get(self, charname: str) -> Character:
         if not isinstance(charname, str):
-            LOGGER.critical("get(charname) is to be of type \"str\"")
+            LOGGER.critical('get(charname) is to be of type "str"')
         elif charname in self.keys():
             return self[charname]
         return None
@@ -156,7 +163,7 @@ class Characters(dict):
                     arr = list(character.split("."))
                     self.addCharacter(Character(arr[0], arr[1], arr[2]))
                 except Exception as e:
-                    LOGGER.error("could not add player \"%s\": %r", character, e)
+                    LOGGER.error('could not add player "%s": %r', character, e)
                     pass
 
     def storeData(self):

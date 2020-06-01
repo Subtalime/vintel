@@ -28,10 +28,12 @@ from vi.logger.logwindow import LogDisplayHandler, LOG_WINDOW_HANDLER_NAME
 from vi.logger.logqueue import LogQueueHandler
 from vi.resources import getVintelLogDir, resourcePath
 from vi.singleton import Singleton
+from vi.version import ROOT_DIR
 
 
 class MyDateFormatter(logging.Formatter):
     import datetime as dt
+
     converter = dt.datetime.fromtimestamp
 
     def formatTime(self, record, date_format=None):
@@ -59,8 +61,11 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         # TODO: Then open the LogWindows which should attach to the Queue-Handler as Queue-Listener
         # TODO: see https://stackoverflow.com/questions/58592557/how-to-wrap-python-logging-module
         # TODO: also see below TODO!
-        config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                   config_file) if not os.path.exists(config_file) else config_file
+        config_path = (
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), config_file)
+            if not os.path.exists(config_file)
+            else config_file
+        )
         self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
         path = os.path.split(config_file)
         if path[0] == "":
@@ -70,7 +75,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
-                    yaml.add_constructor(u'!log_path', self.construct_logfilepath)
+                    yaml.add_constructor(u"!log_path", self.construct_logfilepath)
                     # Loader MUST be specified, otherwise constructor wont work!
                     config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
@@ -84,7 +89,9 @@ class LogConfiguration(six.with_metaclass(Singleton)):
                     try:
                         # next attempt INI-File format
                         try:
-                            logging.config.fileConfig(config_path, disable_existing_loggers=True)
+                            logging.config.fileConfig(
+                                config_path, disable_existing_loggers=True
+                            )
                         except:
                             self.default(log_folder=self.log_folder)
                     except Exception as e:
@@ -99,7 +106,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
             self.default(log_folder=self.log_folder)
 
     def getLogFilePath(self, config_file: str = LOG_CONFIG) -> str:
-        return os.path.join(resourcePath(), config_file)
+        return os.path.join(ROOT_DIR, config_file)
 
     def default(self, log_level=logging.INFO, log_folder="."):
         # just in case any loggers are currently active
@@ -110,13 +117,18 @@ class LogConfiguration(six.with_metaclass(Singleton)):
 
         # Setup logging for console and rotated log files
         formatter = MyDateFormatter(
-            fmt='%(asctime)s|%(levelname)s [%(threadName)s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s',
-            datefmt='%d/%m %H:%M:%S.%f')
+            fmt="%(asctime)s|%(levelname)s [%(threadName)s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s",
+            datefmt="%d/%m %H:%M:%S.%f",
+        )
 
         logFilename = os.path.join(log_folder, "vintel_default.log")
-        fileHandler = RotatingFileHandler(maxBytes=self.MAX_FILE_SIZE,
-                                          backupCount=self.MAX_FILE_COUNT, filename=logFilename,
-                                          mode='a', encoding="utf-8")
+        fileHandler = RotatingFileHandler(
+            maxBytes=self.MAX_FILE_SIZE,
+            backupCount=self.MAX_FILE_COUNT,
+            filename=logFilename,
+            mode="a",
+            encoding="utf-8",
+        )
         fileHandler.setFormatter(formatter)
         # in the log file, ALWAYS debug
         fileHandler.setLevel(logging.DEBUG)
@@ -125,7 +137,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         queue_handlers = [fileHandler]
         # stdout
         # only if running from Dev-Environment
-        if not getattr(sys, 'frozen', False):
+        if not getattr(sys, "frozen", False):
             consoleHandler = logging.StreamHandler()
             consoleHandler.setFormatter(formatter)
             consoleHandler.setLevel(log_level)
@@ -164,7 +176,10 @@ class LogConfigurationThread(threading.Thread):
                     if newstat != self.file_stat:
                         self.file_stat = newstat
                         try:
-                            self.LOGGER.debug("Configuration-Change in \"%s\"", LogConfiguration.LOG_FILE_PATH)
+                            self.LOGGER.debug(
+                                'Configuration-Change in "%s"',
+                                LogConfiguration.LOG_FILE_PATH,
+                            )
                             LogConfiguration(LogConfiguration.LOG_FILE_PATH)
                             # Make sure our LogWindowHandler is still alive!
                             if LOG_WINDOW_HANDLER_NAME not in logging._handlerList:
@@ -184,9 +199,14 @@ if __name__ == "__main__":
 
     # yaml.add_constructor("!test", construct_logfilepath)
     try:
-        print(yaml.load(u"""
+        print(
+            yaml.load(
+                u"""
         foo: !test tester
-        """, Loader=yaml.Loader))
+        """,
+                Loader=yaml.Loader,
+            )
+        )
     except:
         raise
 

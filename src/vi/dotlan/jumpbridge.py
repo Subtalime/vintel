@@ -42,14 +42,19 @@ class Bridge:
         systemTwo.setJumpbridgeColor(self.color)
 
         # Construct the line, color it and add it to the jumps
-        self.line = soup.new_tag("line", x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
-                            y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
-                            x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
-                            y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
-                            visibility="hidden",
-                            style="stroke:#{0}".format(self.color))
+        self.line = soup.new_tag(
+            "line",
+            x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
+            y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
+            x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
+            y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
+            visibility="hidden",
+            style="stroke:#{0}".format(self.color),
+        )
         self.line["stroke-width"] = 2
-        self.line["class"] = ["jumpbridge", ]
+        self.line["class"] = [
+            "jumpbridge",
+        ]
         if "<" in self.connection:
             self.line["marker-start"] = "url(#arrowstart_{0})".format(self.color)
         if ">" in self.connection:
@@ -58,9 +63,31 @@ class Bridge:
 
 
 class Jumpbridge:
-    JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
-                 "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
-                 "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
+    JB_COLORS = (
+        "800000",
+        "808000",
+        "BC8F8F",
+        "ff00ff",
+        "c83737",
+        "FF6347",
+        "917c6f",
+        "ffcc00",
+        "88aa00" "FFE4E1",
+        "008080",
+        "00BFFF",
+        "4682B4",
+        "00FF7F",
+        "7FFF00",
+        "ff6600",
+        "CD5C5C",
+        "FFD700",
+        "66CDAA",
+        "AFEEEE",
+        "5F9EA0",
+        "FFDEAD",
+        "696969",
+        "2F4F4F",
+    )
 
     def __init__(self, system, soup, jumpbridge_data):
         """

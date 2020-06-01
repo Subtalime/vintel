@@ -43,10 +43,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 class SoundManager(six.with_metaclass(Singleton)):
-    SOUNDS = {"alarm": "178032__zimbot__redalert-klaxon-sttos-recreated.wav",
-              "kos": "178031__zimbot__transporterstartbeep0-sttos-recreated.wav",
-              "request": "178028__zimbot__bosun-whistle-sttos-recreated.wav",
-              "stop": "Empty.wav"}
+    SOUNDS = {
+        "alarm": "178032__zimbot__redalert-klaxon-sttos-recreated.wav",
+        "kos": "178031__zimbot__transporterstartbeep0-sttos-recreated.wav",
+        "request": "178028__zimbot__bosun-whistle-sttos-recreated.wav",
+        "stop": "Empty.wav",
+    }
 
     soundVolume = 25  # Must be an integer between 0 and 100
     _soundActive = False
@@ -91,8 +93,10 @@ class SoundManager(six.with_metaclass(Singleton)):
                 path = None
             if path and not os.path.exists(path):
                 import glob
-                hits = glob.glob(os.path.join(soundPath(),
-                                              os.path.basename(path)), recursive=True)
+
+                hits = glob.glob(
+                    os.path.join(soundPath(), os.path.basename(path)), recursive=True
+                )
                 if hits:
                     path = hits[0]
                 else:
@@ -109,7 +113,9 @@ class SoundManager(six.with_metaclass(Singleton)):
             else:
                 audioFile = soundPath("{0}".format(self.SOUNDS[name]))
             if self.soundThread:
-                self.soundThread.queue.put((audioFile, volume, message, abbreviatedMessage))
+                self.soundThread.queue.put(
+                    (audioFile, volume, message, abbreviatedMessage)
+                )
 
     def quit(self):
         if self.soundAvailable:
@@ -123,8 +129,8 @@ class SoundManager(six.with_metaclass(Singleton)):
         queue = None
         useGoogleTTS = False
         useVoiceRss = False
-        VOICE_RSS_API_KEY = '896a7f61ec5e478cba856a78babab79c'
-        GOOGLE_TTS_API_KEY = ''
+        VOICE_RSS_API_KEY = "896a7f61ec5e478cba856a78babab79c"
+        GOOGLE_TTS_API_KEY = ""
         isDarwin = sys.platform.startswith("darwin")
         volume = 25
 
@@ -145,13 +151,15 @@ class SoundManager(six.with_metaclass(Singleton)):
                 if not self.active:
                     return
                 if SoundManager().useSpokenNotifications and (
-                        message != "" or abbreviatedMessage != ""):
+                    message != "" or abbreviatedMessage != ""
+                ):
                     if abbreviatedMessage != "":
                         message = abbreviatedMessage
                     if not self.speak(message):
                         self.playAudioFile(audioFile, volume, False)
                         LOGGER.error(
-                            "SoundThread: sorry, speech not yet implemented on this platform")
+                            "SoundThread: sorry, speech not yet implemented on this platform"
+                        )
                 # elif audioFile is not None:
                 else:
                     self.playAudioFile(audioFile, volume, False)
@@ -186,7 +194,11 @@ class SoundManager(six.with_metaclass(Singleton)):
                 volume = float(set_volume) / 100.0
                 if self.player:
                     with wave.open(filename, "r") as f:
-                        duration = (f.getnframes() / float(f.getnchannels() * f.getframerate()) / 2)
+                        duration = (
+                            f.getnframes()
+                            / float(f.getnchannels() * f.getframerate())
+                            / 2
+                        )
                     src = pyglet.media.load(filename, streaming=stream)
                     self.player.queue(src)
                     self.player.volume = volume
@@ -194,11 +206,16 @@ class SoundManager(six.with_metaclass(Singleton)):
                     time.sleep(duration)
                     self.player.next_source()
                 elif self.isDarwin:
-                    subprocess.call(["afplay -v {0} {1}".format(volume, filename)], shell=True)
+                    subprocess.call(
+                        ["afplay -v {0} {1}".format(volume, filename)], shell=True
+                    )
             except Exception as e:
                 # wave.open throws weird errors, hence the logging like thi
                 LOGGER.error(
-                    "SoundThread.playAudioFile exception on {0}: {1}".format(filename, str(e)))
+                    "SoundThread.playAudioFile exception on {0}: {1}".format(
+                        filename, str(e)
+                    )
+                )
                 # self.player = media.Player()
                 # self.player.loop = False
 
@@ -207,35 +224,39 @@ class SoundManager(six.with_metaclass(Singleton)):
         #
         def darwinSpeak(self, message):
             try:
-                os.system("say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message))
+                os.system(
+                    "say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message)
+                )
             except Exception as e:
                 LOGGER.error("SoundThread.darwinSpeak exception: %s" % message, e)
 
-
         # VoiceRss
 
-        def playTTS(self, inputText=''):
+        def playTTS(self, inputText=""):
             try:
-                mp3url = 'http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us'.\
-                    format(**locals())
+                mp3url = "http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us".format(
+                    **locals()
+                )
                 self.playAudioFile(requests.get(mp3url, stream=True).raw)
-                time.sleep(.5)
+                time.sleep(0.5)
             except requests.exceptions.RequestException as e:
-                LOGGER.error('playTTS error: %s' % mp3url, e)
+                LOGGER.error("playTTS error: %s" % mp3url, e)
 
         # google_tts
 
-        def audioExtractToMp3(self, inputText='', args=None):
+        def audioExtractToMp3(self, inputText="", args=None):
             # This accepts :
             #   a dict,
             #   an audio_args named tuple
             #   or arg parse object
-            audioArgs = namedtuple('audio_args', ['language', 'output'])
+            audioArgs = namedtuple("audio_args", ["language", "output"])
             if args is None:
-                args = audioArgs(language='en', output=open('output.mp3', 'w'))
+                args = audioArgs(language="en", output=open("output.mp3", "w"))
             if type(args) is dict:
-                args = audioArgs(language=args.get('language', 'en'),
-                                 output=open(args.get('output', 'output.mp3'), 'w'))
+                args = audioArgs(
+                    language=args.get("language", "en"),
+                    output=open(args.get("output", "output.mp3"), "w"),
+                )
             # Process inputText into chunks
             # Google TTS only accepts up to (and including) 100 characters long texts.
             # Split the text in segments of maximum 100 characters long.
@@ -243,19 +264,30 @@ class SoundManager(six.with_metaclass(Singleton)):
 
             # Download chunks and write them to the output file
             for idx, val in enumerate(combinedText):
-                mp3url = "http://translate.google.com/translate_tts?tl=%s&q=%s&total=%s&idx=%s&ie=UTF-8&client=t&key=%s" % (
-                    args.language, requests.utils.quote(val), len(combinedText), idx,
-                    self.GOOGLE_TTS_API_KEY)
-                headers = {"Host": "translate.google.com",
-                           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1)"}
-                sys.stdout.write('.')
+                mp3url = (
+                    "http://translate.google.com/translate_tts?tl=%s&q=%s&total=%s&idx=%s&ie=UTF-8&client=t&key=%s"
+                    % (
+                        args.language,
+                        requests.utils.quote(val),
+                        len(combinedText),
+                        idx,
+                        self.GOOGLE_TTS_API_KEY,
+                    )
+                )
+                headers = {
+                    "Host": "translate.google.com",
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1)",
+                }
+                sys.stdout.write(".")
                 sys.stdout.flush()
                 if len(val) > 0:
                     try:
-                        args.timeout.write(requests.get(mp3url, headers=headers).content)
-                        time.sleep(.5)
+                        args.timeout.write(
+                            requests.get(mp3url, headers=headers).content
+                        )
+                        time.sleep(0.5)
                     except requests.exceptions.RequestException as e:
-                        LOGGER.error('audioExtractToMp3 error: %s' % mp3url, e)
+                        LOGGER.error("audioExtractToMp3 error: %s" % mp3url, e)
             args.output.close()
             return args.output.name
 
@@ -289,22 +321,24 @@ class SoundManager(six.with_metaclass(Singleton)):
                 Returns:
                     a list of strings of maximum maxLength length.
                 """
-                if (len(inputText) <= maxLength):
+                if len(inputText) <= maxLength:
                     return [inputText]
 
                 # Mistakenly passed a string instead of a list
                 if isinstance(regexps, str):
                     regexps = [regexps]
-                regexp = regexps.pop(0) if regexps else '(.{%d})' % maxLength
+                regexp = regexps.pop(0) if regexps else "(.{%d})" % maxLength
 
                 textList = re.split(regexp, inputText)
                 combinedText = []
                 # First segment could be >max_length
-                combinedText.extend(splitTextRecursive(textList.pop(0), regexps, maxLength))
+                combinedText.extend(
+                    splitTextRecursive(textList.pop(0), regexps, maxLength)
+                )
                 for val in textList:
                     current = combinedText.pop()
                     concat = current + val
-                    if (len(concat) <= maxLength):
+                    if len(concat) <= maxLength:
                         combinedText.append(concat)
                     else:
                         combinedText.append(current)
@@ -312,4 +346,6 @@ class SoundManager(six.with_metaclass(Singleton)):
                         combinedText.extend(splitTextRecursive(val, regexps, maxLength))
                 return combinedText
 
-            return splitTextRecursive(inputText.replace('\n', ''), ["([\,|\.|;]+)", '( )'])
+            return splitTextRecursive(
+                inputText.replace("\n", ""), ["([\,|\.|;]+)", "( )"]
+            )

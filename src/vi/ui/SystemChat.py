@@ -79,5 +79,3 @@ class Ui_Dialog(object):
         self.locationButton.setText(_translate("Dialog", "Set Char Location"))
         self.alarmButton.setText(_translate("Dialog", "Set alarm"))
         self.clearButton.setText(_translate("Dialog", "Set clear"))
-
-

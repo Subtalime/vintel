@@ -22,26 +22,36 @@ import time
 
 
 class Message(object):
-    def __init__(self,
-                 room: str,
-                 message: str,
-                 timestamp: datetime.datetime,
-                 user: str,
-                 plain_text: str = None,
-                 status: State = State['ALARM'],
-                 rtext: NavigableString = None,
-                 currsystems: list = None,
-                 upper_text: str = None):
+    def __init__(
+        self,
+        room: str,
+        message: str,
+        timestamp: datetime.datetime,
+        user: str,
+        plain_text: str = None,
+        status: State = State["ALARM"],
+        rtext: NavigableString = None,
+        currsystems: list = None,
+        upper_text: str = None,
+    ):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
-        self.timestamp_float = time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1E6
+        self.timestamp_float = (
+            time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1e6
+        )
         self.user = user  # user who posted the message
         self.status = status  # status related to the message
         self.rtext = rtext
-        self.systems = currsystems if currsystems is not None else [] # list of systems mentioned in the message
-        self.upper_text = upper_text if upper_text else message.upper()  # the text in UPPER CASE
-        self.plain_text = plain_text if plain_text else message  # plain text of the message, as posted
+        self.systems = (
+            currsystems if currsystems is not None else []
+        )  # list of systems mentioned in the message
+        self.upper_text = (
+            upper_text if upper_text else message.upper()
+        )  # the text in UPPER CASE
+        self.plain_text = (
+            plain_text if plain_text else message
+        )  # plain text of the message, as posted
         # if you add the message to a widget, please add it to widgets
         self.widgets = []
 
@@ -74,7 +84,9 @@ class Message(object):
         return x.__key() == y.__key()
 
     def __repr__(self):
-        return "{} {}/'{}' {}: {}".format(self.timestamp, self.room, self.user, self.status.value, self.plainText)
+        return "{} {}/'{}' {}: {}".format(
+            self.timestamp, self.room, self.user, self.status.value, self.plainText
+        )
 
     def __hash__(self):
         return hash(self.__key())

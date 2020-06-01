@@ -1,4 +1,3 @@
-
 #     Vintel - Visual Intel Chat Analyzer
 #     Copyright (c) 2019. Steven Tschache (github@tschache.com)
 #

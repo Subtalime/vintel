@@ -19,4 +19,3 @@
 from .logqueue import LogQueueHandler, _acquire_lock, _release_lock
 from .logpopup import LogLevelPopup, LogLevelAction
 from .logwindow import LogWindow
-

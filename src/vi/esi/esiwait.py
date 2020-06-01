@@ -68,6 +68,7 @@ class WaitThread(QObject):
     def wait_for_secret(self, poll_interval: float = 0.5):
         self.__is_shut_down.clear()
         import time
+
         try:
             while not EsiConfig().ESI_SECRET_KEY and not self.__shutdown_request:
                 time.sleep(poll_interval)

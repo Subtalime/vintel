@@ -40,8 +40,13 @@ def _after_token_refresh(access_token, refresh_token, expires_in, **kwargs):
 
 
 def logrepr(className: type) -> str:
-    return str(className).replace("'", "").replace("__main__.", "").replace("<", "").replace(">",
-                                                                                             "")
+    return (
+        str(className)
+        .replace("'", "")
+        .replace("__main__.", "")
+        .replace("<", "")
+        .replace(">", "")
+    )
 
 
 def synchronized(lock):
@@ -77,7 +82,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
     class __OnceOnly:
         def __init__(self, enablecache: bool = True):
             if EsiInterface._esiLoading:
-                logging.getLogger(__name__).error("Esi already currently being loaded...")
+                logging.getLogger(__name__).error(
+                    "Esi already currently being loaded..."
+                )
                 while EsiInterface.esiLoading is not "complete":
                     pass
                 return
@@ -95,7 +102,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.esiApp = None
             self.ignoreSecurity = True
             self.headers = {
-                'User-Agent': "{} Intel Management Tool".format(self.esiConfig.PROGNAME),
+                "User-Agent": "{} Intel Management Tool".format(
+                    self.esiConfig.PROGNAME
+                ),
                 # 'content-type': 'application/x-www-form-urlencoded',
                 # 'authorization': 'Basic xxx',
                 # 'Content-Length': '100',
@@ -111,13 +120,12 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     redirect_uri=self.esiConfig.ESI_CALLBACK,
                     client_id=self.esiConfig.ESI_CLIENT_ID,
                     code_verifier=self.codeverifier,
-                    headers=self.headers
+                    headers=self.headers,
                 )
                 # this authentication can be used with all ESI calls
-                self.esiClient = EsiClient(security=self.security,
-                                           retry_requests=True,
-                                           headers=self.headers
-                                           )
+                self.esiClient = EsiClient(
+                    security=self.security, retry_requests=True, headers=self.headers
+                )
 
             self.LOGGER.debug("ESI loading Swagger...")
             # outputs a load of data in Debug
@@ -125,13 +133,16 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.LOGGER.setLevel(logging.WARN)
             while not self.esiApp:
                 try:
-                    self.esiApp = EsiApp(cache=EsiCache(self.caching),
-                                         cache_time=3 * 86400).get_latest_swagger
+                    self.esiApp = EsiApp(
+                        cache=EsiCache(self.caching), cache_time=3 * 86400
+                    ).get_latest_swagger
                 except (Exception, HTTPException) as e:
                     self.LOGGER.error("Error while retrieving latest Swagger", e)
                     if e.code == 500:
                         self.esicache.invalidateAll()
-                        self.LOGGER.exception("ESI-Interface not explicitly instantiated!")
+                        self.LOGGER.exception(
+                            "ESI-Interface not explicitly instantiated!"
+                        )
                         raise
 
                         # Reset logging to old level
@@ -144,6 +155,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
 
         def getSecurity(self):
             import traceback
+
             self.LOGGER.exception(traceback.print_stack())
             if not self.esiConfig.ESI_CLIENT_ID or self.esiConfig.ESI_CLIENT_ID == "":
                 cacheToken = self.esicache.get("esi_clientid")
@@ -172,19 +184,18 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 redirect_uri=self.esiConfig.ESI_CALLBACK,
                 client_id=self.esiConfig.ESI_CLIENT_ID,
                 code_verifier=self.codeverifier,
-                headers=self.headers
+                headers=self.headers,
             )
             # this authentication can be used with all ESI calls
-            self.esiClient = EsiClient(security=self.security,
-                                       retry_requests=True,
-                                       headers=self.headers
-                                       )
+            self.esiClient = EsiClient(
+                security=self.security, retry_requests=True, headers=self.headers
+            )
             self.apiInfo = None
             self.esiApp = None
             refreshKey = None
             tokenKey = self.esicache.get("esi_token")
             if tokenKey:
-                refreshKey = tokenKey['refresh_token']
+                refreshKey = tokenKey["refresh_token"]
             while not self.apiInfo:
                 try:
                     if self.esiConfig.ESI_SECRET_KEY:
@@ -198,11 +209,13 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         self.LOGGER.debug("Secretkey success")
                     elif refreshKey:
                         self.LOGGER.debug("Checking the Refresh-Token")
-                        self.security.update_token({
-                            'access_token': '',
-                            'expires_in': -1,
-                            'refresh_token': refreshKey
-                        })
+                        self.security.update_token(
+                            {
+                                "access_token": "",
+                                "expires_in": -1,
+                                "refresh_token": refreshKey,
+                            }
+                        )
                         refreshKey = None
                         try:
                             self.apiInfo = self.security.refresh()
@@ -261,7 +274,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 EsiCache.BASE_DIR = cache_dir
             AFTER_TOKEN_REFRESH.add_receiver(_after_token_refresh)
             try:
-                EsiInterface._instance = EsiInterface.__OnceOnly(enablecache=self.caching)
+                EsiInterface._instance = EsiInterface.__OnceOnly(
+                    enablecache=self.caching
+                )
             except Exception:
                 sys.exit(-1)
         self.cache = EsiCache(self.caching)
@@ -292,7 +307,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :param resp: Response
         :return: seconds: int
         """
-        return self.calcExpiry(resp.header.get('Expires')[0])
+        return self.calcExpiry(resp.header.get("Expires")[0])
 
     @staticmethod
     def _copyModel(data) -> dict:
@@ -332,12 +347,17 @@ class EsiInterface(metaclass=EsiInterfaceType):
                         self.esi_timeout += self.esi_timeout
                         self.cache.put("esi_last_try", now, self.esi_timeout)
                         self.cache.put("esi_allowed", True, self.esi_timeout)
-                        self.LOGGER.info("Call to ESI Re-Enabled. Next delay will be %ds", self.esi_timeout / 1000)
+                        self.LOGGER.info(
+                            "Call to ESI Re-Enabled. Next delay will be %ds",
+                            self.esi_timeout / 1000,
+                        )
                         return True
             return esi_allowed
         call_duration = (now - call_start).total_seconds() * 1000
         if call_duration > self.esi_max_call_duration:
-            self.LOGGER.info("Call to ESI took %ds. Too long, so disabling ESI", call_duration/1000)
+            self.LOGGER.info(
+                "Call to ESI took %ds. Too long, so disabling ESI", call_duration / 1000
+            )
             return self._allowCallToEsi(force_disable=True)
         return True
 
@@ -377,7 +397,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                     self.cache.put(cache_key, response, cache_expiry_secs)
             except Exception as e:
                 self.cache.delete(cache_key)
-                self.LOGGER.error("Error executing Operation [%s] %r" % (operation, kwargs), e)
+                self.LOGGER.error(
+                    "Error executing Operation [%s] %r" % (operation, kwargs), e
+                )
                 raise
         return response
 
@@ -389,7 +411,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                  format is {"alliance_id": xx, "ancestry_id": xx, "birthday": xx, "bloodline_id": xx, "corporation_id": xx,
                             "description": xx, "gender": xx, "name": xx, "race_id": xx, "security_status": xx, "title": xx}
         """
-        return self._getResponse("get_characters_character_id", None, character_id=characterId)
+        return self._getResponse(
+            "get_characters_character_id", None, character_id=characterId
+        )
 
     def getCorporation(self, corpid: int) -> Response.data:
         """
@@ -400,7 +424,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                             "war_elligible": xx, "url": xx, "ticker": xx, "shares": xx, "name": xx, "member_count": xx,
                             "home_station_id": xx }
         """
-        return self._getResponse("get_corporations_corporation_id", None, corporation_id=corpid)
+        return self._getResponse(
+            "get_corporations_corporation_id", None, corporation_id=corpid
+        )
 
     def getCorporationHistory(self, characterId: int) -> Response.data:
         """
@@ -409,7 +435,11 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :return: Response.data
                  # format is {"corporation_id": xx, "record_id": xx, "start_date": xx},...
         """
-        return self._getResponse("get_characters_character_id_corporationhistory", None, character_id=characterId)
+        return self._getResponse(
+            "get_characters_character_id_corporationhistory",
+            None,
+            character_id=characterId,
+        )
 
     def getCharacterId(self, charname: str, strict: bool = True) -> Response.data:
         """
@@ -420,8 +450,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :return: Response.data
                  format is {"character": [xxx,...]}
         """
-        return self._getResponse("get_search", None, categories='character', search=charname,
-                                 strict=strict)
+        return self._getResponse(
+            "get_search", None, categories="character", search=charname, strict=strict
+        )
 
     def getCharacterAvatar(self, characterId: int) -> Response.data:
         """
@@ -429,8 +460,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :param characterId: int
         :return: Response.data
         """
-        return self._getResponse("get_characters_character_id_portrait", None,
-                                 character_id=characterId)
+        return self._getResponse(
+            "get_characters_character_id_portrait", None, character_id=characterId
+        )
 
     def getCharacterAvatarByName(self, characterName: str) -> Response.data:
         """
@@ -483,8 +515,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :return: Response.data
                  format is [{"ship_jumps": xx, "system_id": xx} ...]
          """
-        return self._getResponse("get_universe_categories_category_id", None,
-                                 category_id=6)
+        return self._getResponse(
+            "get_universe_categories_category_id", None, category_id=6
+        )
 
     def getShipGroupTypes(self, groupid: int) -> Response.data:
         """
@@ -493,8 +526,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :return: Response.data
                  format is [{"ship_jumps": xx, "system_id": xx} ...]
         """
-        return self._getResponse("get_universe_groups_group_id", None,
-                                 group_id=groupid)
+        return self._getResponse("get_universe_groups_group_id", None, group_id=groupid)
 
     def getShip(self, shipid: int) -> Response.data:
         """
@@ -503,8 +535,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :return: Response.data
                  format is [{"ship_jumps": xx, "system_id": xx} ...]
          """
-        return self._getResponse("get_universe_types_type_id", None,
-                                 type_id=shipid)
+        return self._getResponse("get_universe_types_type_id", None, type_id=shipid)
 
     @property
     def getShipList(self) -> list:
@@ -520,9 +551,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 self.LOGGER.debug("Loading Ship-Data...")
                 ships = []
                 shipgroup = self.getShipGroups()
-                for group in shipgroup['groups']:
+                for group in shipgroup["groups"]:
                     shiptypes = self.getShipGroupTypes(group)
-                    for ship in shiptypes['types']:
+                    for ship in shiptypes["types"]:
                         shipitem = self.getShip(ship)
                         ships.append(shipitem)
                 self.cache.set(cacheKey, ships)

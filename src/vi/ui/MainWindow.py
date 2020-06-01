@@ -15,7 +15,11 @@ class Ui_MainWindow(object):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1363, 904)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("src\\vi\\ui\\../../icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(
+            QtGui.QPixmap("src\\vi\\ui\\../../icon.ico"),
+            QtGui.QIcon.Normal,
+            QtGui.QIcon.Off,
+        )
         MainWindow.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -83,7 +87,9 @@ class Ui_MainWindow(object):
         self.gridLayout_5.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
         self.verticalLayout.addWidget(self.mapbuttonwidget)
         self.mapView = PanningWebView(self.mapwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.mapView.sizePolicy().hasHeightForWidth())
@@ -99,7 +105,9 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.mapView)
         self.gridLayout_3.addLayout(self.verticalLayout, 0, 0, 1, 1)
         self.chatbox = QtWidgets.QGroupBox(self.splitter)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.chatbox.sizePolicy().hasHeightForWidth())
@@ -129,7 +137,9 @@ class Ui_MainWindow(object):
         self.chatListWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.chatListWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.chatListWidget.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        self.chatListWidget.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
+        self.chatListWidget.setHorizontalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
         self.chatListWidget.setResizeMode(QtWidgets.QListView.Adjust)
         self.chatListWidget.setObjectName("chatListWidget")
         self.verticalLayout_2.addWidget(self.chatListWidget)
@@ -232,7 +242,9 @@ class Ui_MainWindow(object):
         self.delveQueriousRegionAction.setObjectName("delveQueriousRegionAction")
         self.delveQueriousCompactRegionAction = QtWidgets.QAction(MainWindow)
         self.delveQueriousCompactRegionAction.setCheckable(True)
-        self.delveQueriousCompactRegionAction.setObjectName("delveQueriousCompactRegionAction")
+        self.delveQueriousCompactRegionAction.setObjectName(
+            "delveQueriousCompactRegionAction"
+        )
         self.queriousRegionAction = QtWidgets.QAction(MainWindow)
         self.queriousRegionAction.setCheckable(True)
         self.queriousRegionAction.setObjectName("queriousRegionAction")
@@ -301,37 +313,75 @@ class Ui_MainWindow(object):
         self.opac60.setText(_translate("MainWindow", "Opacity 60%"))
         self.opac40.setText(_translate("MainWindow", "Opacity 40%"))
         self.opac20.setText(_translate("MainWindow", "Opacity 20%"))
-        self.chooseChatRoomsAction.setText(_translate("MainWindow", "Choose Chatrooms..."))
-        self.showChatAvatarsAction.setText(_translate("MainWindow", "Show Chat Avatars"))
-        self.kosClipboardActiveAction.setText(_translate("MainWindow", "Auto KOS-Check Clipboard"))
-        self.kosClipboardActiveAction.setToolTip(_translate("MainWindow", "Activate Clipboard KOS-Check"))
+        self.chooseChatRoomsAction.setText(
+            _translate("MainWindow", "Choose Chatrooms...")
+        )
+        self.showChatAvatarsAction.setText(
+            _translate("MainWindow", "Show Chat Avatars")
+        )
+        self.kosClipboardActiveAction.setText(
+            _translate("MainWindow", "Auto KOS-Check Clipboard")
+        )
+        self.kosClipboardActiveAction.setToolTip(
+            _translate("MainWindow", "Activate Clipboard KOS-Check")
+        )
         self.showChatAction.setText(_translate("MainWindow", "Show Chat"))
         self.activateSoundAction.setText(_translate("MainWindow", "Activate Sound"))
-        self.framelessWindowAction.setText(_translate("MainWindow", "Frameless Main Window"))
-        self.framelessWindowAction.setToolTip(_translate("MainWindow", "Frameless Main Window"))
+        self.framelessWindowAction.setText(
+            _translate("MainWindow", "Frameless Main Window")
+        )
+        self.framelessWindowAction.setToolTip(
+            _translate("MainWindow", "Frameless Main Window")
+        )
         self.quitAction.setText(_translate("MainWindow", "Quit"))
         self.chooseRegionAction.setText(_translate("MainWindow", "Other Region..."))
         self.soundSetupAction.setText(_translate("MainWindow", "Sound Setup..."))
-        self.jumpbridgeDataAction.setText(_translate("MainWindow", "Jumpbridge Data..."))
-        self.useSpokenNotificationsAction.setText(_translate("MainWindow", "Spoken Notifications"))
-        self.useSpokenNotificationsAction.setToolTip(_translate("MainWindow", "Spoken KOS results"))
-        self.autoScanIntelAction.setText(_translate("MainWindow", "Scan Intel For Requests"))
-        self.autoScanIntelAction.setToolTip(_translate("MainWindow", "When enabled, scans intel for xxx kos requests"))
+        self.jumpbridgeDataAction.setText(
+            _translate("MainWindow", "Jumpbridge Data...")
+        )
+        self.useSpokenNotificationsAction.setText(
+            _translate("MainWindow", "Spoken Notifications")
+        )
+        self.useSpokenNotificationsAction.setToolTip(
+            _translate("MainWindow", "Spoken KOS results")
+        )
+        self.autoScanIntelAction.setText(
+            _translate("MainWindow", "Scan Intel For Requests")
+        )
+        self.autoScanIntelAction.setToolTip(
+            _translate("MainWindow", "When enabled, scans intel for xxx kos requests")
+        )
         self.actionAlway_On_Top.setText(_translate("MainWindow", "Always On Top"))
         self.actionFrameless.setText(_translate("MainWindow", "Frameless"))
         self.actionTransparency.setText(_translate("MainWindow", "Transparency"))
         self.queriousRegionAction_2.setText(_translate("MainWindow", "Querious"))
-        self.queriousRegionAction_2.setProperty("regionName", _translate("MainWindow", "querious"))
+        self.queriousRegionAction_2.setProperty(
+            "regionName", _translate("MainWindow", "querious")
+        )
         self.delveRegionAction.setText(_translate("MainWindow", "Delve"))
-        self.delveRegionAction.setProperty("regionName", _translate("MainWindow", "delve"))
-        self.delveQueriousRegionAction.setText(_translate("MainWindow", "Delve / Querious"))
-        self.delveQueriousRegionAction.setProperty("regionName", _translate("MainWindow", "delvequerious"))
-        self.delveQueriousCompactRegionAction.setText(_translate("MainWindow", "Delve / Querious (compact)"))
-        self.delveQueriousCompactRegionAction.setProperty("regionName", _translate("MainWindow", "delve-querious"))
+        self.delveRegionAction.setProperty(
+            "regionName", _translate("MainWindow", "delve")
+        )
+        self.delveQueriousRegionAction.setText(
+            _translate("MainWindow", "Delve / Querious")
+        )
+        self.delveQueriousRegionAction.setProperty(
+            "regionName", _translate("MainWindow", "delvequerious")
+        )
+        self.delveQueriousCompactRegionAction.setText(
+            _translate("MainWindow", "Delve / Querious (compact)")
+        )
+        self.delveQueriousCompactRegionAction.setProperty(
+            "regionName", _translate("MainWindow", "delve-querious")
+        )
         self.queriousRegionAction.setText(_translate("MainWindow", "Querious"))
-        self.queriousRegionAction.setProperty("regionName", _translate("MainWindow", "querious"))
+        self.queriousRegionAction.setProperty(
+            "regionName", _translate("MainWindow", "querious")
+        )
         self.actionLogging.setText(_translate("MainWindow", "Logging"))
         self.actionAbout.setText(_translate("MainWindow", "About"))
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
         self.actionSettings.setText(_translate("MainWindow", "Settings..."))
+
+
 from vi.map.PanningWebView import PanningWebView

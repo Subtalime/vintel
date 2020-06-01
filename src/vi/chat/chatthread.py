@@ -56,14 +56,11 @@ def chat_thread_all_messages_contains(message: Message):
     if search in __all_known_messages.keys():
         diff = (__all_known_messages[search] - message.timestamp).total_seconds()
         if -1 <= diff <= 1:
-            logging.getLogger(__name__).info(
-                'chat_message_contains: HIT Search "%s" (age %f)' % (search, diff,)
+            logging.getLogger(__name__).debug(
+                'chat_message_contains: duplicate found in search for "%s" (age %f)'
+                % (search, diff,)
             )
             hit = True
-        else:
-            logging.getLogger(__name__).info(
-                'chat_message_contains: NOT HIT Search "%s" (age %f)' % (search, diff,)
-            )
     chat_thread_lock.release()
     return hit
 
@@ -230,7 +227,9 @@ class ChatThread(QThread):
                     self.process_pool[logfile].message_updated_s.connect(
                         self.message_updated
                     )
-                    self.process_pool[logfile].new_player_s.connect(self.add_known_player)
+                    self.process_pool[logfile].new_player_s.connect(
+                        self.add_known_player
+                    )
                     self.process_pool[logfile].start()
                 if delete and logfile in self.process_pool.keys():
                     self.process_pool[logfile].quit()
@@ -315,14 +314,14 @@ class ChatThreadProcess(QThread):
             self.message_parser.process_charnames(message)
 
         # If message says clear and no system? Maybe an answer to a request?
-        if message.status == State['CLEAR'] and not message.systems:
+        if message.status == State["CLEAR"] and not message.systems:
             max_search = 4  # we search only max_search messages in the room
             for count, oldMessage in enumerate(
                 oldMessage
                 for oldMessage in self.knownMessages[-1::-1]
                 if oldMessage.room == self.roomname
             ):
-                if oldMessage.systems and oldMessage.status == State['REQUEST']:
+                if oldMessage.systems and oldMessage.status == State["REQUEST"]:
                     for system in oldMessage.systems:
                         message.systems.append(system)
                     break
@@ -373,7 +372,9 @@ class ChatThreadProcess(QThread):
             return False
         # tell the world we're monitoring a new character
         self.new_player_s.emit(self.charname)
-        self.message_parser = MessageParser(self.roomname, self.charname, self.locations, self.local_room)
+        self.message_parser = MessageParser(
+            self.roomname, self.charname, self.locations, self.local_room
+        )
         # first 13 lines are Header information
         self.parsed_lines = 12
         # now head forward until you hit a timestamp, younger then max_age
@@ -402,7 +403,7 @@ class ChatThreadProcess(QThread):
         lines = self._getLines()
         start = datetime.datetime.utcnow()
         self.LOGGER.debug(" processFile start (%s)" % (self.log_file,))
-        for line in lines[self.parsed_lines:]:
+        for line in lines[self.parsed_lines :]:
             line = line.strip()
             if len(line) > 2:
                 message = self.message_parser.process(line)

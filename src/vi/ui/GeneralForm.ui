@@ -25,41 +25,7 @@
         <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout_9">
-        <item row="1" column="1">
-         <widget class="QCheckBox" name="checkShipNames">
-          <property name="toolTip">
-           <string>analyse Chat-Messages for Ship-Names and provide a link to zKillboard</string>
-          </property>
-          <property name="text">
-           <string>enable</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QCheckBox" name="checkScanCharacter">
-          <property name="toolTip">
-           <string>scan messages for Character-Names and provide a link to zKillboard</string>
-          </property>
-          <property name="text">
-           <string>enable</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_19">
-          <property name="text">
-           <string>Scan for Ship-Names</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_18">
-          <property name="text">
-           <string>Scan for Character-Names:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
+        <item row="2" column="1">
          <widget class="QGroupBox" name="groupBox_6">
           <property name="title">
            <string>in Seconds</string>
@@ -95,6 +61,40 @@
           </layout>
          </widget>
         </item>
+        <item row="0" column="2">
+         <widget class="QCheckBox" name="checkScanCharacter">
+          <property name="toolTip">
+           <string>scan messages for Character-Names and provide a link to zKillboard</string>
+          </property>
+          <property name="text">
+           <string>enable</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QCheckBox" name="checkShipNames">
+          <property name="toolTip">
+           <string>analyse Chat-Messages for Ship-Names and provide a link to zKillboard</string>
+          </property>
+          <property name="text">
+           <string>enable</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_19">
+          <property name="text">
+           <string>Scan for Ship-Names</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_18">
+          <property name="text">
+           <string>Scan for Character-Names:</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </item>
@@ -110,7 +110,27 @@
         <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout_8">
-        <item row="3" column="1">
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="checkNotifyOwn">
+          <property name="toolTip">
+           <string>should an Alert be raised for you if your own Character enters it in a Chat-Room</string>
+          </property>
+          <property name="text">
+           <string>enabled</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QPushButton" name="btnColor">
+          <property name="toolTip">
+           <string>change background color of all Windows (may require restart)</string>
+          </property>
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
          <widget class="QLineEdit" name="txtJumpDistance">
           <property name="toolTip">
            <string>How many systems away should the messages be scanned for, before being alerted</string>
@@ -127,17 +147,24 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QCheckBox" name="checkNotifyOwn">
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="checkPopupNotification">
           <property name="toolTip">
-           <string>should an Alert be raised for you if your own Character enters it in a Chat-Room</string>
+           <string>Pop-Up the Tray-Icon with a brief notification about an Alert</string>
           </property>
           <property name="text">
            <string>enabled</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="0">
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_17">
+          <property name="text">
+           <string>Window Background Color :</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
          <widget class="QLabel" name="label_16">
           <property name="text">
            <string>Jump-Distance-Alert:</string>
@@ -151,30 +178,17 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QCheckBox" name="checkPopupNotification">
-          <property name="toolTip">
-           <string>Pop-Up the Tray-Icon with a brief notification about an Alert</string>
-          </property>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label">
           <property name="text">
-           <string>enabled</string>
+           <string>Log-Level:</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_17">
-          <property name="text">
-           <string>Window Background Color :</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QPushButton" name="btnColor">
+        <item row="3" column="1">
+         <widget class="QComboBox" name="cmbLogLevel">
           <property name="toolTip">
-           <string>change background color of all Windows (may require restart)</string>
-          </property>
-          <property name="text">
-           <string>Color...</string>
+           <string>set the default Logging-Level for the configured Logs</string>
           </property>
          </widget>
         </item>

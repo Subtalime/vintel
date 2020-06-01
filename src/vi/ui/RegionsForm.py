@@ -54,7 +54,9 @@ class Ui_Form(object):
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
-        self.label_10.setText(_translate("Form", "Select the regions to keep on the watch list:"))
+        self.label_10.setText(
+            _translate("Form", "Select the regions to keep on the watch list:")
+        )
         self.listRegion.setSortingEnabled(True)
         self.label_9.setText(_translate("Form", "Region-Files (comma separated):"))
         self.btnRegionHelp.setText(_translate("Form", "Help me on this..."))

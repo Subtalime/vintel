@@ -42,6 +42,7 @@ import requests
 class MapData:
     """get the SVG content from wherever it resides.
     """
+
     DOTLAN_BASE_URL = u"http://evemaps.dotlan.net/svg/{0}.svg"
 
     def __init__(self, region: str):
@@ -60,15 +61,16 @@ class MapData:
 
     def from_dotlan(self):
         self.svg = self._get_svg_from_dotlan()
-        Cache().put("map_" + self.region, self.svg,
-                    EsiInterface().secondsTillDowntime() + 60 * 60)
+        Cache().put(
+            "map_" + self.region,
+            self.svg,
+            EsiInterface().secondsTillDowntime() + 60 * 60,
+        )
 
     def fix_svg(self):
         # replace the header to show encoding
         self.svg = re.sub(
-            r'<\?xml.*\?>',
-            r'<?xml version="1.0" encoding="ISO-8859-1"?>',
-            self.svg,
+            r"<\?xml.*\?>", r'<?xml version="1.0" encoding="ISO-8859-1"?>', self.svg,
         )
 
     def from_cache(self):
@@ -92,11 +94,13 @@ class MapData:
                 try:
                     self.from_dotlan()
                 except DotlanException as e:
-                    t = "No Map in cache, nothing from dotlan. Must give up " \
-                        "because this happened:\n{0} {1}\n\nThis could be a " \
-                        "temporary problem (like dotlan is not reachable), or " \
-                        "everythig went to hell. Sorry. This makes no sense " \
+                    t = (
+                        "No Map in cache, nothing from dotlan. Must give up "
+                        "because this happened:\n{0} {1}\n\nThis could be a "
+                        "temporary problem (like dotlan is not reachable), or "
+                        "everythig went to hell. Sorry. This makes no sense "
                         "without the map.".format(type(e), e)
+                    )
                     raise DotlanException(t)
         self.fix_svg()
         return self.svg
@@ -125,7 +129,7 @@ class MyMap:
                 self.progress.setModal(False)
 
         # Create soup from the svg
-        self.soup = BeautifulSoup(svg, 'html.parser')
+        self.soup = BeautifulSoup(svg, "html.parser")
         self.systems = self._extractSystemsFromSoup()
         self.systemsById = {}
         for system in self.systems.values():
@@ -158,13 +162,19 @@ class MyMap:
                 mapCoordinates = {}
                 for keyname in ("x", "y", "width", "height"):
                     mapCoordinates[keyname] = float(uses[symbolId][keyname])
-                mapCoordinates["center_x"] = (mapCoordinates["x"] + (mapCoordinates["width"] / 2))
-                mapCoordinates["center_y"] = (mapCoordinates["y"] + (mapCoordinates["height"] / 2))
+                mapCoordinates["center_x"] = mapCoordinates["x"] + (
+                    mapCoordinates["width"] / 2
+                )
+                mapCoordinates["center_y"] = mapCoordinates["y"] + (
+                    mapCoordinates["height"] / 2
+                )
                 try:
                     transform = uses[symbolId]["transform"]
                 except KeyError:
                     transform = "translate(0,0)"
-                systems[name] = System(name, element, self.soup, mapCoordinates, transform, systemId)
+                systems[name] = System(
+                    name, element, self.soup, mapCoordinates, transform, systemId
+                )
         return systems
 
     def _prepareSvg(self):
@@ -175,28 +185,56 @@ class MyMap:
             line["class"] = "j"
 
         # Current system marker ellipse
-        group = self.soup.new_tag("g", id="select_marker", opacity="0", activated="0", transform="translate(0, 0)")
-        ellipse = self.soup.new_tag("ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF")
+        group = self.soup.new_tag(
+            "g",
+            id="select_marker",
+            opacity="0",
+            activated="0",
+            transform="translate(0, 0)",
+        )
+        ellipse = self.soup.new_tag(
+            "ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF"
+        )
         group.append(ellipse)
 
         # The giant cross-hairs
         for coord in ((0, -10000), (-10000, 0), (10000, 0), (0, 10000)):
-            line = self.soup.new_tag("line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF")
+            line = self.soup.new_tag(
+                "line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF"
+            )
             group.append(line)
         svg.insert(0, group)
 
         # Create jumpbridge markers in a variety of colors
         for jbColor in Jumpbridge.JB_COLORS:
             startPath = self.soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
-            startMarker = self.soup.new_tag("marker", viewBox="0 0 20 20", id="arrowstart_{0}".format(jbColor),
-                                       markerUnits="strokeWidth", markerWidth="20", markerHeight="15", refx="-15",
-                                       refy="5", orient="auto", style="stroke:#{0};fill:#{0}".format(jbColor))
+            startMarker = self.soup.new_tag(
+                "marker",
+                viewBox="0 0 20 20",
+                id="arrowstart_{0}".format(jbColor),
+                markerUnits="strokeWidth",
+                markerWidth="20",
+                markerHeight="15",
+                refx="-15",
+                refy="5",
+                orient="auto",
+                style="stroke:#{0};fill:#{0}".format(jbColor),
+            )
             startMarker.append(startPath)
             svg.insert(0, startMarker)
             endpath = self.soup.new_tag("path", d="M 0 0 L 10 5 L 0 10 z")
-            endmarker = self.soup.new_tag("marker", viewBox="0 0 20 20", id="arrowend_{0}".format(jbColor),
-                                     markerUnits="strokeWidth", markerWidth="20", markerHeight="15", refx="25",
-                                     refy="5", orient="auto", style="stroke:#{0};fill:#{0}".format(jbColor))
+            endmarker = self.soup.new_tag(
+                "marker",
+                viewBox="0 0 20 20",
+                id="arrowend_{0}".format(jbColor),
+                markerUnits="strokeWidth",
+                markerWidth="20",
+                markerHeight="15",
+                refx="25",
+                refy="5",
+                orient="auto",
+                style="stroke:#{0};fill:#{0}".format(jbColor),
+            )
             endmarker.append(endpath)
             svg.insert(0, endmarker)
         jumps = self.soup.select("#jumps")[0]
@@ -205,11 +243,22 @@ class MyMap:
         for systemId, system in self.systemsById.items():
             coords = system.map_coordinates
             text = "stats n/a"
-            style = "text-anchor:middle;font-size:8;font-weight:normal;font-family:Arial;"
-            svgtext = self.soup.new_tag("text", x=coords["center_x"], y=coords["y"] + coords["height"] + 6, fill="blue",
-                                   style=style, visibility="hidden", transform=system.transform)
+            style = (
+                "text-anchor:middle;font-size:8;font-weight:normal;font-family:Arial;"
+            )
+            svgtext = self.soup.new_tag(
+                "text",
+                x=coords["center_x"],
+                y=coords["y"] + coords["height"] + 6,
+                fill="blue",
+                style=style,
+                visibility="hidden",
+                transform=system.transform,
+            )
             svgtext["id"] = "stats_" + str(systemId)
-            svgtext["class"] = ["statistics", ]
+            svgtext["class"] = [
+                "statistics",
+            ]
             svgtext.string = text
             jumps.append(svgtext)
 
@@ -238,7 +287,6 @@ class MyMap:
             for system in self.systemsById.values():
                 system.setStatistics(None)
         self.LOGGER.info("addSystemStatistics complete")
-
 
     def changeStatisticsVisibility(self):
         newStatus = False if self._statisticsVisible else True

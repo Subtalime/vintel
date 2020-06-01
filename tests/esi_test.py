@@ -34,9 +34,10 @@
 
 import os
 import sys
-from  vi.esi import *
+from vi.esi import *
 from PyQt5.Qt import QApplication
 import pytest
+
 # @pytest.fixture
 # def esi_cache():
 #     return os.path.join(esi_cache_dir(), "esi-cache.sqlite3")
@@ -44,6 +45,7 @@ import pytest
 # @pytest.fixture
 # def esi_cache_dir():
 #     return os.path.join(os.path.dirname(__file__), "data")
+
 
 @pytest.mark.parametrize("clientid", [("50de89684c374189a25ccf83aa1d928a")])
 def test_esi_auth(esi_cache_dir, clientid):
@@ -53,6 +55,7 @@ def test_esi_auth(esi_cache_dir, clientid):
     esi = EsiInterface(cache_dir=esi_cache_dir)
 
     assert esi, "ESI did not initialise"
+
 
 #
 # # from vi.esi.esithread import EsiThread, EsiInterface

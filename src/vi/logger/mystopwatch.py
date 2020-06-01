@@ -20,7 +20,6 @@ from stopwatch import StopWatch
 
 
 class ViStopwatch(StopWatch):
-
     def get_report(self, extra_message: str = None):
         def format_report(aggregated_report):
             """returns a pretty printed string of reported values"""
@@ -28,36 +27,40 @@ class ViStopwatch(StopWatch):
             root_tr_data = aggregated_report.root_timer_data
 
             # fetch all values only for main stopwatch, ignore all the tags
-            log_names = sorted(
-                log_name for log_name in values if "+" not in log_name
-            )
+            log_names = sorted(log_name for log_name in values if "+" not in log_name)
             if not log_names:
                 return
 
             root = log_names[0]
             root_time_ms, root_count, bucket = values[root]
             buf = [
-                "   %.12s  %25s  %4s  %9.3fms (%3.f%%)" % (root.ljust(12), "", "", root_time_ms / root_count, 100),
+                "   %.12s  %25s  %4s  %9.3fms (%3.f%%)"
+                % (root.ljust(12), "", "", root_time_ms / root_count, 100),
             ]
             for log_name in log_names[1:]:
                 delta_ms, count, bucket = values[log_name]
-                depth = log_name[len(root):].count("#")
-                short_name = log_name[log_name.rfind("#") + 1:]
+                depth = log_name[len(root) :].count("#")
+                short_name = log_name[log_name.rfind("#") + 1 :]
                 bucket_name = bucket.name if bucket else ""
 
-                buf.append("%s%.12s  %.25s  %4d  %9.3fms (%3.f%%)" % (
-                    "   " * depth, bucket_name.ljust(12),
-                    short_name.ljust(25),
-                    count,
-                    delta_ms,
-                    delta_ms / root_time_ms * 100.0,
-                ))
+                buf.append(
+                    "%s%.12s  %.25s  %4d  %9.3fms (%3.f%%)"
+                    % (
+                        "   " * depth,
+                        bucket_name.ljust(12),
+                        short_name.ljust(25),
+                        count,
+                        delta_ms,
+                        delta_ms / root_time_ms * 100.0,
+                    )
+                )
 
             annotations = sorted(ann.key for ann in root_tr_data.trace_annotations)
             if annotations:
-                buf.append("Annotations: %s" % (', '.join(annotations)))
+                buf.append("Annotations: %s" % (", ".join(annotations)))
             return "\n".join(buf)
-        time_msg = "Timing:\n"+format_report(self.get_last_aggregated_report())
+
+        time_msg = "Timing:\n" + format_report(self.get_last_aggregated_report())
         if extra_message:
             time_msg += "\n" + extra_message
 
@@ -67,11 +70,9 @@ class ViStopwatch(StopWatch):
         aggregated_report = self.get_last_aggregated_report()
         values = aggregated_report.aggregated_values
 
-        log_names = sorted(
-            log_name for log_name in values if "+" not in log_name
-        )
+        log_names = sorted(log_name for log_name in values if "+" not in log_name)
         if not log_names:
-            return 0.
+            return 0.0
 
         root = log_names[0]
         root_time_ms, root_count, bucket = values[root]

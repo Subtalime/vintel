@@ -59,7 +59,11 @@ def parse_line(line: str) -> tuple:
         raise MessageParserException("Invalid Timestamp in Line: %s" % (line,))
     # all Log-Lines are logged in UTC format, so make it Local time
     # timestamp = utc_timestamp.replace(tzinfo=None)
-    timestamp = utc_timestamp.replace(tzinfo=datetime.timezone.utc).astimezone(tz=None).replace(tzinfo=None)
+    timestamp = (
+        utc_timestamp.replace(tzinfo=datetime.timezone.utc)
+        .astimezone(tz=None)
+        .replace(tzinfo=None)
+    )
     # finding the username of the poster
     user_ends = line.find(">")
     username = line[time_ends + 1 : user_ends].strip()
@@ -243,7 +247,11 @@ class MessageParser:
             new_text = u"""<a style="color:#CC8800;font-weight:bold" href="mark_system/{0}">{1}</a>"""
             return f_text.replace(f_word, new_text.format(f_system, f_word))
 
-        texts = [t for t in message.navigable_string if isinstance(t, NavigableString) and t is not None]
+        texts = [
+            t
+            for t in message.navigable_string
+            if isinstance(t, NavigableString) and message.navigable_string is not None
+        ]
         for wtIdx, text in enumerate(texts):
             work_text = text
             for char in self.CHARS_TO_IGNORE:
@@ -344,7 +352,11 @@ class MessageParser:
 
         # navigable_string = message.navigable_string
 
-        texts = [t for t in message.navigable_string if isinstance(t, NavigableString) and t is not None]
+        texts = [
+            t
+            for t in message.navigable_string
+            if isinstance(t, NavigableString) and message.navigable_string is not None
+        ]
         for text in texts:
             if len(text.strip(" ")) == 0:
                 continue
@@ -380,7 +392,11 @@ class MessageParser:
                             bs_text_replace(text, formatted)
                             return True
                         except TypeError as e:
-                            self.LOGGER.warning("Expected to find %s as %s, but failed...", ship_in_text, upper_text)
+                            self.LOGGER.warning(
+                                "Expected to find %s as %s, but failed...",
+                                ship_in_text,
+                                upper_text,
+                            )
                             pass
         return False
 
@@ -414,7 +430,11 @@ class MessageParser:
             return f_text.replace(f_url, new_text.format(f_url))
 
         # navigable_string = message.navigable_string
-        texts = [t for t in message.navigable_string if isinstance(t, NavigableString) and t is not None]
+        texts = [
+            t
+            for t in message.navigable_string
+            if isinstance(t, NavigableString) and message.navigable_string is not None
+        ]
         for text in texts:
             urls = find_urls(text)
             for url in urls:
@@ -434,7 +454,7 @@ class MessageParser:
 
             def chunks(listofwords: list, size: int = 1, offset=0) -> list:
                 return [
-                    " ".join(listofwords[pos:pos + size])
+                    " ".join(listofwords[pos : pos + size])
                     for pos in range(0 + offset, len(listofwords), size)
                 ]
 
@@ -507,7 +527,11 @@ class MessageParser:
         """
         parse the Chat-Line to see if there are any System-Statuses triggered
         """
-        texts = [t for t in navigable_string if isinstance(t, NavigableString) and t is not None]
+        texts = [
+            t
+            for t in navigable_string
+            if isinstance(t, NavigableString) and navigable_string is not None
+        ]
         for text in texts:
             upper_text = text.strip().upper()
             original_text = upper_text

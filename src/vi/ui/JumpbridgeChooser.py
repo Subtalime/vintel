@@ -77,11 +77,13 @@ class Ui_Dialog(object):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Jumpbridge Data"))
         self.groupBox.setTitle(_translate("Dialog", "Path to the Data"))
-        self.label.setText(_translate("Dialog", "Please enter the URL to the Jumpbridge data:"))
-        self.label2.setText(_translate("Dialog", "For example: http://example.org/jumpbridge_data.txt"))
+        self.label.setText(
+            _translate("Dialog", "Please enter the URL to the Jumpbridge data:")
+        )
+        self.label2.setText(
+            _translate("Dialog", "For example: http://example.org/jumpbridge_data.txt")
+        )
         self.clipboardButton.setText(_translate("Dialog", "Paste Clipboard"))
         self.groupBox2.setTitle(_translate("Dialog", "Format of the jumpbridge data:"))
         self.cancelButton.setText(_translate("Dialog", "Cancel"))
         self.saveButton.setText(_translate("Dialog", "Save"))
-
-

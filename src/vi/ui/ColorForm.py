@@ -51,6 +51,11 @@ class Ui_Form(object):
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
-        self.label_12.setText(_translate("Form", "Background-Colors will blend over from the lowest timeline to the next highest and end up in WHITE"))
+        self.label_12.setText(
+            _translate(
+                "Form",
+                "Background-Colors will blend over from the lowest timeline to the next highest and end up in WHITE",
+            )
+        )
         self.colorDelTime.setText(_translate("Form", "delete Time"))
         self.colorAddTime.setText(_translate("Form", "add Time"))

@@ -20,6 +20,7 @@ from vi.color.helpers import color_dialog, string_to_color
 from vi.ui.GeneralForm import Ui_Form
 from vi.settings.SettingsFormTemplate import SettingsFormTemplate
 from vi.settings.settings import GeneralSettings
+import logging
 
 
 class GeneralForm(SettingsFormTemplate, Ui_Form):
@@ -31,7 +32,9 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.txtKosInterval.setEnabled(False)
         self.btnColor.clicked.connect(self.color_chooser)
         # populate the settings
-        self.txtKosInterval.setText(str(int(self.settings.clipboard_check_interval / 1000)))
+        self.txtKosInterval.setText(
+            str(int(self.settings.clipboard_check_interval / 1000))
+        )
         self.txtKosInterval.setValidator(QIntValidator())
         self.txtKosInterval.textChanged.connect(self.change_detected)
         self.txtMessageExpiry.setText(str(self.settings.message_expiry))
@@ -48,6 +51,13 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.txtJumpDistance.setText(str(self.settings.alarm_distance))
         self.txtJumpDistance.setValidator(QIntValidator())
         self.txtJumpDistance.textChanged.connect(self.change_detected)
+        self.cmbLogLevel.addItem(logging.getLevelName(logging.DEBUG))
+        self.cmbLogLevel.addItem(logging.getLevelName(logging.INFO))
+        self.cmbLogLevel.addItem(logging.getLevelName(logging.WARN))
+        self.cmbLogLevel.addItem(logging.getLevelName(logging.ERROR))
+        self.cmbLogLevel.addItem(logging.getLevelName(logging.CRITICAL))
+        self.cmbLogLevel.setCurrentText(logging.getLevelName(self.settings.log_level))
+        self.cmbLogLevel.currentTextChanged.connect(self.change_detected)
         self.color = self.settings.background_color
 
     def color_chooser(self):
@@ -59,14 +69,20 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
 
     @property
     def data_changed(self) -> bool:
-        if self.checkNotifyOwn.isChecked() != self.settings.self_notify or \
-                self.txtJumpDistance.text() != str(self.settings.alarm_distance) or \
-                self.checkPopupNotification.isChecked() != self.settings.popup_notification or \
-                self.checkScanCharacter.isChecked() != self.settings.character_parser or \
-                self.checkShipNames.isChecked() != self.settings.ship_parser or \
-                self.txtMessageExpiry.text() != str(self.settings.message_expiry) or \
-                self.txtKosInterval.text() != str(int(self.settings.clipboard_check_interval / 1000)) or \
-                self.color != self.settings.background_color:
+        if (
+            self.checkNotifyOwn.isChecked() != self.settings.self_notify
+            or self.txtJumpDistance.text() != str(self.settings.alarm_distance)
+            or self.checkPopupNotification.isChecked()
+            != self.settings.popup_notification
+            or self.checkScanCharacter.isChecked() != self.settings.character_parser
+            or self.checkShipNames.isChecked() != self.settings.ship_parser
+            or self.txtMessageExpiry.text() != str(self.settings.message_expiry)
+            or self.txtKosInterval.text()
+            != str(int(self.settings.clipboard_check_interval / 1000))
+            or self.cmbLogLevel.currentText()
+            != logging.getLevelName(self.settings.log_level)
+            or self.color != self.settings.background_color
+        ):
             return True
         return False
 
@@ -78,6 +94,9 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.settings.ship_parser = self.checkShipNames.isChecked()
         self.settings.message_expiry = self.txtMessageExpiry.text()
         self.settings.clipboard_check_interval = int(self.txtKosInterval.text()) * 1000
+        if self.settings.log_level != logging.getLevelName(self.cmbLogLevel.currentText()):
+            self.settings.log_level = logging.getLevelName(self.cmbLogLevel.currentText())
+            logging.getLogger().setLevel(self.settings.log_level)
         self.settings.background_color = self.color
 
     def closeEvent(self, a0) -> None:
@@ -93,4 +112,3 @@ if __name__ == "__main__":
     d = GeneralForm()
     d.show()
     sys.exit(a.exec_())
-

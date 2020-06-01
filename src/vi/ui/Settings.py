@@ -200,7 +200,9 @@ class Ui_Dialog(object):
         self.tabWidget.addTab(self.tab_chatroom, "")
         self.verticalLayout.addWidget(self.tabWidget)
         self.buttonBox = QtWidgets.QDialogButtonBox(self.widget)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setStandardButtons(
+            QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Ok
+        )
         self.buttonBox.setObjectName("buttonBox")
         self.verticalLayout.addWidget(self.buttonBox)
         self.gridLayout.addWidget(self.widget, 0, 0, 1, 1)
@@ -228,20 +230,43 @@ class Ui_Dialog(object):
         self.groupBox.setTitle(_translate("Dialog", "in Seconds"))
         self.label.setText(_translate("Dialog", "Message expiry :"))
         self.label_2.setText(_translate("Dialog", "KOS Clipboard interval:"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_general), _translate("Dialog", "General"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_general), _translate("Dialog", "General")
+        )
         self.groupBoxMap.setTitle(_translate("Dialog", "Alert Settings"))
         self.colorAddTime.setText(_translate("Dialog", "add Time"))
         self.colorDelTime.setText(_translate("Dialog", "delete Time"))
-        self.label_12.setText(_translate("Dialog", "Background-Colors will blend over from the lowest timeline to the next highest and end up in WHITE"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_color_display), _translate("Dialog", "Color"))
+        self.label_12.setText(
+            _translate(
+                "Dialog",
+                "Background-Colors will blend over from the lowest timeline to the next highest and end up in WHITE",
+            )
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_color_display),
+            _translate("Dialog", "Color"),
+        )
         self.label_8.setText(_translate("Dialog", "Sound File:"))
         self.btnSoundSearch.setText(_translate("Dialog", "..."))
         self.btnPlay.setText(_translate("Dialog", "Play"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_sound), _translate("Dialog", "Sound"))
-        self.label_10.setText(_translate("Dialog", "Select the regions to keep on the watch list:"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_sound), _translate("Dialog", "Sound")
+        )
+        self.label_10.setText(
+            _translate("Dialog", "Select the regions to keep on the watch list:")
+        )
         self.listRegion.setSortingEnabled(True)
         self.label_9.setText(_translate("Dialog", "Region-Files (comma separated):"))
         self.btnRegionHelp.setText(_translate("Dialog", "Help me on this..."))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_regions), _translate("Dialog", "Regions"))
-        self.label_11.setText(_translate("Dialog", "Enter the chatrooms to watch into the following field. Separate them by comma."))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_chatroom), _translate("Dialog", "Chatrooms"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_regions), _translate("Dialog", "Regions")
+        )
+        self.label_11.setText(
+            _translate(
+                "Dialog",
+                "Enter the chatrooms to watch into the following field. Separate them by comma.",
+            )
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.tab_chatroom), _translate("Dialog", "Chatrooms")
+        )

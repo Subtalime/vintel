@@ -47,11 +47,20 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
 
-    def __init__(self, parent: 'QObject', chatType, selector, chatEntries, knownPlayers: Characters):
+    def __init__(
+        self,
+        parent: "QObject",
+        chatType,
+        selector,
+        chatEntries,
+        knownPlayers: Characters,
+    ):
         QDialog.__init__(self, parent)
         self.LOGGER = logging.getLogger(__name__)
         if not isinstance(knownPlayers, Characters):
-            self.LOGGER.critical("SystemChat.init(knownPlayers) is not type of \"Characters\"")
+            self.LOGGER.critical(
+                'SystemChat.init(knownPlayers) is not type of "Characters"'
+            )
             exit(-1)
         self.setupUi(self)
         self.parent = parent
@@ -80,7 +89,10 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
 
     def _addMessageToChat(self, message, avatarPixmap):
         scrollToBottom = False
-        if self.chat.verticalScrollBar().value() == self.chat.verticalScrollBar().maximum():
+        if (
+            self.chat.verticalScrollBar().value()
+            == self.chat.verticalScrollBar().maximum()
+        ):
             scrollToBottom = True
         entry = ChatEntryWidget(message)
         entry.avatarLabel.setPixmap(avatarPixmap)
@@ -113,11 +125,11 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
                 entry.updateAvatar(avatarData)
 
     def setSystemAlarm(self):
-        self.system.setStatus(State['ALARM'])
+        self.system.setStatus(State["ALARM"])
         self.parent.updateMapView()
 
     def setSystemClear(self):
-        self.system.setStatus(State['CLEAR'])
+        self.system.setStatus(State["CLEAR"])
         self.parent.updateMapView()
 
     def closeDialog(self):

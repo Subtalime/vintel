@@ -18,9 +18,9 @@ class Singleton(type):
         return cls._instance
 
 
-'''
+"""
 	Example usage - its that simple!
 
 	class Sound():
 		__metaclass__ = Singleton
-'''
+"""

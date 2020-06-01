@@ -26,8 +26,10 @@ from vi.states import State
 
 
 class System:
-    def __init__(self, name, svg_element, map_soup, map_coordinates, transform, system_id):
-        self.status = State['UNKNOWN']
+    def __init__(
+        self, name, svg_element, map_soup, map_coordinates, transform, system_id
+    ):
+        self.status = State["UNKNOWN"]
         self.name = name
         self.svg_element = svg_element
         self.map_soup = map_soup
@@ -37,7 +39,7 @@ class System:
         self.secondLine = svg_element.select("text")[1]
         self.lastAlarmTime = 0
         self.messages = []
-        self.setStatus(State['UNKNOWN'])
+        self.setStatus(State["UNKNOWN"])
         self._locatedCharacters = []
         self.backgroundColor = "#FFFFFF"
         self.map_coordinates = map_coordinates
@@ -45,7 +47,12 @@ class System:
         self.transform = transform
         self.cachedOffsetPoint = None
         self._neighbours = set()
-        self.statistics = {"jumps": "?", "shipkills": "?", "factionkills": "?", "podkills": "?"}
+        self.statistics = {
+            "jumps": "?",
+            "shipkills": "?",
+            "factionkills": "?",
+            "podkills": "?",
+        }
         self.timerload = ()
         self.name_label = self.name.replace("-", "_").lower()
         self.rectId = self.svg_element.select("rect")[0]["id"]
@@ -70,7 +77,7 @@ class System:
         if not self.cachedOffsetPoint:
             if self.transform:
                 # Convert data in the form 'transform(0,0)' to a list of two floats
-                pointString = self.transform[9:].strip('()').split(',')
+                pointString = self.transform[9:].strip("()").split(",")
                 self.cachedOffsetPoint = [float(pointString[0]), float(pointString[1])]
             else:
                 self.cachedOffsetPoint = [0.0, 0.0]
@@ -85,9 +92,19 @@ class System:
         x = coords["x"] - 3 + offsetPoint[0]
         y = coords["y"] + offsetPoint[1]
         style = "fill:{0};stroke:{0};stroke-width:2;fill-opacity:0.4"
-        tag = self.map_soup.new_tag("rect", x=x, y=y, width=coords["width"] + 1.5, height=coords["height"], id=idName,
-                                   style=style.format(color), visibility="hidden")
-        tag["class"] = ["jumpbridge", ]
+        tag = self.map_soup.new_tag(
+            "rect",
+            x=x,
+            y=y,
+            width=coords["width"] + 1.5,
+            height=coords["height"],
+            id=idName,
+            style=style.format(color),
+            visibility="hidden",
+        )
+        tag["class"] = [
+            "jumpbridge",
+        ]
         jumps = self.map_soup.select("#jumps")[0]
         jumps.insert(0, tag)
 
@@ -107,15 +124,24 @@ class System:
             self._locatedCharacters.append(charname)
         if not wasLocated:
             coords = self.map_coordinates
-            newTag = self.map_soup.new_tag("ellipse", cx=coords["center_x"] - 2.5, cy=coords["center_y"], id=idName,
-                                          rx=coords["width"] / 2 + 4, ry=coords["height"] / 2 + 4, style="fill:#8b008d",
-                                          transform=self.transform)
+            newTag = self.map_soup.new_tag(
+                "ellipse",
+                cx=coords["center_x"] - 2.5,
+                cy=coords["center_y"],
+                id=idName,
+                rx=coords["width"] / 2 + 4,
+                ry=coords["height"] / 2 + 4,
+                style="fill:#8b008d",
+                transform=self.transform,
+            )
             jumps = self.map_soup.select("#jumps")[0]
             jumps.insert(0, newTag)
 
     def setBackgroundColor(self, color):
         for rect in self.svg_element("rect"):
-            if "location" not in rect.get("class", []) and "marked" not in rect.get("class", []):
+            if "location" not in rect.get("class", []) and "marked" not in rect.get(
+                "class", []
+            ):
                 rect["style"] = "fill: {0};".format(color)
 
     def getLocatedCharacters(self):
@@ -183,30 +209,34 @@ class System:
         if statistics is None:
             text = "stats n/a"
         else:
-            text = "j-{jumps} f-{factionkills} s-{shipkills} p-{podkills}".format(**statistics)
+            text = "j-{jumps} f-{factionkills} s-{shipkills} p-{podkills}".format(
+                **statistics
+            )
         svgtext = self.map_soup.select("#stats_" + str(self.system_id))[0]
         svgtext.string = text
 
     def setStatus(self, new_status, alarm_time: float = time.time()):
         if not isinstance(alarm_time, float):
             if isinstance(alarm_time, datetime.datetime):
-                alarm_time = time.mktime(alarm_time.timetuple()) + alarm_time.microsecond / 1E6
+                alarm_time = (
+                    time.mktime(alarm_time.timetuple()) + alarm_time.microsecond / 1e6
+                )
                 # alarm_time = (alarm_time - datetime.datetime(1970, 1, 1)).total_seconds()
-        if new_status in (State['ALARM'], State['CLEAR'], State['REQUEST']):
+        if new_status in (State["ALARM"], State["CLEAR"], State["REQUEST"]):
             self.lastAlarmTime = alarm_time
-            if new_status == State['ALARM']:
+            if new_status == State["ALARM"]:
                 self.secondLine["alarmtime"] = self.lastAlarmTime
-            elif new_status == State['CLEAR']:
+            elif new_status == State["CLEAR"]:
                 self.secondLine["alarmtime"] = self.lastAlarmTime
-                self.secondLine.string = State['CLEAR'].value
-            elif new_status == State['REQUEST']:
+                self.secondLine.string = State["CLEAR"].value
+            elif new_status == State["REQUEST"]:
                 self.secondLine.string = "status"
-        elif new_status == State['UNKNOWN']:
+        elif new_status == State["UNKNOWN"]:
             self.secondLine.string = "?"
         # if new_status not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
-        if new_status not in (State['NOT_CHANGE'],):  # unknown not affect system status
+        if new_status not in (State["NOT_CHANGE"],):  # unknown not affect system status
             self.status = new_status
-            self.secondLine["state"] = State['NOT_CHANGE'].value
+            self.secondLine["state"] = State["NOT_CHANGE"].value
 
     def update(self, cjs: ColorJavaScript) -> bool:
         updated = False

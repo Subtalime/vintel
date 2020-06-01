@@ -16,6 +16,7 @@
 #
 #
 
+
 class LogWindowHandler(logging.Handler, QObject):
     new_message = pyqtSignal(logging.LogRecord)
 
@@ -23,7 +24,7 @@ class LogWindowHandler(logging.Handler, QObject):
         logging.Handler.__init__(self)
         QObject.__init__(self)
         self.parent = parent
-        formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
+        formatter = logging.Formatter("%(asctime)s: %(message)s", datefmt="%H:%M:%S")
         # always log all messages ! The Window-Output is managed by self.logLevel
         self.setLevel(logging.DEBUG)
         self.setFormatter(formatter)
@@ -38,6 +39,7 @@ class oldLogWindow(QtWidgets.QWidget):
     Output-Window of all Log-File-Content. More convenient than "tail -F" on the Log-File
     Also, ability to Filter by Log-Level
     """
+
     logging_level_event = pyqtSignal(int)
 
     def __init__(self, parent=None):
@@ -56,7 +58,10 @@ class oldLogWindow(QtWidgets.QWidget):
         # Log-Messages stored here
         self.log_records = []
         import os
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "icon.ico")
+
+        icon_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "..", "icon.ico"
+        )
         self.setWindowIcon(QtGui.QIcon(icon_path))
         # oh, now actually build the window...
         self.setBaseSize(400, 300)
@@ -64,7 +69,8 @@ class oldLogWindow(QtWidgets.QWidget):
         self.textEdit = QtWidgets.QTextEdit(self)
         self.textEdit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
         self.textEdit.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
+            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction
+        )
         self.textEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.textEdit.customContextMenuRequested.connect(self.contextMenuEvent)
         vbox = QtWidgets.QVBoxLayout()
@@ -105,7 +111,11 @@ class oldLogWindow(QtWidgets.QWidget):
         self.queue_listener.start()
 
     def setTitle(self):
-        self.setWindowTitle("{} Logging ({})".format(vi.version.DISPLAY, logging.getLevelName(self.logLevel)))
+        self.setWindowTitle(
+            "{} Logging ({})".format(
+                vi.version.DISPLAY, logging.getLevelName(self.logLevel)
+            )
+        )
 
     def write(self, text):
         self.textEdit.setFontWeight(QtGui.QFont.Normal)
@@ -120,7 +130,7 @@ class oldLogWindow(QtWidgets.QWidget):
                     _acquireLock()
                     self._tidying = True
                     LOGGER.debug("LogWindow Tidy-Up start")
-                    del self.log_records[:num_records - self.tidySize]
+                    del self.log_records[: num_records - self.tidySize]
                 except Exception as e:
                     LOGGER.error("Error in Tidy-Up of Log-Window", e)
                 finally:
@@ -140,7 +150,9 @@ class oldLogWindow(QtWidgets.QWidget):
         for record in self.log_records:
             if record.levelno >= self.logLevel:
                 self.write(self.logHandler.format(record))
-        self.textEdit.verticalScrollBar().setValue(self.textEdit.verticalScrollBar().maximum())
+        self.textEdit.verticalScrollBar().setValue(
+            self.textEdit.verticalScrollBar().maximum()
+        )
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super(LogWindow, self).resizeEvent(event)
@@ -217,4 +229,3 @@ class oldLogWindow(QtWidgets.QWidget):
         Cache().put("log_window_level", self.logLevel)
         self.setTitle()
         self.logging_level_event.emit(self.logLevel)
-

@@ -1,18 +1,18 @@
 ###########################################################################
 #  Vintel - Visual Intel Chat Analyzer									  #
 #  Copyright (C) 2014-15 Sebastian Meyer (sparrow.242.de+eve@gmail.com )  #
-#																		  #
+# 																		  #
 #  This program is free software: you can redistribute it and/or modify	  #
 #  it under the terms of the GNU General Public License as published by	  #
 #  the Free Software Foundation, either version 3 of the License, or	  #
 #  (at your option) any later version.									  #
-#																		  #
+# 																		  #
 #  This program is distributed in the hope that it will be useful,		  #
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of		  #
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the		  #
 #  GNU General Public License for more details.							  #
-#																		  #
-#																		  #
+# 																		  #
+# 																		  #
 #  You should have received a copy of the GNU General Public License	  #
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
@@ -24,7 +24,7 @@ from vi import evegate
 from requests.exceptions import RequestException
 
 UNKNOWN = "No Result"
-NOT_KOS = 'Not Kos'
+NOT_KOS = "Not Kos"
 KOS = "KOS"
 RED_BY_LAST = "Red by last"
 CVA_KOS_URL = "http://kos.cva-eve.org/api/"
@@ -37,7 +37,9 @@ def check(parts):
     names = [name.strip() for name in parts]
 
     try:
-        kosData = requests.get(CVA_KOS_URL, params = {'c': 'json', 'type': 'multi', 'q': ','.join(names)}).json()
+        kosData = requests.get(
+            CVA_KOS_URL, params={"c": "json", "type": "multi", "q": ",".join(names)}
+        ).json()
     except RequestException as e:
         kosData = None
         logging.error("Error on pilot KOS check request %s", str(e))
@@ -74,7 +76,11 @@ def check(parts):
     # Anything left - do the corp check and fill in kos status
     if namesAsIds:
         for name, id in namesAsIds.items():
-            corpCheckData[name] = {"id": id, "need_check": False, "corpids": evegate.EveGate().getCorpidsForCharId(id)}
+            corpCheckData[name] = {
+                "id": id,
+                "need_check": False,
+                "corpids": evegate.EveGate().getCorpidsForCharId(id),
+            }
 
         corpIds = set()
         for name in namesAsIds.keys():
@@ -90,12 +96,20 @@ def check(parts):
                     nameData["corp_to_check"] = corpname
                     break
 
-        corpsToCheck = set([nameData["corp_to_check"] for nameData in corpCheckData.values() if nameData["need_check"] == True])
+        corpsToCheck = set(
+            [
+                nameData["corp_to_check"]
+                for nameData in corpCheckData.values()
+                if nameData["need_check"] == True
+            ]
+        )
         corpsResult = {}
 
         for corp in corpsToCheck:
             try:
-                kosData = requests.get(CVA_KOS_URL, params = { 'c': 'json', 'type': 'unit', 'q': corp }).json()
+                kosData = requests.get(
+                    CVA_KOS_URL, params={"c": "json", "type": "unit", "q": corp}
+                ).json()
             except RequestException as e:
                 logging.error("Error on corp KOS check request: %s", str(e))
 
@@ -111,7 +125,10 @@ def check(parts):
         for charname, nameData in corpCheckData.items():
             if not nameData["need_check"]:
                 data[charname] = {"kos": UNKNOWN}
-            if nameData["need_check"] and corpsResult[nameData["corp_to_check"]] == True:
+            if (
+                nameData["need_check"]
+                and corpsResult[nameData["corp_to_check"]] == True
+            ):
                 data[charname] = {"kos": RED_BY_LAST}
             else:
                 data[charname] = {"kos": UNKNOWN}

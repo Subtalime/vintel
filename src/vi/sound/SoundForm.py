@@ -133,24 +133,30 @@ class SoundForm(SettingsFormTemplate, Ui_Form):
         self.btnPlay.setEnabled(False)
         self.sliderVolume.setEnabled(False)
 
-
     def sound_row_clicked(self, row_index):
         self.current_row_index = row_index
         self.txtSound.setText(self.model.getData(self.model.index(row_index.row(), 1)))
-        self.sliderVolume.setValue(self.model.getData(self.model.index(row_index.row(), 2)))
+        self.sliderVolume.setValue(
+            self.model.getData(self.model.index(row_index.row(), 2))
+        )
         self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
         self.sliderVolume.setEnabled(os.path.exists(self.txtSound.text()))
 
-
     def sound_set_volume(self, val):
         if self.current_row_index:
-            self.model.setData(self.model.index(self.current_row_index.row(), 2), val, role=Qt.EditRole)
+            self.model.setData(
+                self.model.index(self.current_row_index.row(), 2), val, role=Qt.EditRole
+            )
             self.lstSound.setFocus()
             self.change_detected()
 
     def sound_set_file(self):
         if self.current_row_index:
-            self.model.setData(self.model.index(self.current_row_index.row(), 1), self.txtSound.text(), role=Qt.EditRole)
+            self.model.setData(
+                self.model.index(self.current_row_index.row(), 1),
+                self.txtSound.text(),
+                role=Qt.EditRole,
+            )
             self.btnPlay.setEnabled(os.path.exists(self.txtSound.text()))
             self.sliderVolume.setEnabled(os.path.exists(self.txtSound.text()))
             self.change_detected()
@@ -160,7 +166,9 @@ class SoundForm(SettingsFormTemplate, Ui_Form):
             # enable sound for this test
             preset = self.sound_manager.enable_sound
             self.sound_manager.enable_sound = True
-            self.sound_manager.playSoundFile(self.txtSound.text(), self.sliderVolume.value())
+            self.sound_manager.playSoundFile(
+                self.txtSound.text(), self.sliderVolume.value()
+            )
             self.sound_manager.enable_sound = preset
             self.lstSound.setFocus()
 

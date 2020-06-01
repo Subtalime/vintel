@@ -65,7 +65,7 @@ class PanningWebView(QWidget):
             LOGGER.debug("Control-Delta %r" % a0.Delta())
         a0.accept()
 
-    def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
+    def eventFilter(self, a0: "QObject", a1: "QEvent") -> bool:
         if a1.type() == QEvent.Wheel:
             modifier = QApplication.keyboardModifiers()
             if modifier == Qt.ControlModifier:

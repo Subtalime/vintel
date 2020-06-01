@@ -16,13 +16,21 @@
 #
 #
 #
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QTableView, QAbstractItemView
+from PyQt5.QtWidgets import (
+    QTableWidget,
+    QTableWidgetItem,
+    QTableView,
+    QAbstractItemView,
+)
 from PyQt5.QtCore import QAbstractTableModel, QVariant, pyqtSignal, Qt
 from vi.cache.cache import Cache
 import pickle
 
+
 class Notification:
-    def __init__(self, duration: int = None, color_background: str = None, color_text: str = None):
+    def __init__(
+        self, duration: int = None, color_background: str = None, color_text: str = None
+    ):
         self.duration = duration
         self.background = color_background
         self.text = color_text
@@ -41,7 +49,9 @@ class Notifications:
         self.notifications = []
 
     def load(self):
-        self.notifications = pickle.loads(Cache().fetch("{}_notifications".format(self.name), True))
+        self.notifications = pickle.loads(
+            Cache().fetch("{}_notifications".format(self.name), True)
+        )
 
     def add(self, notification: Notification):
         self.remove(notification.duration)
@@ -53,7 +63,9 @@ class Notifications:
                 self.notifications.remove(item)
 
     def save(self):
-        Cache().put("{}_notifications".format(self.name), pickle.dumps(self.notifications))
+        Cache().put(
+            "{}_notifications".format(self.name), pickle.dumps(self.notifications)
+        )
 
     def __repr__(self):
         ret = "{}_COLORS = [".format(self.name)
@@ -61,6 +73,7 @@ class Notifications:
         for item in self.notifications:
             ret += str(item) + ","
         return ret.rstrip(",") + "]"
+
 
 class NotificationsTableView(QTableView):
     class MyTableModel(QAbstractTableModel):
@@ -137,8 +150,6 @@ class NotificationsTableView(QTableView):
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         # only one at a time
         self.setSelectionMode(QAbstractItemView.SingleSelection)
-
-
 
 
 if __name__ == "__main__":

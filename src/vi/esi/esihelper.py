@@ -63,14 +63,16 @@ class EsiHelper:
             jumpData = {}
             jump_result = self.esi.getJumps()
             for data in jump_result:
-                jumpData[int(data['system_id'])] = int(data['ship_jumps'])
+                jumpData[int(data["system_id"])] = int(data["ship_jumps"])
 
             systemData = {}
             kill_result = self.esi.getKills()
             for data in kill_result:
-                systemData[int(data['system_id'])] = {'ship': int(data['ship_kills']),
-                                                      'faction': int(data['npc_kills']),
-                                                      'pod': int(data['pod_kills'])}
+                systemData[int(data["system_id"])] = {
+                    "ship": int(data["ship_kills"]),
+                    "faction": int(data["npc_kills"]),
+                    "pod": int(data["pod_kills"]),
+                }
         except Exception:
             raise
 
@@ -94,20 +96,20 @@ class EsiHelper:
     def ShipsUpper(self) -> dict:
         if len(self._ShipsUpper) == 0:
             for ship in self.esi.getShipList:
-                self._ShipsUpper[str(ship['name']).upper()] = ship
+                self._ShipsUpper[str(ship["name"]).upper()] = ship
         return self._ShipsUpper
 
     @property
     def Ships(self):
         if len(self._Ships) == 0:
             for ship in self.esi.getShipList:
-                self._Ships[str(ship['name'])] = ship
+                self._Ships[str(ship["name"])] = ship
         return self._Ships
 
     def getShipId(self, shipName: str) -> int:
         try:
             ship = self.ShipsUpper[shipName.upper()]
-            return ship['type_id']
+            return ship["type_id"]
         except:
             LOGGER.error("Unable to find Ship {}".format(shipName))
         return None

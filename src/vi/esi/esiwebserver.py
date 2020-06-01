@@ -34,15 +34,18 @@ class EsiWebServer(object):
     def __init__(self):
         self.esiConfig = EsiConfig()
         host_string = QUrl(self.esiConfig.ESI_CALLBACK)
-        self.httpd = HTTPServer((host_string.host(), host_string.port()),
-                                self.EsiHTTPRequestHandler)
+        self.httpd = HTTPServer(
+            (host_string.host(), host_string.port()), self.EsiHTTPRequestHandler
+        )
         if self.esiConfig.ESI_CALLBACK.startswith("https"):
             try:
                 p = os.path.join(os.path.dirname(__file__), certfile)
-                self.httpd.socket = ssl.wrap_socket(self.httpd.socket,
-                                                    keyfile=os.path.join(os.path.dirname(__file__), keyfile),
-                                                    certfile=os.path.join(os.path.dirname(__file__), certfile),
-                                                    server_side=True)
+                self.httpd.socket = ssl.wrap_socket(
+                    self.httpd.socket,
+                    keyfile=os.path.join(os.path.dirname(__file__), keyfile),
+                    certfile=os.path.join(os.path.dirname(__file__), certfile),
+                    server_side=True,
+                )
             except Exception as e:
                 LOGGER.exception(e)
         self.server_thread = threading.Thread(target=self.httpd.serve_forever)
@@ -65,11 +68,12 @@ class EsiWebServer(object):
             self.end_headers()
             try:
                 thisquery = parse.parse_qs(parse.urlsplit(self.requestline).query)
-                if thisquery['code']:
+                if thisquery["code"]:
                     # store temporary Secretkey
-                    EsiConfig().ESI_SECRET_KEY = thisquery['code'][0]
+                    EsiConfig().ESI_SECRET_KEY = thisquery["code"][0]
                     self.wfile.write(
-                        b"You have verified your account on ESI. You can now close this window")
+                        b"You have verified your account on ESI. You can now close this window"
+                    )
 
             except Exception as e:
                 LOGGER.error("Unexpected response: %s: %r", self.requestline, e)

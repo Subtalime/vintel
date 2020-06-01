@@ -31,7 +31,7 @@ class MapViewPage(QWebEnginePage):
     link_clicked = pyqtSignal(QUrl)
     scroll_detected = pyqtSignal(QPointF)
 
-    def __init__(self, parent: 'QObject' = None):
+    def __init__(self, parent: "QObject" = None):
         super().__init__(parent)
         self.load_complete = False
         self.javaQueue = Queue()
@@ -70,7 +70,11 @@ class MapViewPage(QWebEnginePage):
         else:
             self.currentScrollPos = qPointF
         if self.load_complete:
-            LOGGER.debug("onScrollPos detected {}, Load Complete: {}".format(qPointF, self.load_complete))
+            LOGGER.debug(
+                "onScrollPos detected {}, Load Complete: {}".format(
+                    qPointF, self.load_complete
+                )
+            )
             self.scroll_detected.emit(qPointF)
         return True
 
@@ -84,8 +88,12 @@ class MapViewPage(QWebEnginePage):
                 super().runJavaScript(q[0], q[1])
         super().runJavaScript(p_str, *__args)
 
-    def acceptNavigationRequest(self, qUrl: QUrl, QWebEnginePage_NavigationType: int, abool: bool):
+    def acceptNavigationRequest(
+        self, qUrl: QUrl, QWebEnginePage_NavigationType: int, abool: bool
+    ):
         if QWebEnginePage_NavigationType == QWebEnginePage.NavigationTypeLinkClicked:
             self.link_clicked.emit(qUrl)
             return False
-        return super(MapViewPage, self).acceptNavigationRequest(qUrl, QWebEnginePage_NavigationType, abool)
+        return super(MapViewPage, self).acceptNavigationRequest(
+            qUrl, QWebEnginePage_NavigationType, abool
+        )

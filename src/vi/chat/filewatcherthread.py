@@ -46,7 +46,7 @@ class FileWatcherThread(QThread):
     def addPath(self, path):
         self._addFiles(path)
 
-    def start(self, priority: 'QThread.Priority' = QThread.NormalPriority) -> None:
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting FileWatcher-Thread")
         self._active = True
         super(FileWatcherThread, self).start(priority)
@@ -59,7 +59,9 @@ class FileWatcherThread(QThread):
             if self._active:
                 self._scanPaths()
                 for path in self.filesInFolder.keys():  # dict
-                    self.filesInFolder[path] = self._checkChanges(list(self.filesInFolder[path].items()))
+                    self.filesInFolder[path] = self._checkChanges(
+                        list(self.filesInFolder[path].items())
+                    )
 
     def quit(self) -> None:
         if self._active:
@@ -71,7 +73,10 @@ class FileWatcherThread(QThread):
         self.file_change.emit(path)
 
     def removeFile(self, path):
-        self.LOGGER.debug("removing old File from tracking (older than %d seconds): %s" % (self.maxAge, path, ))
+        self.LOGGER.debug(
+            "removing old File from tracking (older than %d seconds): %s"
+            % (self.maxAge, path,)
+        )
         self.file_removed.emit(path)
 
     def _sendWarning(self, path, length):
@@ -79,8 +84,9 @@ class FileWatcherThread(QThread):
         if self._warned:
             return
         self.LOGGER.warning(
-            "Log-Folder \"%s\" has more than %d files (actually has %d)! This will impact performance! Consider tidying up!" %
-            (path, self.maxFiles, length, ))
+            'Log-Folder "%s" has more than %d files (actually has %d)! This will impact performance! Consider tidying up!'
+            % (path, self.maxFiles, length,)
+        )
         self._warned = True
 
     def _checkChanges(self, check_list):
@@ -95,7 +101,7 @@ class FileWatcherThread(QThread):
                     self.fileChanged(file)
                 file_list[file] = fstat
             except Exception as e:
-                self.LOGGER.warning("Filewatcher-Thread error on \"%s\": %r" % (file, e, ))
+                self.LOGGER.warning('Filewatcher-Thread error on "%s": %r' % (file, e,))
                 pass
         return file_list
 
@@ -111,12 +117,18 @@ class FileWatcherThread(QThread):
     def _addFiles(self, path: str = None):
         if not path:
             self.LOGGER.warning("No path passed to _addFiles !")
-        files_in_dir = self.filesInFolder[path] if path and path in self.filesInFolder.keys() else {}
+        files_in_dir = (
+            self.filesInFolder[path]
+            if path and path in self.filesInFolder.keys()
+            else {}
+        )
         changed = False
         now = time.time()
         # order by date descending
         try:
-            folderContent = sorted(glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True)
+            folderContent = sorted(
+                glob.glob(os.path.join(path, "*")), key=os.path.getmtime, reverse=True
+            )
         except:
             # might be tidying up in the background
             folderContent = ()
@@ -141,9 +153,15 @@ class FileWatcherThread(QThread):
                     changed = True
                     del files_in_dir[fullPath]
             except Exception as e:
-                self.LOGGER.error("Trying to remove %s from dictionary %r" % (fullPath, files_in_dir,), e)
+                self.LOGGER.error(
+                    "Trying to remove %s from dictionary %r"
+                    % (fullPath, files_in_dir,),
+                    e,
+                )
                 pass
         if changed:
             self.filesInFolder[path] = files_in_dir
-            self.LOGGER.debug("currently tracking %d files in %s" % (len(files_in_dir), path, ))
-            self.LOGGER.debug("  %r" % (self.filesInFolder[path], ))
+            self.LOGGER.debug(
+                "currently tracking %d files in %s" % (len(files_in_dir), path,)
+            )
+            self.LOGGER.debug("  %r" % (self.filesInFolder[path],))

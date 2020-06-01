@@ -34,4 +34,9 @@ class Ui_Form(object):
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
-        self.label_11.setText(_translate("Form", "Enter the chatrooms to watch into the following field. Separate them by comma."))
+        self.label_11.setText(
+            _translate(
+                "Form",
+                "Enter the chatrooms to watch into the following field. Separate them by comma.",
+            )
+        )

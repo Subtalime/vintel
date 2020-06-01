@@ -15,9 +15,11 @@
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
+import os
 from vi.cache import Cache
 from vi.states import State
 import pickle
+from vi.resources import soundPath
 
 
 class _Settings:
@@ -111,14 +113,17 @@ class ColorSettings(_Settings):
     def __init__(self):
         super().__init__()
         self.KEY = "colors"
-        self.defaults = {"js_alarm_colors": {State['ALARM']: [[60 * 5, "#FF0000", "#FFFFFF"],
-                                                              [60 * 10, "#FF9B0F", "#000000"],
-                                                              [60 * 15, "#FFFA0F", "#000000"],
-                                                              ],
-                                             State['REQUEST']: [[60 * 2, "#ffaaff", "#000000"], ],
-                                             State['CLEAR']: [[60 * 2, "#59FF6C", "#000000"], ],
-                                             }
-                         }
+        self.defaults = {
+            "js_alarm_colors": {
+                State["ALARM"]: [
+                    [60 * 5, "#FF0000", "#FFFFFF"],
+                    [60 * 10, "#FF9B0F", "#000000"],
+                    [60 * 15, "#FFFA0F", "#000000"],
+                ],
+                State["REQUEST"]: [[60 * 2, "#ffaaff", "#000000"],],
+                State["CLEAR"]: [[60 * 2, "#59FF6C", "#000000"],],
+            }
+        }
 
     @property
     def js_alarm_colors(self) -> dict:
@@ -153,21 +158,16 @@ class SoundSettings(_Settings):
         self._defaults()
 
     def _defaults(self):
-        self.defaults = {}
         listing = []
-        listing2 = []
-        dict = {}
         for distance in range(0, 6):
-            entry = ["{} Jumps".format(distance), "alert.wav", 25]
+            entry = [
+                "{} Jumps".format(distance),
+                os.path.join(soundPath(), "alert.wav"),
+                25,
+            ]
             listing.append(entry)
-            listing2.append(entry)
-
-        dict["Alarm"] = listing2
-        dict["KOS"] = ["KOS", "warning.wav", 25]
-        dict["Request"] = ["Request", "request.wav", 25]
-        self.defaults["sound_dict"] = dict
-        listing.append(['KOS', "warning.wav", 25])
-        listing.append(['Request', "request.wav", 25])
+        listing.append(["KOS", os.path.join(soundPath(), "warning.wav"), 25])
+        listing.append(["Request", os.path.join(soundPath(), "request.wav"), 25])
         self.defaults["sound"] = listing
 
     @property
@@ -196,6 +196,7 @@ class GeneralSettings(_Settings):
             "map_update_interval": 4 * 1000,
             "sound_active": True,
             "show_requests": True,
+            "log_level": 10,
         }
 
     @property
@@ -208,6 +209,15 @@ class GeneralSettings(_Settings):
         self.setting = v
 
     @property
+    def log_level(self) -> int:
+        return self.setting["log_level"]
+
+    @log_level.setter
+    def log_level(self, value: int):
+        v = {"log_level": value}
+        self.setting = v
+
+    @property
     def show_requests(self) -> bool:
         return self.setting["show_requests"]
 
@@ -215,7 +225,6 @@ class GeneralSettings(_Settings):
     def show_requests(self, value: bool):
         v = {"show_requests": value}
         self.setting = v
-
 
     @property
     def character_parser(self) -> bool:

@@ -50,4 +50,3 @@ if __name__ == "__main__":
     d = ChatroomsForm()
     d.show()
     sys.exit(a.exec_())
-

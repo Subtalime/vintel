@@ -24,13 +24,19 @@ from vi.settings.settings import ColorSettings
 class ColorJavaScript:
     WHITE = "#ffffff"
     BLACK = "#000000"
-    DEFAULT = [[60 * 2, "#59FF6C", "#000000"], ]
+    DEFAULT = [
+        [60 * 2, "#59FF6C", "#000000"],
+    ]
 
     def __init__(self):
         self.cache = Cache()
-        self.js_header = ["Starting Color for... (seconds)", "Background Color", "Text Color"]
+        self.js_header = [
+            "Starting Color for... (seconds)",
+            "Background Color",
+            "Text Color",
+        ]
         self.js_lst = ColorSettings().js_alarm_colors
-
+        self.color_arrays = {}
 
     @staticmethod
     def show_timer() -> str:
@@ -110,21 +116,31 @@ class ColorJavaScript:
         """return an array with Color and Timing for the duration of the State.
         If the State doesn't exist, return a default
         """
-        color_array = []
-        color_range = self.status_list(status)
-        time_offset = 0
-        for index, color_index in enumerate(self.js_lst[status]):
-            start_color = Color(color_index[1])
-            if index == len(color_range) - 1:  # last reached
-                end_color = self.WHITE
-            else:
-                end_color = color_range[index + 1][1]
-            length = color_index[0] - time_offset
-            set_color = list(start_color.range_to(end_color, length))
-            color_array.append([color_index[0], length, color_index[1], end_color,
-                                color_index[2], [c.get_hex_l() for c in set_color]])
-            time_offset = color_index[0]
-        return color_array
+        if status not in self.color_arrays.keys():
+            color_array = []
+            color_range = self.status_list(status)
+            time_offset = 0
+            for index, color_index in enumerate(self.js_lst[status]):
+                start_color = Color(color_index[1])
+                if index == len(color_range) - 1:  # last reached
+                    end_color = self.WHITE
+                else:
+                    end_color = color_range[index + 1][1]
+                length = color_index[0] - time_offset
+                set_color = list(start_color.range_to(end_color, length))
+                color_array.append(
+                    [
+                        color_index[0],
+                        length,
+                        color_index[1],
+                        end_color,
+                        color_index[2],
+                        [c.get_hex_l() for c in set_color],
+                    ]
+                )
+                time_offset = color_index[0]
+            self.color_arrays[status] = color_array
+        return self.color_arrays[status]
 
     def js_color_string(self, status: State):
         """create a JS-Line with a Color-Definition.
@@ -136,8 +152,13 @@ class ColorJavaScript:
         output = "var %s_COLORS = [" % (status.name.upper(),)
         for color_range in color_array:
             s_color = "\n   %d, %d, '%s', '%s', '%s' , %s," % (
-                color_range[0], color_range[1], color_range[2], color_range[3],
-                color_range[4], str([c for c in color_range[5]]),)
+                color_range[0],
+                color_range[1],
+                color_range[2],
+                color_range[3],
+                color_range[4],
+                str([c for c in color_range[5]]),
+            )
             output += s_color
         output = output.rstrip(",") + "\n];\n"
         return output
@@ -175,20 +196,20 @@ class ColorJavaScript:
 if __name__ == "__main__":
     cjs = ColorJavaScript()
     # print(cjs.get_last('alarm'))
-    al = cjs.color_array(State['IGNORE'])
+    al = cjs.color_array(State["IGNORE"])
     print(al)
     print(al[-1][0] + al[-1][1])
     print(cjs.js_lst.keys())
-    print("Max-Time alarm: %d" % cjs.max_time('alarm'))
-    print("Max-Time clear: %d" % cjs.max_time('clear'))
-    print("Max-Time request: %d" % cjs.max_time('request'))
-    print("Max-Time bla: %d" % cjs.max_time('bla'))
+    print("Max-Time alarm: %d" % cjs.max_time("alarm"))
+    print("Max-Time clear: %d" % cjs.max_time("clear"))
+    print("Max-Time request: %d" % cjs.max_time("request"))
+    print("Max-Time bla: %d" % cjs.max_time("bla"))
     print(cjs.color_array())
     for sec in cjs.color_array():
         print(sec)
-    print("Color at 0: %r" % (cjs.color_at(0), ))
-    print("Color at 1: %r" % (cjs.color_at(1), ))
-    print("Color at 601: %s" % (cjs.color_at(601), ))
+    print("Color at 0: %r" % (cjs.color_at(0),))
+    print("Color at 1: %r" % (cjs.color_at(1),))
+    print("Color at 601: %s" % (cjs.color_at(601),))
     # print(cjs.js_color_string('alarm'))
 
     # qq = cjs.create_js_color("alarm")

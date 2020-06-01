@@ -65,26 +65,30 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             RegionSettings().jump_bridge_url = url
             self.set_jump_bridge_url.emit(url, None)
         except Exception as e:
-            self.LOGGER.error("Finding Jumpbridgedata failed for \"%s\": %r" % (url, e, ))
+            self.LOGGER.error('Finding Jumpbridgedata failed for "%s": %r' % (url, e,))
 
     def accept(self) -> None:
         QDialog.accept(self)
         self.close()
 
     def saveClipboard(self):
-            try:
-                data = clipboard.paste()
-                if data:
-                    jb = Import.Import().readGarpaFile(clipboard=data)
-                    if len(jb) > 0:
-                        self.accept()
-                        RegionSettings().jump_bridge_data = data
-                        self.set_jump_bridge_url.emit(None, data)
-                        self.close()
-                    else:
-                        QtWidgets.QMessageBox.warning(self, "Jumpbridgedata from Clipboard", "Invalid data found in Clipboard")
-            except Exception as e:
-                self.LOGGER.error("Error while using Clipboard-Jumpdata: %r", e)
+        try:
+            data = clipboard.paste()
+            if data:
+                jb = Import.Import().readGarpaFile(clipboard=data)
+                if len(jb) > 0:
+                    self.accept()
+                    RegionSettings().jump_bridge_data = data
+                    self.set_jump_bridge_url.emit(None, data)
+                    self.close()
+                else:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Jumpbridgedata from Clipboard",
+                        "Invalid data found in Clipboard",
+                    )
+        except Exception as e:
+            self.LOGGER.error("Error while using Clipboard-Jumpdata: %r", e)
 
 
 if __name__ == "__main__":

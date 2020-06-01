@@ -46,7 +46,9 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     def __init__(self, message):
         QWidget.__init__(self)
         if not self.questionMarkPixmap:
-            self.questionMarkPixmap = QPixmap(resourcePath("qmark.png")).scaledToHeight(32)
+            self.questionMarkPixmap = QPixmap(resourcePath("qmark.png")).scaledToHeight(
+                32
+            )
         self.setupUi(self)
         self.avatarLabel.setPixmap(self.questionMarkPixmap)
         self.message = message
@@ -89,7 +91,8 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             user=self.message.user,
             room=self.message.room,
             time=time,
-            text=self.message.message)
+            text=self.message.message,
+        )
         self.textLabel.setText(text)
         # self.updateTooltip(self.message.message)
 

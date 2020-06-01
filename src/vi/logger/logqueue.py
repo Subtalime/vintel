@@ -46,10 +46,14 @@ class LogQueueHandler(QueueHandler):
     tidySize = 5000  # number of messages to hold in buffer
     pruneDelay = 60 * 60
 
-    def __init__(self, handlers, respect_handler_level=False, auto_run=True, queue=Queue(-1)):
+    def __init__(
+        self, handlers, respect_handler_level=False, auto_run=True, queue=Queue(-1)
+    ):
         super().__init__(queue)
         self.queue = queue
-        self._listener = QueueListener(self.queue, *handlers, respect_handler_level=respect_handler_level)
+        self._listener = QueueListener(
+            self.queue, *handlers, respect_handler_level=respect_handler_level
+        )
         if auto_run:
             self.start()
             register(self.stop)
@@ -82,11 +86,10 @@ class LogQueueHandler(QueueHandler):
                 _acquire_lock()
                 self._tidying = True
                 getLogger().debug("LogWindow Tidy-Up start")
-                del self.log_records[:len(self.log_records) - self.tidySize]
+                del self.log_records[: len(self.log_records) - self.tidySize]
             except Exception as e:
                 getLogger().error("Error in Tidy-Up of Log-Window", e)
             finally:
                 _release_lock()
                 self._tidying = False
                 getLogger().debug("LogWindow Tidy-Up complete")
-

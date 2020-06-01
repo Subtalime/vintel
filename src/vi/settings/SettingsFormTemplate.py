@@ -30,7 +30,9 @@ class SettingsFormTemplate(QWidget):
         self.signal_content_changed.emit()
 
     def save_data(self):
-        raise NotImplementedError("save_data method not implemented in %s" % (self.objectName()))
+        raise NotImplementedError(
+            "save_data method not implemented in %s" % (self.objectName())
+        )
 
     @property
     def data_changed(self) -> bool:
@@ -46,5 +48,3 @@ class SettingsFormTemplate(QWidget):
         """
         if self.data_changed:
             self.save_data()
-
-

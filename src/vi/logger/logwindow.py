@@ -35,15 +35,21 @@ class LogDisplayHandler(QtWidgets.QTextEdit):
         QtWidgets.QTextEdit.__init__(self, parent=parent)
         self.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
         self.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
+            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction
+        )
 
 
 class LogTextFieldHandler(logging.Handler, QtCore.QObject):
     appendLogMessage = QtCore.pyqtSignal(str)
 
-    def __init__(self, parent, log_level: int = logging.WARNING,
-                 log_formatter: Formatter = logging.Formatter('%(asctime)s|%(name)s|%(levelname)s: %(message)s',
-                                                              datefmt='%H:%M:%S')):
+    def __init__(
+        self,
+        parent,
+        log_level: int = logging.WARNING,
+        log_formatter: Formatter = logging.Formatter(
+            "%(asctime)s|%(name)s|%(levelname)s: %(message)s", datefmt="%H:%M:%S"
+        ),
+    ):
         """Text-Widget to handle output of Log-Message
 
         :param parent: Parent window
@@ -101,7 +107,9 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
 
     def set_handler(self):
         self.get_handler().setLevel(self.log_level)
-        formatter = logging.Formatter('%(asctime)s|%(name)s|%(levelname)s: %(message)s', datefmt='%H:%M:%S')
+        formatter = logging.Formatter(
+            "%(asctime)s|%(name)s|%(levelname)s: %(message)s", datefmt="%H:%M:%S"
+        )
         self.get_handler().setFormatter(formatter)
         # maybe this should be only the Root Logger?
         logging.getLogger().addHandler(self.get_handler())
@@ -111,9 +119,15 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
         return self.log_handler
 
     def set_title_and_icon(self):
-        self.setWindowTitle("{} Logging ({})".format(vi.version.DISPLAY, logging.getLevelName(self.log_level)))
+        self.setWindowTitle(
+            "{} Logging ({})".format(
+                vi.version.DISPLAY, logging.getLevelName(self.log_level)
+            )
+        )
         if not self.icon_path:
-            self.icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "icon.ico")
+            self.icon_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "..", "icon.ico"
+            )
             if os.path.exists(self.icon_path):
                 self.setWindowIcon(QtGui.QIcon(self.icon_path))
 
@@ -145,7 +159,9 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
         setting = context_menu.exec_(self.mapToGlobal(event.pos()))
         if setting:
             self.LOGGER.debug(
-                "Log-Level changed to %d (%s)" % (setting.log_level(), logging.getLevelName(setting.log_level())))
+                "Log-Level changed to %d (%s)"
+                % (setting.log_level(), logging.getLevelName(setting.log_level()))
+            )
             self.log_level = setting.log_level()
             Cache().put(self.cache_level, self.log_level)
             self.get_handler().setLevel(self.log_level)

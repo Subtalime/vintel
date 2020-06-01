@@ -23,7 +23,7 @@ def string_to_color(string_color: str = None) -> QColor:
     if str(string_color).startswith("#"):
         color = str(string_color).lstrip("#")
         lv = len(color)
-        cs = tuple(int(color[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+        cs = tuple(int(color[i : i + lv // 3], 16) for i in range(0, lv, lv // 3))
     else:
         cs = [0, 0, 0]
     return QColor(cs[0], cs[1], cs[2])
@@ -35,8 +35,11 @@ def color_dialog(color=QColor()):
 
 def contrast_color(one_color: QColor) -> str:
     # Calculate the perceptive luminance (aka luma) - human eye favors green color...
-    luma = ((0.299 * one_color.red()) + (0.587 * one_color.green()) + (0.114 * one_color.blue())) / 255
-    print(luma)
+    luma = (
+        (0.299 * one_color.red())
+        + (0.587 * one_color.green())
+        + (0.114 * one_color.blue())
+    ) / 255
     # Return black for bright colors, white for dark colors
     return "#000000" if luma > 0.5 else "#ffffff"
 
@@ -45,4 +48,3 @@ if __name__ == "__main__":
     test = string_to_color("#ff3355")
     res = contrast_color(test)
     print(test.value(), res)
-

@@ -69,5 +69,3 @@ class LogLevelPopup(QMenu):
 
     def get_result(self, action: LogLevelAction):
         return action.level
-
-

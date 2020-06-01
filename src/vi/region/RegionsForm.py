@@ -15,6 +15,21 @@
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
+#
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
+#
+#
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
@@ -72,11 +87,13 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
                 for file in os.listdir(getVintelMap()):
                     if file.endswith(".svg"):
                         files.append(file)
-                        QMessageBox.critical(self, "Region selection",
-                                             'Regions must end with ".svg" ' \
-                                             'and exist in "{dirpath}\nExisting files ' \
-                                             'are:{files}"'.format(
-                                                 dirpath=getVintelMap(), files=files))
+                        QMessageBox.critical(
+                            self,
+                            "Region selection",
+                            'Regions must end with ".svg" '
+                            'and exist in "{dirpath}\nExisting files '
+                            'are:{files}"'.format(dirpath=getVintelMap(), files=files),
+                        )
                 self.txtRegions.setFocus()
         if success:
             self.change_detected()
@@ -90,9 +107,13 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
                 content = content.replace("<mapdir>", getVintelMap())
                 QMessageBox.information(None, "Region-Help", content)
         except FileNotFoundError:
-            QMessageBox.warning(None, "Help-File",
-                                "Unable to find Help-File \n{}".format(
-                                    resourcePath("docs/regionselect.txt")))
+            QMessageBox.warning(
+                None,
+                "Help-File",
+                "Unable to find Help-File \n{}".format(
+                    resourcePath("docs/regionselect.txt")
+                ),
+            )
 
     def _get_selected(self):
         litems = []

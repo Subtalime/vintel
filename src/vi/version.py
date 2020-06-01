@@ -39,7 +39,6 @@ LOGGER = logging.getLogger(__name__)
 ROOT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 
-
 def getNewestVersion():
     try:
         url = u"http://vintel.tschache.com/resources/current_version.txt"

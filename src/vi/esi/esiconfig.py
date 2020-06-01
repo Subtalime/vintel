@@ -23,25 +23,32 @@ class EsiConfig(six.with_metaclass(Singleton)):
     # this will be set during authentication
     def setSecretKey(self, value: str):
         self.ESI_SECRET_KEY = value
+
     def getSecretKey(self):
         return self.ESI_SECRET_KEY
 
     # Local Call-Back Port
     PORT = 2020
     # where the Webserver will be running
-    HOST = 'localhost'
+    HOST = "localhost"
     # any http-path
-    URI = 'callback'
+    URI = "callback"
 
     # -----------------------------------------------------
     # ESI Configs
     # -----------------------------------------------------
-    ESI_DATASOURCE = 'tranquility'  # Change it to 'singularity' to use the test server
-    ESI_SWAGGER_JSON = 'https://esi.tech.ccp.is/latest/swagger.json?datasource=%s' % ESI_DATASOURCE
+    ESI_DATASOURCE = "tranquility"  # Change it to 'singularity' to use the test server
+    ESI_SWAGGER_JSON = (
+        "https://esi.tech.ccp.is/latest/swagger.json?datasource=%s" % ESI_DATASOURCE
+    )
     # Run the Application, then register on "https://developers.eveonline.com/applications"
     # You will then receive your Secret and Client keys
     # ESI_CLIENT_ID = None  # your client ID
-    ESI_CLIENT_ID = '0ab476e584064214869d532acd027494'  # your client ID example
+    ESI_CLIENT_ID = "0ab476e584064214869d532acd027494"  # your client ID example
     ESI_SECRET_KEY = ""
-    ESI_CALLBACK = 'http://%s:%d/%s' % (HOST, PORT, URI)  # the callback URI you gave CCP
+    ESI_CALLBACK = "http://%s:%d/%s" % (
+        HOST,
+        PORT,
+        URI,
+    )  # the callback URI you gave CCP
     ESI_USER_AGENT = PROGNAME
