@@ -1,0 +1,62 @@
+version: 1
+disable_existing_loggers: true
+
+formatters:
+  mine:
+    (): vi.logger.logconfig.MyDateFormatter
+    format: '%(asctime)s|%(levelname)s [%(qthreadName)-15s(%(thread)d)] (%(filename)s/%(funcName)s/%(lineno)d): %(message)s'
+    datefmt: '%d/%m %H:%M:%S.%f'
+    extras: {'qthreadName': get_qthreadname()}
+  window:
+    format: '%(asctime)s: %(message)s'
+    datefmt: '%H:%M:%S'
+  error:
+    format: "%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s"
+    datefmt: '$d/%m/%Y %H:%M:%S'
+  standard:
+    format: "%(asctime)s %(name)s.%(funcName)s(): %(levelname)s | %(message)s"
+    datefmt: '%d/%m/%Y %H:%M:%S'
+
+handlers:
+  file:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: mine
+    when: midnight
+    delay: true
+    level: DEBUG
+    filename: !log_path test.log
+#    maxBytes: 5242880
+    backupCount: 10
+    encoding: utf8
+
+  console:
+    class: logging.StreamHandler
+    level: WARN
+    formatter: mine
+    stream: ext://sys.stdout
+
+
+root:
+  level: DEBUG
+  handlers: [console, file]
+  propagate: yes
+
+loggers:
+  vi:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+
+  root:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: yes
+
+  vi.MapViewPage:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+
+  pyswagger.core:
+    level: WARN
+

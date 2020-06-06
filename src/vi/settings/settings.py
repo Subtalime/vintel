@@ -20,24 +20,23 @@ from vi.cache import Cache
 from vi.states import State
 import pickle
 from vi.resources import soundPath
-
+import logging
 
 class _Settings:
     ship_parser: bool = False
     character_parser: bool = False
 
     def __init__(self):
-        self.cache = Cache()
+        self._cache = Cache()
         self._config = {}
-        self.KEY = "GENERAL"
-        res = self.cache.fetch("my_settings", outdated=True)
+        self.KEY = "OVERRIDE"
+        res = self._cache.fetch("my_settings", outdated=True)
         if res:
             self._config = pickle.loads(res)
         self.defaults = {}
 
-    def _set_property(self, key, value):
-        self._config[key] = value
-        self.cache.put("my_settings", pickle.dumps(self._config))
+    def _set_property(self):
+        self._cache.put("my_settings", pickle.dumps(self._config))
 
     def _get_property(self, property_name):
         try:
@@ -47,6 +46,7 @@ class _Settings:
 
     @property
     def setting(self):
+        # this will return the dictionary of self.KEY
         value = self._get_property(self.KEY)
         # do we need to set the defaults (nothing in cache, or false SAVE)
         if value is None or not isinstance(value, dict):
@@ -58,7 +58,11 @@ class _Settings:
 
     @setting.setter
     def setting(self, value):
-        self._set_property(self.KEY, value)
+        k = list(value.keys())[0]
+        if k not in self._config[self.KEY]:
+            logging.getLogger(__name__).error(f"Key '{k}' not in {self.KEY} Configuration")
+        self._config[self.KEY][k] = value[k]
+        self._set_property()
 
 
 class RegionSettings(_Settings):
@@ -74,38 +78,38 @@ class RegionSettings(_Settings):
 
     @property
     def selected_region(self) -> str:
-        return self.setting["selected"]
+        return str(self.setting["selected"])
 
     @selected_region.setter
     def selected_region(self, value: str):
-        v = {"selected": value}
+        v = {"selected": str(value)}
         self.setting = v
 
     @property
     def region_names(self) -> str:
-        return self.setting["region_names"]
+        return str(self.setting["region_names"])
 
     @region_names.setter
     def region_names(self, value: str):
-        v = {"region_names": value}
+        v = {"region_names": str(value)}
         self.setting = v
 
     @property
-    def jump_bridge_url(self):
-        return self.setting["jump_bridge_url"]
+    def jump_bridge_url(self) -> str:
+        return str(self.setting["jump_bridge_url"])
 
     @jump_bridge_url.setter
     def jump_bridge_url(self, value: str):
-        v = {"jump_bridge_url": value}
+        v = {"jump_bridge_url": str(value)}
         self.setting = v
 
     @property
-    def jump_bridge_data(self):
-        return self.setting["jump_bridge_data"]
+    def jump_bridge_data(self) -> str:
+        return str(self.setting["jump_bridge_data"])
 
     @jump_bridge_data.setter
     def jump_bridge_data(self, value: str):
-        v = {"jump_bridge_data": value}
+        v = {"jump_bridge_data": str(value)}
         self.setting = v
 
 
@@ -127,11 +131,11 @@ class ColorSettings(_Settings):
 
     @property
     def js_alarm_colors(self) -> dict:
-        return self.setting["js_alarm_colors"]
+        return dict(self.setting["js_alarm_colors"])
 
     @js_alarm_colors.setter
     def js_alarm_colors(self, value: dict):
-        v = {"js_alarm_colors": value}
+        v = {"js_alarm_colors": dict(value)}
         self.setting = v
 
 
@@ -143,11 +147,11 @@ class ChatroomSettings(_Settings):
 
     @property
     def room_names(self) -> str:
-        return self.setting["room_names"]
+        return str(self.setting["room_names"])
 
     @room_names.setter
     def room_names(self, value: str):
-        v = {"room_names": value}
+        v = {"room_names": str(value)}
         self.setting = v
 
 
@@ -171,12 +175,12 @@ class SoundSettings(_Settings):
         self.defaults["sound"] = listing
 
     @property
-    def sound(self):
+    def sound(self) -> list:
         return self.setting["sound"]
 
     @sound.setter
     def sound(self, value):
-        v = {"sound": value}
+        v = {"sound": list(value)}
         self.setting = v
 
 
@@ -187,8 +191,8 @@ class GeneralSettings(_Settings):
         self.defaults = {
             "message_expiry": 20 * 60,
             "clipboard_check_interval": 4 * 1000,
-            "ship_parser_enabled": False,
-            "character_parser_enabled": True,
+            "ship_parser": False,
+            "character_parser": True,
             "self_notify": True,
             "popup_notification": True,
             "alarm_distance": 2,
@@ -201,118 +205,125 @@ class GeneralSettings(_Settings):
 
     @property
     def sound_active(self) -> bool:
-        return self.setting["sound_active"]
+        return bool(self.setting["sound_active"])
 
     @sound_active.setter
     def sound_active(self, value: bool):
-        v = {"sound_active": value}
+        v = {"sound_active": bool(value)}
         self.setting = v
 
     @property
     def log_level(self) -> int:
-        return self.setting["log_level"]
+        return int(self.setting["log_level"])
 
     @log_level.setter
     def log_level(self, value: int):
-        v = {"log_level": value}
+        v = {"log_level": int(value)}
         self.setting = v
 
     @property
     def show_requests(self) -> bool:
-        return self.setting["show_requests"]
+        return bool(self.setting["show_requests"])
 
     @show_requests.setter
     def show_requests(self, value: bool):
-        v = {"show_requests": value}
+        v = {"show_requests": bool(value)}
         self.setting = v
 
     @property
     def character_parser(self) -> bool:
-        return self.setting["character_parser_enabled"]
+        return bool(self.setting["character_parser"])
 
     @character_parser.setter
     def character_parser(self, value: bool):
-        v = {"character_parser_enabled": value}
+        v = {"character_parser": bool(value)}
         self.setting = v
 
     @property
     def ship_parser(self) -> bool:
-        return self.setting["ship_parser_enabled"]
+        return bool(self.setting["ship_parser"])
 
     @ship_parser.setter
     def ship_parser(self, value: bool):
-        v = {"ship_parser_enabled": value}
+        v = {"ship_parser": bool(value)}
         self.setting = v
 
     @property
     def popup_notification(self) -> bool:
-        return self.setting["popup_notification"]
+        return bool(self.setting["popup_notification"])
 
     @popup_notification.setter
     def popup_notification(self, value: bool):
-        v = {"popup_notification": value}
+        v = {"popup_notification": bool(value)}
         self.setting = v
 
     @property
     def self_notify(self) -> bool:
-        return self.setting["self_notify"]
+        return bool(self.setting["self_notify"])
 
     @self_notify.setter
     def self_notify(self, value: bool):
-        v = {"self_notify": value}
+        v = {"self_notify": bool(value)}
         self.setting = v
 
     @property
     def background_color(self) -> str:
-        return self.setting["background_color"]
+        return str(self.setting["background_color"])
 
     @background_color.setter
     def background_color(self, value: str):
-        v = {"background_color": value}
+        v = {"background_color": str(value)}
         self.setting = v
 
     @property
     def message_expiry(self) -> int:
-        return self.setting["message_expiry"]
+        return int(self.setting["message_expiry"])
 
     @message_expiry.setter
     def message_expiry(self, value: int):
-        v = {"message_expiry": value}
+        v = {"message_expiry": int(value)}
         self.setting = v
 
     @property
     def map_update_interval(self) -> int:
-        return self.setting["map_update_interval"]
+        return int(self.setting["map_update_interval"])
 
     @map_update_interval.setter
     def map_update_interval(self, value: int):
-        v = {"map_update_interval": value}
+        v = {"map_update_interval": int(value)}
         self.setting = v
 
     @property
     def alarm_distance(self) -> int:
-        return self.setting["alarm_distance"]
+        return int(self.setting["alarm_distance"])
 
     @alarm_distance.setter
     def alarm_distance(self, value: int):
-        v = {"alarm_distance": value}
+        v = {"alarm_distance": int(value)}
         self.setting = v
 
     @property
     def clipboard_check_interval(self) -> int:
-        return self.setting["clipboard_check_interval"]
+        return int(self.setting["clipboard_check_interval"])
 
     @clipboard_check_interval.setter
     def clipboard_check_interval(self, value: int):
-        v = {"clipboard_check_interval": value}
+        v = {"clipboard_check_interval": int(value)}
         self.setting = v
 
 
 if __name__ == "__main__":
     orig = 4000
+    act = GeneralSettings().sound_active
+    GeneralSettings().sound_active = not GeneralSettings().sound_active
+    cparser = GeneralSettings().character_parser
+    act = GeneralSettings().sound_active
+
     check = GeneralSettings().clipboard_check_interval
+    cparser = GeneralSettings().character_parser
     newv = 200
     GeneralSettings().clipboard_check_interval = newv
+    cparser = GeneralSettings().character_parser
     check = GeneralSettings().clipboard_check_interval
     print(check)
     GeneralSettings().clipboard_check_interval = orig

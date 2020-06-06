@@ -29,17 +29,13 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.setupUi(self)
         self.color = None
         self.settings = GeneralSettings()
-        self.txtKosInterval.setEnabled(False)
         self.btnColor.clicked.connect(self.color_chooser)
         # populate the settings
-        self.txtKosInterval.setText(
-            str(int(self.settings.clipboard_check_interval / 1000))
-        )
-        self.txtKosInterval.setValidator(QIntValidator())
-        self.txtKosInterval.textChanged.connect(self.change_detected)
-        self.txtMessageExpiry.setText(str(self.settings.message_expiry))
-        self.txtMessageExpiry.setValidator(QIntValidator())
-        self.txtMessageExpiry.textChanged.connect(self.change_detected)
+        self.spinMessageExpiry.setMinimum(5)
+        self.spinMessageExpiry.setMaximum(60)
+        self.spinMessageExpiry.singleStep()
+        self.spinMessageExpiry.setValue(self.settings.message_expiry / 60)
+        self.spinMessageExpiry.valueChanged.connect(self.change_detected)
         self.checkShipNames.setChecked(self.settings.ship_parser)
         self.checkShipNames.stateChanged.connect(self.change_detected)
         self.checkScanCharacter.setChecked(self.settings.character_parser)
@@ -48,9 +44,11 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.checkNotifyOwn.stateChanged.connect(self.change_detected)
         self.checkPopupNotification.setChecked(self.settings.popup_notification)
         self.checkPopupNotification.stateChanged.connect(self.change_detected)
-        self.txtJumpDistance.setText(str(self.settings.alarm_distance))
-        self.txtJumpDistance.setValidator(QIntValidator())
-        self.txtJumpDistance.textChanged.connect(self.change_detected)
+        self.spinDistance.setMinimum(0)
+        self.spinDistance.setMaximum(6)
+        self.spinDistance.singleStep()
+        self.spinDistance.setValue(self.settings.alarm_distance)
+        self.spinDistance.valueChanged.connect(self.change_detected)
         self.cmbLogLevel.addItem(logging.getLevelName(logging.DEBUG))
         self.cmbLogLevel.addItem(logging.getLevelName(logging.INFO))
         self.cmbLogLevel.addItem(logging.getLevelName(logging.WARN))
@@ -71,14 +69,12 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
     def data_changed(self) -> bool:
         if (
             self.checkNotifyOwn.isChecked() != self.settings.self_notify
-            or self.txtJumpDistance.text() != str(self.settings.alarm_distance)
+            or int(self.spinDistance.value()) != int(self.settings.alarm_distance)
             or self.checkPopupNotification.isChecked()
             != self.settings.popup_notification
             or self.checkScanCharacter.isChecked() != self.settings.character_parser
             or self.checkShipNames.isChecked() != self.settings.ship_parser
-            or self.txtMessageExpiry.text() != str(self.settings.message_expiry)
-            or self.txtKosInterval.text()
-            != str(int(self.settings.clipboard_check_interval / 1000))
+            or int(self.spinMessageExpiry.value()) != int(self.settings.message_expiry) / 60
             or self.cmbLogLevel.currentText()
             != logging.getLevelName(self.settings.log_level)
             or self.color != self.settings.background_color
@@ -88,14 +84,14 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
 
     def save_data(self):
         self.settings.self_notify = self.checkNotifyOwn.isChecked()
-        self.settings.alarm_distance = self.txtJumpDistance.text()
+        self.settings.alarm_distance = self.spinDistance.value()
         self.settings.popup_notification = self.checkPopupNotification.isChecked()
         self.settings.character_parser = self.checkScanCharacter.isChecked()
         self.settings.ship_parser = self.checkShipNames.isChecked()
-        self.settings.message_expiry = self.txtMessageExpiry.text()
-        self.settings.clipboard_check_interval = int(self.txtKosInterval.text()) * 1000
+        self.settings.message_expiry = self.spinMessageExpiry.value() * 60
         if self.settings.log_level != logging.getLevelName(self.cmbLogLevel.currentText()):
             self.settings.log_level = logging.getLevelName(self.cmbLogLevel.currentText())
+            # TODO: in log-file I always want debug... so get this right here!
             logging.getLogger().setLevel(self.settings.log_level)
         self.settings.background_color = self.color
 

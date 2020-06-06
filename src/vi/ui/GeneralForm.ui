@@ -25,40 +25,18 @@
         <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout_9">
-        <item row="2" column="1">
-         <widget class="QGroupBox" name="groupBox_6">
-          <property name="title">
-           <string>in Seconds</string>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_19">
+          <property name="text">
+           <string>Scan for Ship-Names</string>
           </property>
-          <property name="flat">
-           <bool>true</bool>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_18">
+          <property name="text">
+           <string>Scan for Character-Names:</string>
           </property>
-          <layout class="QGridLayout" name="gridLayout_10">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_20">
-             <property name="text">
-              <string>Message expiry :</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_21">
-             <property name="text">
-              <string>KOS Clipboard interval:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLineEdit" name="txtMessageExpiry">
-             <property name="toolTip">
-              <string>how long to keep messages in the Chat-History</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLineEdit" name="txtKosInterval"/>
-           </item>
-          </layout>
          </widget>
         </item>
         <item row="0" column="2">
@@ -81,17 +59,19 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QLabel" name="label_19">
-          <property name="text">
-           <string>Scan for Ship-Names</string>
+        <item row="2" column="2">
+         <widget class="QSpinBox" name="spinMessageExpiry">
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QLabel" name="label_18">
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_20">
           <property name="text">
-           <string>Scan for Character-Names:</string>
+           <string>Message expiry (Minutes):</string>
           </property>
          </widget>
         </item>
@@ -127,16 +107,6 @@
           </property>
           <property name="text">
            <string>Color...</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QLineEdit" name="txtJumpDistance">
-          <property name="toolTip">
-           <string>How many systems away should the messages be scanned for, before being alerted</string>
-          </property>
-          <property name="maxLength">
-           <number>1</number>
           </property>
          </widget>
         </item>
@@ -192,16 +162,35 @@
           </property>
          </widget>
         </item>
+        <item row="4" column="1">
+         <widget class="QSpinBox" name="spinDistance">
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+          <property name="statusTip">
+           <string>watch out for number of Jumps outside your location</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </item>
     </layout>
    </item>
-   <item>
-    <layout class="QGridLayout" name="gridLayout"/>
-   </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>checkScanCharacter</tabstop>
+  <tabstop>checkShipNames</tabstop>
+  <tabstop>spinMessageExpiry</tabstop>
+  <tabstop>checkNotifyOwn</tabstop>
+  <tabstop>checkPopupNotification</tabstop>
+  <tabstop>cmbLogLevel</tabstop>
+  <tabstop>spinDistance</tabstop>
+  <tabstop>btnColor</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

@@ -23,7 +23,7 @@ import os
 import threading
 from queue import Queue
 from threading import Thread
-from typing import Dict, Any
+from typing import Dict
 import six
 from PyQt5.QtCore import QThread, pyqtSignal
 from vi.states import State
@@ -255,8 +255,6 @@ class ChatThreadProcess(QThread):
     def __init__(
         self,
         log_file_path: str,
-        # ship_scanner: bool,
-        # char_scanner: bool,
         dotlan_systems: systems,
     ):
         super(__class__, self).__init__()
@@ -470,29 +468,15 @@ if __name__ == "__main__":
     from vi.chat.filewatcherthread import FileWatcherThread
     from vi.resources import getEveChatlogDir, getVintelDir
     from vi.dotlan.mymap import MyMap
-    import sys
     from vi.esi import EsiInterface
+    import sys
 
-    logging.getLogger(__name__).setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.DEBUG)
 
-    ship_parser_change = pyqtSignal(bool)
-    char_parser_change = pyqtSignal(bool)
     rooms = "testbov"
     # rooms = ("delve.imperium", "querious.imperium", "testbov")
     path_to_logs = getEveChatlogDir()
     app = QApplication(sys.argv)
-
-    def enableShipParser(enable: bool = None) -> bool:
-        ship_parser_change.emit(enable)
-        if enable is not None:
-            ship_parser_enabled = enable
-        return ship_parser_enabled
-
-    def enableCharacterParser(enable: bool = None) -> bool:
-        char_parser_change.emit(enable)
-        if enable is not None:
-            character_parser_enabled = enable
-        return character_parser_enabled
 
     def logFileChanged(path):
         t.add_log_file(path)
@@ -500,9 +484,9 @@ if __name__ == "__main__":
     # t = ChatThread(rooms, dotlan_systems=(), ship_parser_change, char_parser_change)
 
     EsiInterface(cache_dir=getVintelDir())
-    dotlan = MyMap("Delve")
+    dotlan = MyMap(region="Delve")
 
-    t = ChatThread(rooms, dotlan_systems=dotlan.systems)
+    t = ChatThread(dotlan_systems=dotlan.systems)
     t.start()
     filewatcherThread = FileWatcherThread(path_to_logs)
     filewatcherThread.file_change.connect(logFileChanged)

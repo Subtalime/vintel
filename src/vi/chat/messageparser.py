@@ -28,7 +28,6 @@ from vi.states import State
 
 
 class MessageParserException(Exception):
-    logging.getLogger(__name__).error(Exception)
     pass
 
 
@@ -146,6 +145,8 @@ class MessageParser:
         return count > 0
 
     def process(self, line) -> object:
+        """process a Log-Line.
+        """
         message = None
         utctime, username, text, timestamp = parse_line(line)
         # anything older than max_age, ignore
@@ -156,6 +157,7 @@ class MessageParser:
             )
             return message
         if username in ("EVE-System", "EVE System"):
+            # System-Message indicates location of current character
             if ":" in text:
                 system = text.split(":")[1].strip().replace("*", "").upper()
                 status = State["LOCATION"]
@@ -171,8 +173,10 @@ class MessageParser:
                     text,
                     timestamp,
                     self.char_name,
-                    currsystems=[system,],
+                    currsystems=[system],
                     status=status,
+                    log_line=line,
+                    utc=utctime,
                 )
             return message
         original_text = text
@@ -180,19 +184,7 @@ class MessageParser:
         soup = BeautifulSoup(formatted_text, "html.parser")
         navi_text = soup.select("rtext")[0]
         upper_text = text.upper()
-        # KOS request
-        if upper_text.startswith("XXX "):
-            return Message(
-                self.room_name,
-                text,
-                timestamp,
-                username,
-                rtext=navi_text,
-                status=State["KOS_STATUS_REQUEST"],
-                plain_text=original_text,
-                upper_text=upper_text,
-            )
-        elif self.room_name.startswith("="):
+        if self.room_name.startswith("="):
             return Message(
                 self.room_name,
                 "xxx " + text,
@@ -202,6 +194,22 @@ class MessageParser:
                 rtext=navi_text,
                 plain_text=original_text,
                 upper_text=upper_text,
+                log_line=line,
+                utc=utctime,
+            )
+        # KOS request
+        elif upper_text.startswith("XXX "):
+            return Message(
+                self.room_name,
+                text,
+                timestamp,
+                username,
+                rtext=navi_text,
+                status=State["KOS_STATUS_REQUEST"],
+                plain_text=original_text,
+                upper_text=upper_text,
+                log_line=line,
+                utc=utctime,
             )
         elif upper_text.startswith("VINTELSOUND_TEST"):
             return Message(
@@ -213,6 +221,8 @@ class MessageParser:
                 rtext=navi_text,
                 plain_text=original_text,
                 upper_text=upper_text,
+                log_line=line,
+                utc=utctime,
             )
 
         parsed_status = self.get_status(navi_text)
@@ -226,13 +236,15 @@ class MessageParser:
             rtext=navi_text,
             plain_text=original_text,
             upper_text=upper_text,
+            log_line=line,
+            utc=utctime,
         )
 
         return message
 
     def _parse_systems(self, dotlan_systems: dict, message: Message) -> bool:
-        """
-        check for any System-Names or Gates mentioned in the Chat-Entry
+        """check for any System-Names or Gates mentioned in the Chat-Entry.
+
         :param dotlan_systems: Map-System-Dictionary
         :type dotlan_systems: dict
         :param message: the Message to be parsed

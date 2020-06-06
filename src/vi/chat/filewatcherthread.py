@@ -20,7 +20,7 @@ import logging
 import os
 import stat
 import glob
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal
 
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 4  # oldest Chatlog-File to scan (4 hours)
 

@@ -263,7 +263,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.cache.put("settings", "", 0)
             msg = "Something went wrong loading saved state:\n {0}".format(str(e))
             self.LOGGER.error(msg)
-            self.trayIcon.showMessage("Settings error", msg, 1)
+            self.trayIcon.showMessage("Settings error", msg)
 
     def wireUpUIConnections(self):
         # Wire up general UI connections
@@ -336,7 +336,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         setting.show()
         # return True if Changes have been applied
         if setting.exec_():
-            self.setColor(GeneralSettings().background_color)
+            # self.setColor(GeneralSettings().background_color)
             self.enableCharacterParser(GeneralSettings().character_parser)
             self.enableShipParser(GeneralSettings().ship_parser)
             self.enablePopupNotification(GeneralSettings().popup_notification)
@@ -403,7 +403,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # TODO: make sure this has completed loading before starting any other
         # threads. i.e. the Chat-Message threads try to highlight the Map, but since
         # it hasn't yet loaded, it can't mark them
-        self.mapUpdateThread = MapUpdateThread(self.map_update_interval)
+        self.mapUpdateThread = MapUpdateThread()
         self.mapUpdateThread.map_update.connect(self.mapUpdate)
         self.mapUpdateThread.start()
 
@@ -746,9 +746,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def messageExpiry(self, seconds: int = None) -> int:
         if seconds:
-            self.message_expiry = seconds
+            self.message_expiry = int(seconds)
         self.chatbox.setTitle(
-            "All intel (past {} minutes)".format(int(self.message_expiry / 60))
+            "All intel (past {} minutes)".format(int(self.message_expiry) / 60)
         )
         return self.message_expiry
 
@@ -868,7 +868,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dotlan.addSystemStatistics(data["statistics"])
         elif data["result"] == "error":
             text = data["text"]
-            self.trayIcon.showMessage("Loading statstics failed", text, 3)
+            self.trayIcon.showMessage("Loading statstics failed", text)
             self.LOGGER.error("updateStatisticsOnMap, error: %s" % text)
 
     def inject(self, on):
@@ -891,6 +891,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             scrollPosition = self.initialMapPosition
             zoom = self.initialZoom
             self.initialMapPosition = self.initialZoom = None
+        self.dotlan.mapUpdate(zoom, scrollPosition)
         self.mapUpdateThread.queue.put((self.dotlan.svg, zoom, scrollPosition))
 
     def zoomMapIn(self):
@@ -916,6 +917,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             pass
 
     def mapPositionChanged(self, qPointF):
+        """store the current Scroll-Position for current Region.
+        if we change Regions, it allows us to jump back to the stored position
+        :param qPointF:
+        :return:
+        """
         regionName = RegionSettings().selected_region
         if regionName:
             scrollPosition = self.mapView.page().scrollPosition()
@@ -1035,22 +1041,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             webbrowser.open(zKill)
 
     def pruneMessages(self):
-        try:
-            now = time.mktime(EsiInterface().currentEveTime().timetuple())
-            for row in range(self.chatListWidget.count()):
-                chatListWidgetItem = self.chatListWidget.item(0)
-                chatEntryWidget = self.chatListWidget.itemWidget(chatListWidgetItem)
-                message = chatEntryWidget.message
-                if (
-                    now - time.mktime(message.timestamp.timetuple())
-                    > self.message_expiry
-                ):
-                    self.chatEntries.remove(chatEntryWidget)
+        eve_now = time.mktime(EsiInterface().currentEveTime().timetuple())
+        start = self.chatListWidget.count()
+        for row in range(start):
+            item = self.chatListWidget.item(0)
+            widget = self.chatListWidget.itemWidget(item)
+            message = self.chatListWidget.itemWidget(item).message
+            diff = eve_now - time.mktime(message.utc_time.timetuple())
+            try:
+                if int(diff) > int(self.message_expiry):
+                    self.chatEntries.remove(widget)
                     self.chatListWidget.takeItem(0)
-        except Exception as e:
-            self.LOGGER.error(e)
-        finally:
+            except Exception as e:
+                self.LOGGER.error("Age is {diff} and expiry is {exp}: %r".format(diff=diff, exp=self.message_expiry), e)
+        cleared = start - self.chatListWidget.count()
+        if cleared:
             self.chatListWidget.scrollToBottom()
+            self.LOGGER.debug("Cleared {} chat-messages".format(cleared))
 
     # def showKosResult(self, state, text, requestType, hasKos):
     #     if not self.scanIntelForKosRequestsEnabled:

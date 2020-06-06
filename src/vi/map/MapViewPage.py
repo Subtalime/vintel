@@ -70,11 +70,11 @@ class MapViewPage(QWebEnginePage):
         else:
             self.currentScrollPos = qPointF
         if self.load_complete:
-            LOGGER.debug(
-                "onScrollPos detected {}, Load Complete: {}".format(
-                    qPointF, self.load_complete
-                )
-            )
+            # LOGGER.debug(
+            #     "onScrollPos detected {}, Load Complete: {}".format(
+            #         qPointF, self.load_complete
+            #     )
+            # )
             self.scroll_detected.emit(qPointF)
         return True
 

@@ -32,6 +32,7 @@ from vi.cache.cache import Cache
 from vi.resources import resourcePath, getVintelDir
 from vi.chat.chatentrywidget import ChatEntryWidget
 from vi.esi.esihelper import EsiHelper
+from vi.settings.settings import GeneralSettings
 
 STATISTICS_UPDATE_INTERVAL_MSECS = (1 * 60) * 1000  # every hour
 FILE_DEFAULT_MAX_AGE = 60 * 60 * 4  # oldest Chatlog-File to scan (4 hours)
@@ -42,21 +43,18 @@ FILE_DEFAULT_MAX_AGE = 60 * 60 * 4  # oldest Chatlog-File to scan (4 hours)
 class MapUpdateThread(QThread):
     map_update = pyqtSignal(str)
 
-    def __init__(self, timerInterval: int = 4000):
+    def __init__(self):
         QThread.__init__(self)
         self.LOGGER = logging.getLogger(__name__)
-        self.LOGGER.debug("Starting MapUpdate Thread {}".format(timerInterval))
+        self.LOGGER.debug("Starting MapUpdate Thread ")
         self.queue = queue.Queue()
         self._active = False
         self.paused = False
-        if timerInterval > 1000:
-            timerInterval = timerInterval / 1000
-        self.timeout = timerInterval
 
     def addToQueue(self, content=None, zoomfactor=None, scrollposition=None):
         self.queue.put((content, zoomfactor, scrollposition))
 
-    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
+    def start(self, priority: QThread.Priority = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Run-Starting MapUpdate Thread")
         self._active = True
         super(MapUpdateThread, self).start(priority)
@@ -74,52 +72,45 @@ class MapUpdateThread(QThread):
 
         load_map_attempt = 0
         while self._active:
+            content = None
+            scroll_position = None
+            zoom_factor = None
             try:
-                timeout = False
                 content, zoom_factor, scroll_position = self.queue.get(
-                    timeout=self.timeout
+                    timeout=GeneralSettings().map_update_interval / 1000
                 )
-            except queue.Empty as e:
-                timeout = True
-                pass
-            if timeout and self.paused:  # we don't have initial Map-Data yet
-                load_map_attempt += 1
-                self.LOGGER.debug("Map-Content update attempt, but not active")
-                if load_map_attempt > 10:
-                    self.LOGGER.critical(
-                        "Something is stopping the program of progressing. (Map-Attempts > 10\n"
-                        'If this continues to happen, delete the Cache-File in "%s"'
-                        % (getVintelDir(),)
-                    )
-                    self.quit()
-                    return
-                continue
-            elif self.paused and not content:
-                self.LOGGER.debug("No Map-Content received. Ending MapUpdate Thread")
-                self.quit()
-                return
-            try:
+            except queue.Empty:
+                if self.paused:  # we don't have initial Map-Data yet
+                    load_map_attempt += 1
+                    self.LOGGER.debug("Map-Content update attempt, but not active")
+                    if load_map_attempt > 10:
+                        self.LOGGER.critical(
+                            "Something is stopping the program of progressing. (Map-Attempts > 10\n"
+                            'If this continues to happen, delete the Cache-File in "%s"'
+                            % (getVintelDir(),)
+                        )
+                        self.quit()
+                        return
                 load_map_attempt = 0
-                if not timeout and content:  # not based on Timeout
-                    self.LOGGER.debug("Setting Map-Content start")
-                    zoom_factor = zoom_factor if zoom_factor else 1.0
-                    # zoom_factor = float(zoom_factor)
-                    scroll_to = ""
-                    if scroll_position:
-                        self.LOGGER.debug(
-                            "Current Scroll-Position {}".format(scroll_position)
+                continue
+            if content:  # not based on Timeout
+                self.LOGGER.debug("Setting Map-Content start")
+                zoom_factor = zoom_factor if zoom_factor else 1.0
+                # zoom_factor = float(zoom_factor)
+                scroll_to = ""
+                if scroll_position:
+                    self.LOGGER.debug(
+                        "Current Scroll-Position {}".format(scroll_position)
+                    )
+                    scroll_to = str(
+                        "window.scrollTo({:.0f}, {:.0f});".format(
+                            scroll_position.x() / zoom_factor,
+                            scroll_position.y() / zoom_factor,
                         )
-                        scroll_to = str(
-                            "window.scrollTo({:.0f}, {:.0f});".format(
-                                scroll_position.x() / zoom_factor,
-                                scroll_position.y() / zoom_factor,
-                            )
-                        )
-                    new_content = injectScrollPosition(content, scroll_to)
-                    self.map_update.emit(new_content)
-                    self.LOGGER.debug("Setting Map-Content complete")
-            except Exception as e:
-                self.LOGGER.error("Problem with setMapContent: %r" % (e,))
+                    )
+                new_content = injectScrollPosition(content, scroll_to)
+                self.map_update.emit(new_content)
+                self.LOGGER.debug("Setting Map-Content complete")
 
     def quit(self):
         if self._active:

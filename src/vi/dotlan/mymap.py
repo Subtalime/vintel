@@ -59,7 +59,7 @@ class MapData:
             raise DotlanException(e)
         return content
 
-    def from_dotlan(self):
+    def _from_dotlan(self):
         self.svg = self._get_svg_from_dotlan()
         Cache().put(
             "map_" + self.region,
@@ -67,18 +67,18 @@ class MapData:
             EsiInterface().secondsTillDowntime() + 60 * 60,
         )
 
-    def fix_svg(self):
+    def _fix_svg(self):
         # replace the header to show encoding
         self.svg = re.sub(
             r"<\?xml.*\?>", r'<?xml version="1.0" encoding="ISO-8859-1"?>', self.svg,
         )
 
-    def from_cache(self):
+    def _from_cache(self):
         self.svg = Cache().fetch("map_" + self.region)
         if not self.svg:
             raise
 
-    def from_file(self):
+    def _from_file(self):
         file_path = getVintelMap(regionName=self.region)
         with open(file_path, "r") as f:
             self.svg = f.read()
@@ -86,13 +86,13 @@ class MapData:
     def load(self):
         # try in sequence
         try:
-            self.from_cache()
+            self._from_cache()
         except:
             try:
-                self.from_file()
+                self._from_file()
             except:
                 try:
-                    self.from_dotlan()
+                    self._from_dotlan()
                 except DotlanException as e:
                     t = (
                         "No Map in cache, nothing from dotlan. Must give up "
@@ -102,12 +102,12 @@ class MapData:
                         "without the map.".format(type(e), e)
                     )
                     raise DotlanException(t)
-        self.fix_svg()
+        self._fix_svg()
         return self.svg
 
 
 class MyMap:
-    def __init__(self, parent, region):
+    def __init__(self, parent=None, region="Delve"):
         self.LOGGER = logging.getLogger(__name__)
         self.LOGGER.debug("Initializing Map for {}".format(region))
         self.region = region
@@ -417,3 +417,27 @@ class MyMap:
             if progress.wasCanceled():
                 break
         progress.setValue(len(jumpbridge_data))
+
+    def mapUpdate(self, zoom_factor, scroll_position):
+        def injectScrollPosition(svg_content: str, scroll: str) -> str:
+            soup = BeautifulSoup(svg_content, "html.parser")
+            js = soup.new_tag("script", attrs={"type": "text/javascript"})
+            js.string = scroll
+            soup.svg.append(js)
+            return str(soup)
+
+        self.LOGGER.debug("Setting Map-Content start")
+        zoom_factor = zoom_factor if zoom_factor else 1.0
+        scroll_to = ""
+        if scroll_position:
+            self.LOGGER.debug(
+                "Current Scroll-Position {}".format(scroll_position)
+            )
+            scroll_to = str(
+                "window.scrollTo({:.0f}, {:.0f});".format(
+                    scroll_position.x() / zoom_factor,
+                    scroll_position.y() / zoom_factor,
+                )
+            )
+        new_content = injectScrollPosition(self.svg, scroll_to)
+        return new_content

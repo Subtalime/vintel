@@ -33,6 +33,8 @@ class Message(object):
         rtext: NavigableString = None,
         currsystems: list = None,
         upper_text: str = None,
+        log_line: str = None,
+        utc: datetime.datetime = None,
     ):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
@@ -52,6 +54,8 @@ class Message(object):
         self.plain_text = (
             plain_text if plain_text else message
         )  # plain text of the message, as posted
+        self.log_line = log_line
+        self.utc_time = utc
         # if you add the message to a widget, please add it to widgets
         self.widgets = []
 
@@ -73,9 +77,10 @@ class Message(object):
             raise ValueError("Must be of type NavigableString")
         self.rtext = value
 
-    @property
-    def utc_time(self):
-        return self.timestamp.replace(tzinfo=datetime.timezone.utc)
+    # @property
+    # def utc_time(self):
+    #     return self.timestamp.replace(tzinfo=None)
+        # return self.timestamp.replace(tzinfo=datetime.timezone.utc)
 
     def __key(self):
         return (self.room, self.plainText, self.timestamp, self.user)

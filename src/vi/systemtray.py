@@ -127,7 +127,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         room = message.room
         title = None
         text = None
-        icon = QSystemTrayIcon.MessageIcon
+        icon = QSystemTrayIcon.Information
         text = ""
         sound_file = None
         volume = None
@@ -160,7 +160,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             < time.time() - self.MIN_WAIT_NOTIFICATION
         ):
             title = "Status request"
-            icon = QSystemTrayIcon.Trigger
+            icon = QSystemTrayIcon.Information
             text = u"Someone is requesting status of {0} in {1}.".format(system, room)
             self.lastNotifications[State["REQUEST"]] = time.time()
             if sound_file:
