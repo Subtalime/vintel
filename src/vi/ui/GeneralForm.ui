@@ -25,17 +25,26 @@
         <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout_9">
-        <item row="1" column="1">
-         <widget class="QLabel" name="label_19">
-          <property name="text">
-           <string>Scan for Ship-Names</string>
-          </property>
-         </widget>
-        </item>
         <item row="0" column="1">
          <widget class="QLabel" name="label_18">
           <property name="text">
            <string>Scan for Character-Names:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QSpinBox" name="spinMessageExpiry">
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_19">
+          <property name="text">
+           <string>Scan for Ship-Names</string>
           </property>
          </widget>
         </item>
@@ -59,19 +68,66 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="2">
-         <widget class="QSpinBox" name="spinMessageExpiry">
-          <property name="font">
-           <font>
-            <pointsize>12</pointsize>
-           </font>
-          </property>
-         </widget>
-        </item>
         <item row="2" column="1">
          <widget class="QLabel" name="label_20">
           <property name="text">
            <string>Message expiry (Minutes):</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QPushButton" name="pbColorSystem">
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Highlight SYSTEM:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Highlight CHARACTER:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Highlight SHIP:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="2">
+         <widget class="QPushButton" name="pbColorCharacter">
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="2">
+         <widget class="QPushButton" name="pbColorShip">
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Highlight URL:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="2">
+         <widget class="QPushButton" name="pbColorUrl">
+          <property name="text">
+           <string>Color...</string>
           </property>
          </widget>
         </item>
@@ -103,7 +159,7 @@
         <item row="5" column="1">
          <widget class="QPushButton" name="btnColor">
           <property name="toolTip">
-           <string>change background color of all Windows (may require restart)</string>
+           <string>change background color of all Windows. Setting to WHITE (#ffffff), restores default (may require restart)</string>
           </property>
           <property name="text">
            <string>Color...</string>
@@ -185,6 +241,10 @@
   <tabstop>checkScanCharacter</tabstop>
   <tabstop>checkShipNames</tabstop>
   <tabstop>spinMessageExpiry</tabstop>
+  <tabstop>pbColorSystem</tabstop>
+  <tabstop>pbColorCharacter</tabstop>
+  <tabstop>pbColorShip</tabstop>
+  <tabstop>pbColorUrl</tabstop>
   <tabstop>checkNotifyOwn</tabstop>
   <tabstop>checkPopupNotification</tabstop>
   <tabstop>cmbLogLevel</tabstop>

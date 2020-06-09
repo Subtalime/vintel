@@ -205,17 +205,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if color:
             self.backgroundColor = color
             color = string_to_color(self.backgroundColor)
-            p = self.palette()
-            p.setColor(self.backgroundRole(), color)
-            self.setAutoFillBackground(True)
-            self.setPalette(p)
-            self.setStyleSheet(
-                "QWidget { background-color: %s; color: %s; }"
-                % (
-                    self.backgroundColor,
-                    contrast_color(string_to_color(self.backgroundColor)),
+            # if WHITE, then reset to default PyQt Style
+            if color.name() != "#ffffff":
+                p = self.palette()
+                p.setColor(self.backgroundRole(), color)
+                self.setAutoFillBackground(True)
+                self.setPalette(p)
+                self.setStyleSheet(
+                    "QWidget { background-color: %s; color: %s; }"
+                    % (
+                        self.backgroundColor,
+                        contrast_color(string_to_color(self.backgroundColor)),
+                    )
                 )
-            )
 
         return self.backgroundColor
 
@@ -316,29 +318,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         QMessageBox.information(None, "Monitored logs", "%s" % logs, QMessageBox.Ok)
 
     def settings(self, tabIndex: int = 0):
-        def handleRegionsChosen(regionList):
-            self.LOGGER.debug("Chosen new Regions to monitor")
-            self.menuRegion.addItems()
 
         setting = SettingsDialog(self, tabIndex)
-        # setting.new_region_range_chosen.connect(handleRegionsChosen)
-        # setting.rooms_changed.connect(self.changedRoomnames)
-        # setting.checkScanCharacter.setChecked(self.character_parser_enabled)
-        # setting.checkShipNames.setChecked(self.ship_parser_enabled)
-        # setting.txtKosInterval.setText(str(int(self.clipboard_check_interval / 1000)))
-        # setting.txtMessageExpiry.setText(str(self.messageExpiry()))
-        # setting.checkNotifyOwn.setChecked(self.selfNotify)
-        # setting.checkPopupNotification.setChecked(self.popup_notification)
-        # setting.color = self.setColor()
-        # setting.tabWidget.setCurrentIndex(tabIndex)
-        # setting.txtJumpDistance.setText(str(self.alarmDistance))
 
         setting.show()
         # return True if Changes have been applied
         if setting.exec_():
-            # self.setColor(GeneralSettings().background_color)
-            self.enableCharacterParser(GeneralSettings().character_parser)
-            self.enableShipParser(GeneralSettings().ship_parser)
+            if self.backgroundColor != GeneralSettings().background_color:
+                self.setColor(GeneralSettings().background_color)
+            # self.enableCharacterParser(GeneralSettings().character_parser)
+            # self.enableShipParser(GeneralSettings().ship_parser)
             self.enablePopupNotification(GeneralSettings().popup_notification)
             self.clipboardCheckInterval(GeneralSettings().clipboard_check_interval)
             self.messageExpiry(GeneralSettings().message_expiry)
@@ -752,18 +741,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         )
         return self.message_expiry
 
-    def enableCharacterParser(self, enable: bool = None) -> bool:
-        if enable is not None:
-            self.character_parser_enabled = enable
-            self.character_parser.emit(enable)
-        return self.character_parser_enabled
-
-    def enableShipParser(self, enable: bool = None) -> bool:
-        if enable is not None:
-            self.ship_parser_enabled = enable
-            self.ship_parser.emit(enable)
-        return self.ship_parser_enabled
-
+    # def enableCharacterParser(self, enable: bool = None) -> bool:
+    #     if enable is not None:
+    #         self.character_parser_enabled = enable
+    #         self.character_parser.emit(enable)
+    #     return self.character_parser_enabled
+    #
+    # def enableShipParser(self, enable: bool = None) -> bool:
+    #     if enable is not None:
+    #         self.ship_parser_enabled = enable
+    #         self.ship_parser.emit(enable)
+    #     return self.ship_parser_enabled
+    #
     def changeAlarmDistance(self, distance: int):
         self.alarmDistance = int(distance)
         for cm in TrayContextMenu.instances:
@@ -891,7 +880,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             scrollPosition = self.initialMapPosition
             zoom = self.initialZoom
             self.initialMapPosition = self.initialZoom = None
-        self.dotlan.mapUpdate(zoom, scrollPosition)
         self.mapUpdateThread.queue.put((self.dotlan.svg, zoom, scrollPosition))
 
     def zoomMapIn(self):

@@ -31,6 +31,7 @@ from vi.chat.messageparser import MessageParser, parse_line
 from vi.chat.chatmessage import Message
 from vi.dotlan import system as systems
 from vi.settings.settings import GeneralSettings, ChatroomSettings
+from vi.logger.mystopwatch import ViStopwatch
 
 chat_thread_lock = threading.RLock()
 
@@ -301,44 +302,43 @@ class ChatThreadProcess(QThread):
         self.charname = None
 
     def _refineMessage(self, message: Message):
-        self.LOGGER.debug(
-            "%s/%s: Start refining message: %r"
-            % (self.roomname, self.charname, message,)
-        )
-        if self.ship_scanner:
-            self.message_parser.process_ships(message)
-        self.message_parser.process_urls(message)
-        if self.character_scanner:
-            self.message_parser.process_charnames(message)
+        sw = ViStopwatch()
+        with sw.timer("'{}'".format(message.plainText)):
+            if self.ship_scanner:
+                with sw.timer("Ship-Scanner"):
+                    self.message_parser.process_ships(message)
+            with sw.timer("Search URLs"):
+                self.message_parser.process_urls(message)
+            if self.character_scanner:
+                with sw.timer("Scan character names"):
+                    self.message_parser.process_charnames(message)
 
-        # If message says clear and no system? Maybe an answer to a request?
-        if message.status == State["CLEAR"] and not message.systems:
-            max_search = 4  # we search only max_search messages in the room
-            for count, oldMessage in enumerate(
-                oldMessage
-                for oldMessage in self.knownMessages[-1::-1]
-                if oldMessage.room == self.roomname
-            ):
-                if oldMessage.systems and oldMessage.status == State["REQUEST"]:
-                    for system in oldMessage.systems:
-                        message.systems.append(system)
-                    break
-                if count > max_search:
-                    self.LOGGER.warning(
-                        "parseOldMessages excessive runs on %r" % (message.rtext,)
-                    )
-                    break
-        message.message = six.text_type(message.rtext)
-        # multiple clients?
-        self.knownMessages.append(message)
-        if message.systems:
-            for system in message.systems:
-                system.messages.append(message)
-        self.message_updated_s.emit(message)
-        self.LOGGER.debug(
-            "%s/%s: Done refining message: %r"
-            % (self.roomname, self.charname, message,)
-        )
+            # If message says clear and no system? Maybe an answer to a request?
+            if message.status == State["CLEAR"] and not message.systems:
+                max_search = 4  # we search only max_search messages in the room
+                for count, oldMessage in enumerate(
+                    oldMessage
+                    for oldMessage in self.knownMessages[-1::-1]
+                    if oldMessage.room == self.roomname
+                ):
+                    if oldMessage.systems and oldMessage.status == State["REQUEST"]:
+                        for system in oldMessage.systems:
+                            message.systems.append(system)
+                        break
+                    if count > max_search:
+                        self.LOGGER.warning(
+                            "parseOldMessages excessive runs on %r" % (message.rtext,)
+                        )
+                        break
+            message.message = six.text_type(message.rtext)
+            # multiple clients?
+            self.knownMessages.append(message)
+            with sw.timer("mark Systems"):
+                if message.systems:
+                    for system in message.systems:
+                        system.messages.append(message)
+            self.message_updated_s.emit(message)
+        self.LOGGER.debug(sw.get_report())
 
     def _runLoop(self):
         asyncio.set_event_loop(self.worker_loop)
@@ -398,45 +398,42 @@ class ChatThreadProcess(QThread):
         return lines
 
     def _processFile(self):
-        lines = self._getLines()
-        start = datetime.datetime.utcnow()
-        self.LOGGER.debug(" processFile start (%s)" % (self.log_file,))
-        for line in lines[self.parsed_lines :]:
-            line = line.strip()
-            if len(line) > 2:
-                message = self.message_parser.process(line)
-                # if self.local_room:
-                #     message = self._parseLocal(line)
-                # else:
-                #     message = self._lineToMessage(line)
-                if message:
-                    # multiple clients?
-                    if chat_thread_all_messages_contains(message):
-                        self.LOGGER.debug(
-                            "%s/%s: Ignoring message (duplicate) from %s in %s"
-                            % (
-                                self.roomname,
-                                self.charname,
-                                message.user,
-                                message.room,
+        sw = ViStopwatch()
+        with sw.timer("Process-File for '{}'".format(self.log_file)):
+            lines = self._getLines()
+            for line in lines[self.parsed_lines :]:
+                line = line.strip()
+                if len(line) > 2:
+                    message = self.message_parser.process(line)
+                    # if self.local_room:
+                    #     message = self._parseLocal(line)
+                    # else:
+                    #     message = self._lineToMessage(line)
+                    if message:
+                        # multiple clients?
+                        if chat_thread_all_messages_contains(message):
+                            self.LOGGER.debug(
+                                "%s/%s: Ignoring message (duplicate) from %s in %s"
+                                % (
+                                    self.roomname,
+                                    self.charname,
+                                    message.user,
+                                    message.room,
+                                )
                             )
+                            continue
+                        # here, I believe, we should add it to the Widget-List and update
+                        # the Map. Hence, we emit the Message
+                        # but ONLY after parsing the System-Status in the Message
+                        self.message_parser.process_systems(self.dotlan_systems, message)
+                        self.message_added_s.emit(message)
+                        self.LOGGER.debug(
+                            "%s/%s: Notify new message: %r"
+                            % (self.roomname, self.charname, message,)
                         )
-                        continue
-                    # here, I believe, we should add it to the Widget-List and update
-                    # the Map. Hence, we emit the Message
-                    # but ONLY after parsing the System-Status in the Message
-                    self.message_parser.process_systems(self.dotlan_systems, message)
-                    self.message_added_s.emit(message)
-                    self.LOGGER.debug(
-                        "%s/%s: Notify new message: %r"
-                        % (self.roomname, self.charname, message,)
-                    )
-                    # Thereafter, the Worker-Loop can do the beautifying of the Widget
-                    self.worker_loop.call_soon_threadsafe(self._refineMessage, message)
-        self.LOGGER.debug(
-            " processFile end (%d Lines took %ds)"
-            % (len(lines), (datetime.datetime.utcnow() - start).total_seconds()),
-        )
+                        # Thereafter, the Worker-Loop can do the beautifying of the Widget
+                        self.worker_loop.call_soon_threadsafe(self._refineMessage, message)
+        self.LOGGER.debug(sw.get_report())
         self.parsed_lines = len(lines) - 1
 
     def logfileChanged(self, val=1):

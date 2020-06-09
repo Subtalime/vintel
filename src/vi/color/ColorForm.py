@@ -213,7 +213,7 @@ class ColorForm(SettingsFormTemplate, Ui_Form):
             return False
         if selected_index.column() > 0:  # Color column
             color = string_to_color(selected_index.data())
-            color = color_dialog(color)
+            color = color_dialog(color, parent=self)
             if color.isValid():
                 self.model.setData(selected_index, color.name(), Qt.EditRole)
                 self.change_detected()

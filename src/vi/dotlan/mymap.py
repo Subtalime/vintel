@@ -417,27 +417,3 @@ class MyMap:
             if progress.wasCanceled():
                 break
         progress.setValue(len(jumpbridge_data))
-
-    def mapUpdate(self, zoom_factor, scroll_position):
-        def injectScrollPosition(svg_content: str, scroll: str) -> str:
-            soup = BeautifulSoup(svg_content, "html.parser")
-            js = soup.new_tag("script", attrs={"type": "text/javascript"})
-            js.string = scroll
-            soup.svg.append(js)
-            return str(soup)
-
-        self.LOGGER.debug("Setting Map-Content start")
-        zoom_factor = zoom_factor if zoom_factor else 1.0
-        scroll_to = ""
-        if scroll_position:
-            self.LOGGER.debug(
-                "Current Scroll-Position {}".format(scroll_position)
-            )
-            scroll_to = str(
-                "window.scrollTo({:.0f}, {:.0f});".format(
-                    scroll_position.x() / zoom_factor,
-                    scroll_position.y() / zoom_factor,
-                )
-            )
-        new_content = injectScrollPosition(self.svg, scroll_to)
-        return new_content

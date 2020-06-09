@@ -17,20 +17,25 @@
 #
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QColorDialog
+from colour import Color
 
 
 def string_to_color(string_color: str = None) -> QColor:
-    if str(string_color).startswith("#"):
-        color = str(string_color).lstrip("#")
-        lv = len(color)
-        cs = tuple(int(color[i : i + lv // 3], 16) for i in range(0, lv, lv // 3))
-    else:
-        cs = [0, 0, 0]
-    return QColor(cs[0], cs[1], cs[2])
+    c = Color(string_color)
+    # cs = c.get_rgb()
+    return QColor(c.get_hex())
+    # return QColor(cs)
+    # if str(string_color).startswith("#"):
+    #     color = str(string_color).lstrip("#")
+    #     lv = len(color)
+    #     cs = tuple(int(color[i : i + lv // 3], 16) for i in range(0, lv, lv // 3))
+    # else:
+    #     cs = [0, 0, 0]
+    # return QColor(cs[0], cs[1], cs[2])
 
 
-def color_dialog(color=QColor()):
-    return QColorDialog().getColor(initial=color)
+def color_dialog(color=QColor(), parent=None):
+    return QColorDialog(parent=parent).getColor(initial=color)
 
 
 def contrast_color(one_color: QColor) -> str:

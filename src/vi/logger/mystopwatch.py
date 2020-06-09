@@ -29,13 +29,13 @@ class ViStopwatch(StopWatch):
             # fetch all values only for main stopwatch, ignore all the tags
             log_names = sorted(log_name for log_name in values if "+" not in log_name)
             if not log_names:
-                return
+                return ""
 
             root = log_names[0]
             root_time_ms, root_count, bucket = values[root]
             buf = [
-                "   %.12s  %25s  %4s  %9.3fms (%3.f%%)"
-                % (root.ljust(12), "", "", root_time_ms / root_count, 100),
+                "   %.45s  %9.3fms (%3.f%%)"
+                % (root.ljust(45), root_time_ms / root_count, 100),
             ]
             for log_name in log_names[1:]:
                 delta_ms, count, bucket = values[log_name]
@@ -60,9 +60,12 @@ class ViStopwatch(StopWatch):
                 buf.append("Annotations: %s" % (", ".join(annotations)))
             return "\n".join(buf)
 
-        time_msg = "Timing:\n" + format_report(self.get_last_aggregated_report())
-        if extra_message:
-            time_msg += "\n" + extra_message
+        time_msg = "Timing:\n"
+        formatted = format_report(self.get_last_aggregated_report())
+        if formatted:
+            time_msg += format_report(self.get_last_aggregated_report())
+            if extra_message:
+                time_msg += "\n" + extra_message
 
         return time_msg
 

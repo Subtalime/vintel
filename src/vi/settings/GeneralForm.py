@@ -15,21 +15,27 @@
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
-from PyQt5.QtGui import QIntValidator
-from vi.color.helpers import color_dialog, string_to_color
-from vi.ui.GeneralForm import Ui_Form
-from vi.settings.SettingsFormTemplate import SettingsFormTemplate
-from vi.settings.settings import GeneralSettings
 import logging
+
+from vi.color.helpers import color_dialog, string_to_color
+from vi.settings.settings import GeneralSettings
+from vi.settings.SettingsFormTemplate import SettingsFormTemplate
+from vi.ui.GeneralForm import Ui_Form
 
 
 class GeneralForm(SettingsFormTemplate, Ui_Form):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.color = None
         self.settings = GeneralSettings()
-        self.btnColor.clicked.connect(self.color_chooser)
+        self.colors = {
+            "B": self.settings.background_color,
+            "S": self.settings.color_ship,
+            "C": self.settings.color_character,
+            "Y": self.settings.color_system,
+            "U": self.settings.color_url,
+        }
+        self.btnColor.clicked.connect(self.bkg_color)
         # populate the settings
         self.spinMessageExpiry.setMinimum(5)
         self.spinMessageExpiry.setMaximum(60)
@@ -56,14 +62,42 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.cmbLogLevel.addItem(logging.getLevelName(logging.CRITICAL))
         self.cmbLogLevel.setCurrentText(logging.getLevelName(self.settings.log_level))
         self.cmbLogLevel.currentTextChanged.connect(self.change_detected)
-        self.color = self.settings.background_color
+        self.pbColorUrl.clicked.connect(self.url_color)
+        self.pbColorShip.clicked.connect(self.ship_color)
+        self.pbColorSystem.clicked.connect(self.system_color)
+        self.pbColorCharacter.clicked.connect(self.character_color)
 
-    def color_chooser(self):
-        color = string_to_color(self.color)
-        color = color_dialog(color)
+    def bkg_color(self):
+        res = self.color_chooser(self.colors["B"])
+        if res:
+            self.colors["B"] = res
+
+    def ship_color(self):
+        res = self.color_chooser(self.colors["S"])
+        if res:
+            self.colors["S"] = res
+
+    def character_color(self):
+        res = self.color_chooser(self.colors["C"])
+        if res:
+            self.colors["C"] = res
+
+    def url_color(self):
+        res = self.color_chooser(self.colors["U"])
+        if res:
+            self.colors["U"] = res
+
+    def system_color(self):
+        res = self.color_chooser(self.colors["Y"])
+        if res:
+            self.colors["Y"] = res
+
+    def color_chooser(self, the_color) -> str:
+        color = string_to_color(the_color)
+        color = color_dialog(color, self)
         if color.isValid():
-            self.color = color.name()
-            self.change_detected()
+            return color.name()
+        return ""
 
     @property
     def data_changed(self) -> bool:
@@ -74,10 +108,15 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
             != self.settings.popup_notification
             or self.checkScanCharacter.isChecked() != self.settings.character_parser
             or self.checkShipNames.isChecked() != self.settings.ship_parser
-            or int(self.spinMessageExpiry.value()) != int(self.settings.message_expiry) / 60
+            or int(self.spinMessageExpiry.value())
+            != int(self.settings.message_expiry) / 60
             or self.cmbLogLevel.currentText()
             != logging.getLevelName(self.settings.log_level)
-            or self.color != self.settings.background_color
+            or self.colors["B"] != self.settings.background_color
+            or self.colors["C"] != self.settings.color_character
+            or self.colors["S"] != self.settings.color_ship
+            or self.colors["Y"] != self.settings.color_system
+            or self.colors["U"] != self.settings.color_url
         ):
             return True
         return False
@@ -89,11 +128,19 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.settings.character_parser = self.checkScanCharacter.isChecked()
         self.settings.ship_parser = self.checkShipNames.isChecked()
         self.settings.message_expiry = self.spinMessageExpiry.value() * 60
-        if self.settings.log_level != logging.getLevelName(self.cmbLogLevel.currentText()):
-            self.settings.log_level = logging.getLevelName(self.cmbLogLevel.currentText())
+        if self.settings.log_level != logging.getLevelName(
+            self.cmbLogLevel.currentText()
+        ):
+            self.settings.log_level = logging.getLevelName(
+                self.cmbLogLevel.currentText()
+            )
             # TODO: in log-file I always want debug... so get this right here!
             logging.getLogger().setLevel(self.settings.log_level)
-        self.settings.background_color = self.color
+        self.settings.background_color = self.colors["B"]
+        self.settings.color_ship = self.colors["S"]
+        self.settings.color_character = self.colors["C"]
+        self.settings.color_system = self.colors["Y"]
+        self.settings.color_url = self.colors["U"]
 
     def closeEvent(self, a0) -> None:
         if self.data_changed:
@@ -103,7 +150,6 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
 if __name__ == "__main__":
     import sys
     from PyQt5.Qt import QApplication
-
     a = QApplication(sys.argv)
     d = GeneralForm()
     d.show()

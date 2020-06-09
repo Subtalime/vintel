@@ -113,12 +113,12 @@ class Application(QApplication):
 
         self.logLevel = GeneralSettings().log_level
         logging.getLogger().setLevel(self.logLevel)
-        self.backGroundColor = GeneralSettings().background_color
-        foreground = contrast_color(string_to_color(self.backGroundColor))
-        self.setStyleSheet(
-            "QWidget { background-color: %s; color: %s; }"
-            % (self.backGroundColor, foreground)
-        )
+        # self.backGroundColor = GeneralSettings().background_color
+        # foreground = contrast_color(string_to_color(self.backGroundColor))
+        # self.setStyleSheet(
+        #     "QWidget { background-color: %s; color: %s; }"
+        #     % (self.backGroundColor, foreground)
+        # )
 
         logging.getLogger().info(
             "------------------- %s %s starting up -------------------",

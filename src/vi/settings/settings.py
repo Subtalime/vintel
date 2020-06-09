@@ -186,7 +186,7 @@ class SoundSettings(_Settings):
 
 class GeneralSettings(_Settings):
     def __init__(self):
-        super().__init__()
+        _Settings.__init__(self)
         self.KEY = "general"
         self.defaults = {
             "message_expiry": 20 * 60,
@@ -196,12 +196,52 @@ class GeneralSettings(_Settings):
             "self_notify": True,
             "popup_notification": True,
             "alarm_distance": 2,
-            "background_color": "#c6d9ec",
+            "background_color": "#ffffff",
             "map_update_interval": 4 * 1000,
             "sound_active": True,
             "show_requests": True,
             "log_level": 10,
+            "color_system": "#CC8800",
+            "color_character": "purple",
+            "color_ship": "green",
+            "color_url": "#28a5ed",
         }
+
+    @property
+    def color_system(self) -> str:
+        return str(self.setting["color_system"])
+
+    @color_system.setter
+    def color_system(self, value: str):
+        v = {"color_system": str(value)}
+        self.setting = v
+
+    @property
+    def color_ship(self) -> str:
+        return str(self.setting["color_ship"])
+
+    @color_ship.setter
+    def color_ship(self, value: str):
+        v = {"color_ship": str(value)}
+        self.setting = v
+
+    @property
+    def color_url(self) -> str:
+        return str(self.setting["color_url"])
+
+    @color_url.setter
+    def color_url(self, value: str):
+        v = {"color_url": str(value)}
+        self.setting = v
+
+    @property
+    def color_character(self) -> str:
+        return str(self.setting["color_character"])
+
+    @color_character.setter
+    def color_character(self, value: str):
+        v = {"color_character": str(value)}
+        self.setting = v
 
     @property
     def sound_active(self) -> bool:
@@ -312,8 +352,14 @@ class GeneralSettings(_Settings):
         self.setting = v
 
 
+
 if __name__ == "__main__":
     orig = 4000
+    gs = GeneralSettings()
+    gs.clipboard_check_interval = 20
+    test = gs.background_color
+    test = gs.test
+
     act = GeneralSettings().sound_active
     GeneralSettings().sound_active = not GeneralSettings().sound_active
     cparser = GeneralSettings().character_parser
