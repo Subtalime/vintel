@@ -16,19 +16,20 @@
 #
 #
 
-import six
-import sys
 import datetime
-import webbrowser
 import logging
+import sys
+import webbrowser
 
+import six
+from bs4 import BeautifulSoup
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget
+
 import vi.ui.ChatEntry
 from vi.resources import resourcePath
-from bs4 import BeautifulSoup
 
 LOGGER = logging.getLogger(__name__)
 

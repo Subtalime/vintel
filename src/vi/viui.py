@@ -41,7 +41,6 @@ from PyQt5.QtWidgets import (
 from PyQt5.uic import loadUi
 from vi.settings.settings import (
     GeneralSettings,
-    ColorSettings,
     ChatroomSettings,
     RegionSettings,
 )
@@ -53,16 +52,15 @@ from vi.jumpbridge.Import import Import
 from vi.cache.cache import Cache
 from vi.resources import resourcePath
 from vi.sound.soundmanager import SoundManager
-from vi.threads import (
-    AvatarFindThread,
-    MapStatisticsThread,
-    MapUpdateThread,
-    ChatTidyThread,
-)
+from vi.threading import *
+# from vi.threading.chattidyup import ChatTidyUpThread
+# from vi.threading.mapupdate import MapUpdateThread
+# from vi.threading.avatar import AvatarThread as AvatarFindThread
+# from vi.threading.statistics import StatisticsThread
 from vi.systemtray import TrayContextMenu
-from vi.chat.chatthread import ChatThread
+from vi.threading.chatmonitor import ChatMonitorThread
 from vi.chat.chatmessage import Message
-from vi.chat.filewatcherthread import FileWatcherThread
+from vi.threading.filewatcher import FileWatcherThread
 from vi.esi import EsiInterface
 from vi.esi.esihelper import EsiHelper
 from vi.chat.chatentrywidget import ChatEntryWidget
@@ -77,7 +75,6 @@ from vi.ui.MainWindow import Ui_MainWindow
 from vi.logger.logconfig import LogConfigurationThread
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.version import NotifyNewVersionThread
-from vi.color.helpers import string_to_color
 from vi.systemtray import TrayIcon
 from vi.logger.mystopwatch import ViStopwatch
 from vi.color.helpers import contrast_color, string_to_color
@@ -397,7 +394,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapUpdateThread.start()
 
         # Set up threads and their connections
-        self.avatarFindThread = AvatarFindThread()
+        self.avatarFindThread = AvatarThread()
         self.avatarFindThread.avatar_update.connect(self.updateAvatarOnChatEntry)
         self.avatarFindThread.start()
 
@@ -405,7 +402,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.kosRequestThread.kos_result.connect(self.showKosResult)
         # self.kosRequestThread.start()
 
-        self.chatThread = ChatThread()
+        self.chatThread = ChatMonitorThread()
         # self.chatThread = ChatThread(room_names=self.roomnames, ship_parser=self.enableShipParser(), char_parser=self.enableCharacterParser())
         self.chatThread.message_added_signal.connect(self.logFileChanged)
         self.chatThread.message_updated_signal.connect(
@@ -419,11 +416,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.filewatcherThread.file_removed.connect(self.chatThread.remove_log_file)
         self.filewatcherThread.start()
 
-        self.chatTidyThread = ChatTidyThread(self.message_expiry)
+        self.chatTidyThread = ChatTidyUpThread(self.message_expiry)
         self.chatTidyThread.time_up.connect(self.pruneMessages)
         self.chatTidyThread.start()
 
-        self.statisticsThread = MapStatisticsThread()
+        self.statisticsThread = StatisticsThread()
         self.statisticsThread.statistic_data_update.connect(self.updateStatisticsOnMap)
         # statisticsThread is blocked until first call of requestStatistics
         self.statisticsThread.start()
@@ -1005,7 +1002,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
         self.chatListWidget.addItem(listWidgetItem)
         self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)
-        self.avatarFindThread.addChatEntry(chatEntryWidget)
+        self.avatarFindThread.add_chat_entry(chatEntryWidget)
         self.chatEntries.append(chatEntryWidget)
         chatEntryWidget.mark_system.connect(self.markSystemOnMap)
         chatEntryWidget.ship_detail.connect(self.openShip)
@@ -1101,7 +1098,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def updateAvatarOnChatEntry(self, chatEntry, avatarData):
         updated = chatEntry.updateAvatar(avatarData)
         if not updated:
-            self.avatarFindThread.addChatEntry(chatEntry, clearCache=True)
+            self.avatarFindThread.add_chat_entry(chatEntry, clearCache=True)
         else:
             self.avatar_loaded.emit(chatEntry.message.user, avatarData)
 

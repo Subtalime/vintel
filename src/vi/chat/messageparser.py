@@ -24,8 +24,9 @@ from bs4 import BeautifulSoup, NavigableString
 
 from vi.chat.chatmessage import Message
 from vi.esi.esihelper import EsiHelper
-from vi.states import State
 from vi.settings.settings import GeneralSettings
+from vi.states import State
+
 
 class MessageParserException(Exception):
     pass
@@ -73,6 +74,7 @@ def parse_line(line: str) -> tuple:
 
 class MessageParser:
     CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+", ":")
+    WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
 
     def __init__(
         self,
@@ -88,6 +90,9 @@ class MessageParser:
         self.locations = locations
         self.message_age = max_age
         self.local_room = is_local
+        ctoi = ["\\{0}".format(i) for i in self.CHARS_TO_IGNORE]
+        self.chars_to_ignore = re.compile(r'(' + '|'.join(ctoi) + r')', flags=re.IGNORECASE)
+        self.words_to_ignore = re.compile(r'\b(' + "|".join(self.WORDS_TO_IGNORE) + r')\b', flags=re.IGNORECASE)
         self.names_list = []
         if len(self.locations) == 0:
             self.locations = {
@@ -96,7 +101,7 @@ class MessageParser:
             }
 
     def process_systems(self, dotlan_systems: dict, message: Message) -> bool:
-        if self.local_room or not  message.navigable_string:
+        if self.local_room or not message.navigable_string:
             return False
         count = 0
         while self._parse_systems(dotlan_systems, message):
@@ -258,17 +263,23 @@ class MessageParser:
 
         def format_system(f_text, f_word, f_system):
             new_text = u"""<a style="color:{2};font-weight:bold" href="mark_system/{0}">{1}</a>"""
-            return f_text.replace(f_word, new_text.format(f_system, f_word, GeneralSettings().color_system))
+            return f_text.replace(
+                f_word,
+                new_text.format(f_system, f_word, GeneralSettings().color_system),
+            )
 
         texts = [
             t
             for t in message.navigable_string.contents
-            if isinstance(t, NavigableString) and t is not None and message.navigable_string.contents
+            if isinstance(t, NavigableString)
+            and t is not None
+            and message.navigable_string.contents
         ]
         for wtIdx, text in enumerate(texts):
             work_text = text
-            for char in self.CHARS_TO_IGNORE:
-                work_text = work_text.replace(char, "")
+            work_text = self.chars_to_ignore.sub("", work_text)
+            # for char in self.CHARS_TO_IGNORE:
+            #     work_text = work_text.replace(char, "")
             # Drop redundant whitespace so as to not throw off word index
             work_text = " ".join(work_text.split())
             words = work_text.split(" ")
@@ -360,7 +371,10 @@ class MessageParser:
         ) -> str:
             new_text = u"""<a style="color:{3};font-weight:bold" title="{2}" href="ship_name/{0}">{1}</a>"""
             return f_text.replace(
-                f_word, new_text.format(f_realShipName, f_word, f_tooltip, GeneralSettings().color_ship)
+                f_word,
+                new_text.format(
+                    f_realShipName, f_word, f_tooltip, GeneralSettings().color_ship
+                ),
             )
 
         # navigable_string = message.navigable_string
@@ -368,7 +382,9 @@ class MessageParser:
         texts = [
             t
             for t in message.navigable_string.contents
-            if isinstance(t, NavigableString) and t is not None and message.navigable_string.contents
+            if isinstance(t, NavigableString)
+            and t is not None
+            and message.navigable_string.contents
         ]
         for text in texts:
             if len(text.strip(" ")) == 0:
@@ -376,8 +392,10 @@ class MessageParser:
             parse_text_parts = text.strip(" ").split(" ")
             for parse_part in parse_text_parts:
                 upper_text = parse_part.upper()
-                for char in self.CHARS_TO_IGNORE:
-                    upper_text = upper_text.replace(char, "")
+                # escape all cahracters
+                upper_text = self.chars_to_ignore.sub("", upper_text)
+                # for char in self.CHARS_TO_IGNORE:
+                #     upper_text = upper_text.replace(char, "")
 
                 # for shipName in evegate.SHIPNAMES:
                 if upper_text in EsiHelper().ShipsUpper:
@@ -440,13 +458,17 @@ class MessageParser:
             new_text = (
                 u"""<a style="color:{1};font-weight:bold" href="link/{0}">{0}</a>"""
             )
-            return f_text.replace(f_url, new_text.format(f_url, GeneralSettings().color_url))
+            return f_text.replace(
+                f_url, new_text.format(f_url, GeneralSettings().color_url)
+            )
 
         # navigable_string = message.navigable_string
         texts = [
             t
             for t in message.navigable_string.contents
-            if isinstance(t, NavigableString) and t is not None and message.navigable_string.contents
+            if isinstance(t, NavigableString)
+            and t is not None
+            and message.navigable_string.contents
         ]
         for text in texts:
             urls = find_urls(text)
@@ -463,30 +485,31 @@ class MessageParser:
         MAX_WORDS_FOR_CHARACTERNAME = 3
 
         # simple list of words
-        def build_matrix(text: str, separator=" ") -> list:
-            WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
-            for char in self.CHARS_TO_IGNORE:
-                text = text.replace(char, "")
-            for word in WORDS_TO_IGNORE:
-                text = text.replace(word, "")
-            return text.strip().split(separator)
+        def build_matrix(text_line: str, separator=" ") -> list:
+            text_line = self.chars_to_ignore.sub("", text_line)
+            text_line = self.words_to_ignore.sub("", text_line)
+            return text_line.strip().split(separator)
 
         # get adjacent words from list
         def coord_word(coord: tuple, matrix: list) -> str:
-            return matrix[coord[0]:coord[1] + 1]
+            return matrix[coord[0] : coord[1] + 1]
 
         # combine adjacent words
         def convert_to_name(coord_matrix, matrix: list, separator: str = " ") -> str:
             return separator.join(coord_word(coord_matrix, matrix))
 
         # build a list of coordinates based on matrix
-        def build_list(matrix: list, maxlength: int = MAX_WORDS_FOR_CHARACTERNAME) -> list:
+        def build_list(
+            matrix: list, maxlength: int = MAX_WORDS_FOR_CHARACTERNAME
+        ) -> list:
             coord_list = []
             for l in range(maxlength, 0, -1):
                 for i, word in enumerate(matrix):
                     if i + l > len(matrix):
                         break
-                    coord_list.append((i, i + l - 1, convert_to_name((i, i + l - 1), matrix)))
+                    coord_list.append(
+                        (i, i + l - 1, convert_to_name((i, i + l - 1), matrix))
+                    )
             return coord_list
 
         # remove a tuple match from match_list
@@ -497,127 +520,47 @@ class MessageParser:
                     return True
             return False
 
-        def find_names(matrix: list, finders_list) -> tuple:
+        def find_names(matrix: list, found_names: list) -> tuple:
             for start, end, name in matrix:
                 if len(name) > 3:
                     self.LOGGER.debug("Asking ESI for character '%s'", name.strip())
                     char = EsiHelper().checkPlayerName(name.strip())
                     if char is not None:
-                        self.LOGGER.debug(
-                            'ESI found the character "%s"', name.strip()
-                        )
-                        finders_list.append((name.strip(), char))
+                        self.LOGGER.debug('ESI found the character "%s"', name.strip())
+                        found_names.append((name.strip(), char))
                         return start, end, name
             return 0, 0, None
 
         def format_charname(use_text: str, charname: str, esi_character: dict):
             format_text = u"""<a style="color:{2};font-weight:bold" href="show_enemy/{1}">{0}</a>"""
-            return re.sub(r' +', r' ', use_text).replace(
-                charname, format_text.format(charname, esi_character["id"], GeneralSettings().color_character)
+            return re.sub(r" +", r" ", use_text).replace(
+                charname,
+                format_text.format(
+                    charname, esi_character["id"], GeneralSettings().color_character
+                ),
             )
 
-        # navigable_string = message.navigable_string
         texts = [
             t
             for t in message.navigable_string.contents
-            if isinstance(t, NavigableString) and t is not None and message.navigable_string.contents
+            if isinstance(t, NavigableString)
+            and t is not None
+            and message.navigable_string.contents
         ]
-        finders_list = []
+        found_names = []
         for text in texts:  # iterate through each
             matrix = build_list(build_matrix(text))
             while True:
-                s, e, n = find_names(matrix, finders_list)
+                s, e, n = find_names(matrix, found_names)
                 if not n:
                     break
                 self.LOGGER.debug("Before rescan (Skip %d,%d): %r", s, e, matrix)
                 matrix = [x for x in matrix if not does_contain((s, e), x)]
                 self.LOGGER.debug("After rescan: %r", matrix)
-            for name, esi_char in finders_list:
+            for name, esi_char in found_names:
                 new_text = format_charname(text, name, esi_char)
                 bs_text_replace(text, new_text)
-        return len(finders_list) > 0
-
-    def _parse_charnames2(self, message: Message) -> bool:
-        """
-        check the Chat-Entry for any Character-Names and mark them with "show_enemy"
-        :param navigable_string:
-        :return:
-        """
-        MAX_WORDS_FOR_CHARACTERNAME = 3
-
-        def find_names(f_text: NavigableString) -> dict:
-            WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
-
-            def chunks(listofwords: list, size: int = 1, offset=0) -> list:
-                return [
-                    " ".join(listofwords[pos : pos + size])
-                    for pos in range(0 + offset, len(listofwords), size)
-                ]
-
-            names_list = {}
-            if len(f_text.strip()) == 0:
-                return names_list
-
-            words = f_text.split()
-            # chunks of 2s
-            self.LOGGER.debug("Analysing Names in: %r", words)
-            try:
-                for pairs in range(MAX_WORDS_FOR_CHARACTERNAME, 0, -1):
-                    checklist = chunks(words, pairs)
-                    for check_name in checklist:
-                        original_name = check_name
-                        for char in self.CHARS_TO_IGNORE:
-                            check_name = check_name.replace(char, "")
-                        if check_name.upper() in WORDS_TO_IGNORE:
-                            continue
-                        if len(check_name) >= 3:
-                            found = False
-                            for a in names_list.items():
-                                if re.search(check_name, a[0], re.IGNORECASE):
-                                    self.LOGGER.debug(
-                                        'a part of "%s" was previously found',
-                                        check_name,
-                                    )
-                                    found = True
-                                    break
-                            if not found:
-                                self.LOGGER.debug(
-                                    'Couldn\'t find "%s" in list of "%r" names',
-                                    check_name,
-                                    names_list.keys(),
-                                )
-                                char = EsiHelper().checkPlayerName(check_name)
-                                if char is not None:
-                                    self.LOGGER.debug(
-                                        'ESI found the character "%s"', check_name
-                                    )
-                                    names_list[original_name] = char
-                self.LOGGER.debug("Found names: %r", names_list.keys())
-            except Exception as e:
-                self.LOGGER.error("Error parsing Names in %s: %r", f_text, e)
-            return names_list
-
-        def format_charname(use_text: str, charname: str, esi_character: dict):
-            format_text = u"""<a style="color:purple;font-weight:bold" href="show_enemy/{1}">{0}</a>"""
-            return re.sub(" +", " ", use_text).replace(
-                charname, format_text.format(charname, esi_character["id"])
-            )
-
-        navigable_string = message.navigable_string
-        texts = [
-            t
-            for t in navigable_string.contents
-            if isinstance(t, NavigableString) and len(t) >= 3
-        ]
-
-        replaced = False
-        for text in texts:  # iterate through each
-            names = find_names(text)  # line
-            for name, esi_char in names.items():
-                new_text = format_charname(text, name, esi_char)
-                bs_text_replace(text, new_text)
-                replaced = True
-        return replaced
+        return len(found_names) > 0
 
     def get_status(self, navigable_string: NavigableString) -> State:
         """
@@ -631,8 +574,9 @@ class MessageParser:
         for text in texts:
             upper_text = text.strip().upper()
             original_text = upper_text
-            for char in self.CHARS_TO_IGNORE:
-                upper_text = upper_text.replace(char, "")
+            upper_text = self.chars_to_ignore.sub("", upper_text)
+            # for char in self.CHARS_TO_IGNORE:
+            #     upper_text = upper_text.replace(char, "")
             upper_words = upper_text.split()
             if (
                 "CLEAR" in upper_words or "CLR" in upper_words
@@ -662,4 +606,6 @@ class MessageParser:
 
 if __name__ == "__main__":
     mp = MessageParser("Test", "myself", {}, False)
-    message = Message("test", "this is what we aren't looking for", datetime.datetime.now(), "myself")
+    message = Message(
+        "test", "this is what we aren't looking for", datetime.datetime.now(), "myself"
+    )

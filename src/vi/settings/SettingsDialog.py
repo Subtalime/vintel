@@ -16,18 +16,14 @@
 #
 #
 
-from PyQt5.QtWidgets import (
-    QDialog,
-    QMessageBox,
-)
 from PyQt5 import QtWidgets
-from vi.settings import GeneralForm
-from vi.sound import SoundForm
-from vi.region import RegionsForm
+from PyQt5.QtWidgets import QDialog, QMessageBox
+
 from vi.chat import ChatroomsForm
 from vi.color import ColorForm
-
-
+from vi.region import RegionsForm
+from vi.settings import GeneralForm
+from vi.sound import SoundForm
 from vi.ui.NewSettings import Ui_Dialog as New_Ui_Dialog
 
 

@@ -77,11 +77,6 @@ class Message(object):
             raise ValueError("Must be of type NavigableString")
         self.rtext = value
 
-    # @property
-    # def utc_time(self):
-    #     return self.timestamp.replace(tzinfo=None)
-        # return self.timestamp.replace(tzinfo=datetime.timezone.utc)
-
     def __key(self):
         return (self.room, self.plainText, self.timestamp, self.user)
 

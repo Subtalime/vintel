@@ -24,18 +24,19 @@ import threading
 from queue import Queue
 from threading import Thread
 from typing import Dict
+
 import six
 from PyQt5.QtCore import QThread, pyqtSignal
-from vi.states import State
-from vi.chat.messageparser import MessageParser, parse_line
+
 from vi.chat.chatmessage import Message
+from vi.chat.messageparser import MessageParser, parse_line
 from vi.dotlan import system as systems
-from vi.settings.settings import GeneralSettings, ChatroomSettings
 from vi.logger.mystopwatch import ViStopwatch
+from vi.settings.settings import ChatroomSettings, GeneralSettings
+from vi.states import State
 
 chat_thread_lock = threading.RLock()
-
-
+ALL_MESSAGES_MAX_AGE = 1200
 __all_known_messages: Dict[str, datetime.datetime] = {}
 
 
@@ -43,7 +44,7 @@ def chat_search_key(message: Message):
     return "%s%s%s" % (message.plainText, message.user, message.room)
 
 
-def chat_thread_all_messages_contains(message: Message):
+def chat_thread_all_messages_contains(message: Message) -> bool:
     """
     check if message is stored in the array
     only use vital information (ignore Timestamp)
@@ -51,7 +52,7 @@ def chat_thread_all_messages_contains(message: Message):
     :return:
     """
     global __all_known_messages, chat_thread_lock
-    chat_thread_lock.acquire()
+    # chat_thread_lock.acquire()
     hit = False
     search = chat_search_key(message)
     if search in __all_known_messages.keys():
@@ -62,31 +63,29 @@ def chat_thread_all_messages_contains(message: Message):
                 % (search, diff,)
             )
             hit = True
-    chat_thread_lock.release()
+    # chat_thread_lock.release()
     return hit
 
 
 def _chat_thread_all_messages_tidy_up():
-    global __all_known_messages
-    # 20 minutes storage is enough
-    # remember to adjust if increasing in ChatThreadProcess.__init__
-    message_age = 1200
+    global __all_known_messages, ALL_MESSAGES_MAX_AGE
     ts = datetime.datetime.now()
     for key, message_time in list(__all_known_messages.items()):
-        if (ts - message_time).total_seconds() > message_age:
+        if (ts - message_time).total_seconds() > ALL_MESSAGES_MAX_AGE:
             del __all_known_messages[key]
 
 
 def chat_thread_all_messages_add(message: Message) -> bool:
     global __all_known_messages, chat_thread_lock
-    chat_thread_lock.acquire()
-    if chat_thread_all_messages_contains(message):
-        chat_thread_lock.release()
-        return False
-    __all_known_messages[chat_search_key(message)] = message.timestamp
-    _chat_thread_all_messages_tidy_up()
-    chat_thread_lock.release()
-    return True
+    # chat_thread_lock.acquire()
+    added = True
+    if not chat_thread_all_messages_contains(message):
+        __all_known_messages[chat_search_key(message)] = message.timestamp
+        _chat_thread_all_messages_tidy_up()
+    else:
+        added = False
+    # chat_thread_lock.release()
+    return added
 
 
 LOCAL_NAMES = (
@@ -99,10 +98,10 @@ LOCAL_NAMES = (
 on change of a log-file, currently viui comes to a standstill, while the log-file is being
 parsed for any significant messages which need to be pushed to the system.
 This thread is an attempt, to handle the Log-File change outside the UI, queue all the
-result Messages and pop them on a Queue for the UI to pick up and send off 
+result Messages and pop them on a Queue for the UI to pick up and send off
 Flow:
 - Create THIS (main Thread) listening for changes in Log-Files being emitted, on each "emit"
-  a new Thread gets created to handle the Log-File process. This way, multiple files can 
+  a new Thread gets created to handle the Log-File process. This way, multiple files can
   change at the same time and not stop any other processes from doing their stuff. This means
   that a separate Thread is created per Log-File
 - Log-File changed
@@ -111,8 +110,8 @@ Flow:
 """
 
 
-class ChatThread(QThread):
-    """
+class ChatMonitorThread(QThread):
+    """Super-Class to monitor all file changes.
     Thread to react if the File-Watcher-Thread encounters any changes
     This will direct the change to the correct processing Thread-Queue
     """
@@ -122,29 +121,16 @@ class ChatThread(QThread):
     message_updated_signal = pyqtSignal(Message)
 
     def __init__(
-        self,
-        # parent,
-        # room_names: list,
-        # ship_parser,
-        # char_parser,
-        dotlan_systems: systems = None,
-        known_players: list = None,
+        self, dotlan_systems: systems = None, known_players: list = None,
     ):
-        super(__class__, self).__init__()
+        super().__init__()
         self.LOGGER = logging.getLogger(__name__)
         self.LOGGER.debug("Creating ChatThread")
         self.queue = Queue()
         self.active = True
-        # self.room_names = room_names
         self.dotlan_systems = {}
         if dotlan_systems:
             self.dotlan_systems = dotlan_systems
-        # self.ship_parser = ship_parser
-        # self.char_parser = char_parser
-        # self.ship_parser = parent.enableShipParser()
-        # self.char_parser = parent.enableCharacterParser()
-        # parent.ship_parser.connect(self.ship_parser_enabled)
-        # parent.character_parser.connect(self.char_parser_enabled)
         self.process_pool = {}
         self.known_players = []
         if known_players:
@@ -156,15 +142,11 @@ class ChatThread(QThread):
         return room_str.split(",")
 
     # if file changed or file newly discovered
-    def add_log_file(self, file_path: str, remove: bool = False):
+    def add_log_file(self, file_path: str = "", remove: bool = False):
         self.queue.put((file_path, remove))
 
     def remove_log_file(self, file_path: str):
         self.add_log_file(file_path, remove=True)
-
-    def update_room_names(self, room_names: list):
-        self.room_names = room_names
-        self._tidy_logs()
 
     def add_known_player(self, player_name):
         if player_name not in self.known_players:
@@ -184,26 +166,27 @@ class ChatThread(QThread):
                 self.add_log_file(path, True)
 
     def message_added(self, message: Message):
-        if chat_thread_all_messages_add(message):
-            self.message_added_signal.emit(message)
+        with chat_thread_lock:
+            if chat_thread_all_messages_add(message):
+                self.message_added_signal.emit(message)
 
     def message_updated(self, message: Message):
         self.message_updated_signal.emit(message)
 
-    # def ship_parser_enabled(self, value):
-    #     self.LOGGER.debug("Informing Chat-Threads of new Ship-Parser %r" % (value,))
-    #     self.ship_parser = value
-    #     for thread in self.process_pool.keys():
-    #         self.process_pool[thread].ship_parser_enabled(value)
-    #
-    # def char_parser_enabled(self, value):
-    #     self.LOGGER.debug(
-    #         "Informing Chat-Threads of new Character-Parser %r" % (value,)
-    #     )
-    #     self.char_parser = value
-    #     for thread in self.process_pool.keys():
-    #         self.process_pool[thread].char_parser_enabled(value)
-    #
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
+        super().start(priority)
+
+    def _create_child_process(self, logfile):
+        self.process_pool[logfile] = ChatThreadProcess(logfile, self.dotlan_systems)
+        self.process_pool[logfile].message_added_s.connect(self.message_added)
+        self.process_pool[logfile].message_updated_s.connect(self.message_updated)
+        self.process_pool[logfile].new_player_s.connect(self.add_known_player)
+        self.process_pool[logfile].start()
+
+    def _remove_child_process(self, logfile):
+        self.process_pool[logfile].quit()
+        self.process_pool.pop(logfile)
+
     def run(self):
         while self.active:
             logfile, delete = self.queue.get()
@@ -212,63 +195,42 @@ class ChatThread(QThread):
                     roomname = os.path.basename(logfile)[:-20]
                     if roomname not in self.room_names and roomname not in LOCAL_NAMES:
                         self.LOGGER.debug(
-                            'Not interested in "%s" since not in monitored rooms'
-                            % (logfile,)
+                            'Not interested in "%s" since not in monitored rooms',
+                            logfile,
                         )
                         continue
-                    # self.process_pool[logfile] = ChatThreadProcess(
-                    #     logfile, self.ship_parser, self.char_parser, self.dotlan_systems
-                    # )
-                    self.process_pool[logfile] = ChatThreadProcess(
-                        logfile, self.dotlan_systems
-                    )
-                    self.process_pool[logfile].message_added_s.connect(
-                        self.message_added
-                    )
-                    self.process_pool[logfile].message_updated_s.connect(
-                        self.message_updated
-                    )
-                    self.process_pool[logfile].new_player_s.connect(
-                        self.add_known_player
-                    )
-                    self.process_pool[logfile].start()
+                    self._create_child_process(logfile)
                 if delete and logfile in self.process_pool.keys():
-                    self.process_pool[logfile].quit()
-                    self.process_pool.pop(logfile)
+                    self._remove_child_process(logfile)
                 elif not delete:
-                    self.process_pool[logfile].logfileChanged()
+                    self.process_pool[logfile].logfile_changed()
 
     def quit(self):
-        for thread in self.process_pool.keys():
-            self.LOGGER.debug("Closing Chat-Sub-Thread")
-            self.process_pool[thread].quit()
+        self.LOGGER.debug("Closing Chat-Sub-Thread")
+        for logfile in list(self.process_pool.keys()):
+            self._remove_child_process(logfile)
         self.LOGGER.debug("Closing Main Chat-Thread")
         self.active = False
-        self.add_log_file(None)
-        QThread.quit(self)
+        # get out of the queue
+        self.add_log_file()
+        super().quit()
 
 
 class ChatThreadProcess(QThread):
+    OLDEST_MESSAGE = 300
     new_player_s = pyqtSignal(str)
     message_added_s = pyqtSignal(Message)
     message_updated_s = pyqtSignal(Message)
 
     def __init__(
-        self,
-        log_file_path: str,
-        dotlan_systems: systems,
+        self, log_file_path: str, dotlan_systems: systems,
     ):
-        super(__class__, self).__init__()
+        super().__init__()
         self.LOGGER = logging.getLogger(__name__)
         self.queue = Queue()
         self.log_file = log_file_path
-        # self.ship_scanner = ship_scanner
-        # self.character_scanner = char_scanner
         self.dotlan_systems = dotlan_systems
-        # any messages older than this will be ignored
-        # this is if Vintal has started AFTER the EVE-Client started
-        self.message_age = 300
-        self.active = True
+        self.active = False
         self.charname = None
         self.roomname = None
         self.message_parser = None
@@ -279,7 +241,7 @@ class ChatThreadProcess(QThread):
         # locations of this character
         self.locations = {}
         self.worker_loop = asyncio.new_event_loop()
-        self.worker = Thread(target=self._runLoop)
+        self.worker = Thread(target=self._run_loop)
         self.worker.start()
 
     @property
@@ -290,18 +252,16 @@ class ChatThreadProcess(QThread):
     def character_scanner(self):
         return GeneralSettings().character_parser
 
-    # def ship_parser_enabled(self, value: bool):
-    #     self.ship_scanner = value
-    #
-    # def char_parser_enabled(self, value: bool):
-    #     self.character_scanner = value
-    #
+    @property
+    def message_age(self):
+        return self.OLDEST_MESSAGE
+
     def update_dotlan_systems(self, dotlan_systems: systems):
         self.dotlan_systems = dotlan_systems
         # required to rescan all files, so map gets redrawn with current data
         self.charname = None
 
-    def _refineMessage(self, message: Message):
+    def _refine_message(self, message: Message):
         sw = ViStopwatch()
         with sw.timer("'{}'".format(message.plainText)):
             if self.ship_scanner:
@@ -327,7 +287,7 @@ class ChatThreadProcess(QThread):
                         break
                     if count > max_search:
                         self.LOGGER.warning(
-                            "parseOldMessages excessive runs on %r" % (message.rtext,)
+                            "parseOldMessages excessive runs on %r", message.rtext
                         )
                         break
             message.message = six.text_type(message.rtext)
@@ -340,18 +300,18 @@ class ChatThreadProcess(QThread):
             self.message_updated_s.emit(message)
         self.LOGGER.debug(sw.get_report())
 
-    def _runLoop(self):
+    def _run_loop(self):
         asyncio.set_event_loop(self.worker_loop)
         self.worker_loop.run_forever()
 
     # get all the relevant information which ChatParser requires
-    def _prepareParser(self) -> bool:
-        self.LOGGER.debug("Analysing relevance of %s" % (self.log_file,))
+    def _prepare_parser(self) -> bool:
+        self.LOGGER.debug("Analysing relevance of %s", self.log_file)
         filename = os.path.basename(self.log_file)
         self.roomname = filename[:-20]
         if self.roomname in LOCAL_NAMES:
             self.local_room = True
-        lines = self._getLines()
+        lines = self._get_lines()
         # for local-chats we need more infos
         for line in lines:
             if "Listener:" in line:
@@ -365,7 +325,7 @@ class ChatThreadProcess(QThread):
                 break
         if not self.charname or not self.session_start:
             self.LOGGER.warning(
-                'File did not contain relevant information: "%s"' % (self.log_file,)
+                'File did not contain relevant information: "%s"', self.log_file
             )
             return False
         # tell the world we're monitoring a new character
@@ -384,23 +344,25 @@ class ChatThreadProcess(QThread):
                 ).total_seconds() <= self.message_age:
                     break
             self.parsed_lines += 1
-        self.LOGGER.debug("Registered %s in %s" % (self.charname, self.roomname,))
+        self.LOGGER.debug("Registered %s in %s", self.charname, self.roomname)
         return True
 
-    def _getLines(self) -> list:
+    def _get_lines(self) -> list:
         try:
             with open(self.log_file, "r", encoding="utf-16-le") as f:
                 content = f.read()
             lines = content.split("\n")
         except Exception as e:
-            self.LOGGER.error('Failed to read log file "%s" %r' % (self.log_file, e,))
+            self.LOGGER.error(
+                'Failed to read log file "%s" %r', self.log_file, e,
+            )
             raise e
         return lines
 
-    def _processFile(self):
+    def _process_file(self):
         sw = ViStopwatch()
         with sw.timer("Process-File for '{}'".format(self.log_file)):
-            lines = self._getLines()
+            lines = self._get_lines()
             for line in lines[self.parsed_lines :]:
                 line = line.strip()
                 if len(line) > 2:
@@ -411,58 +373,79 @@ class ChatThreadProcess(QThread):
                     #     message = self._lineToMessage(line)
                     if message:
                         # multiple clients?
-                        if chat_thread_all_messages_contains(message):
+                        with chat_thread_lock:
                             self.LOGGER.debug(
-                                "%s/%s: Ignoring message (duplicate) from %s in %s"
-                                % (
+                                "%s/%s: Asking for duplicate from %s in %s",
+                                self.roomname,
+                                self.charname,
+                                message.user,
+                                message.room,
+                            )
+                            if chat_thread_all_messages_contains(message):
+                                self.LOGGER.debug(
+                                    "%s/%s: Ignoring message (duplicate) from %s in %s",
                                     self.roomname,
                                     self.charname,
                                     message.user,
                                     message.room,
                                 )
+                                continue
+                            self.LOGGER.debug(
+                                "%s/%s: Apparently not duplicate from %s in %s",
+                                self.roomname,
+                                self.charname,
+                                message.user,
+                                message.room,
                             )
-                            continue
                         # here, I believe, we should add it to the Widget-List and update
                         # the Map. Hence, we emit the Message
                         # but ONLY after parsing the System-Status in the Message
-                        self.message_parser.process_systems(self.dotlan_systems, message)
+                        self.message_parser.process_systems(
+                            self.dotlan_systems, message
+                        )
                         self.message_added_s.emit(message)
                         self.LOGGER.debug(
-                            "%s/%s: Notify new message: %r"
-                            % (self.roomname, self.charname, message,)
+                            "%s/%s: Notify new message: %r",
+                            self.roomname,
+                            self.charname,
+                            message,
                         )
                         # Thereafter, the Worker-Loop can do the beautifying of the Widget
-                        self.worker_loop.call_soon_threadsafe(self._refineMessage, message)
+                        self.worker_loop.call_soon_threadsafe(
+                            self._refine_message, message
+                        )
         self.LOGGER.debug(sw.get_report())
         self.parsed_lines = len(lines) - 1
 
-    def logfileChanged(self, val=1):
+    def logfile_changed(self, val=1):
         self.queue.put(val)
+
+    def start(self, priority: "QThread.Priority" = QThread.NormalPriority):
+        self.active = True
+        super().start(priority)
 
     def run(self):
         while self.active:
             if self.active and not self.charname:
                 # unusable log-file... end thread
-                if not self._prepareParser():
+                if not self._prepare_parser():
                     self.active = False
                     return
             self.queue.get()
             # process the Log-File
             if self.active:
-                self._processFile()
+                self._process_file()
 
     def quit(self):
-        self.LOGGER.debug(
-            "Closing Thread for %s in %s" % (self.charname, self.roomname,)
-        )
+        self.LOGGER.debug("Closing Thread for %s in %s", self.charname, self.roomname)
         self.active = False
-        self.logfileChanged(0)
-        QThread.quit(self)
+        self.logfile_changed(0)
+        super().quit()
 
 
 if __name__ == "__main__":
     from PyQt5.Qt import QApplication
-    from vi.chat.filewatcherthread import FileWatcherThread
+    from vi.threading.filewatcher import FileWatcherThread
     from vi.resources import getEveChatlogDir, getVintelDir
     from vi.dotlan.mymap import MyMap
     from vi.esi import EsiInterface
@@ -475,7 +458,7 @@ if __name__ == "__main__":
     path_to_logs = getEveChatlogDir()
     app = QApplication(sys.argv)
 
-    def logFileChanged(path):
+    def logfile_changed(path):
         t.add_log_file(path)
 
     # t = ChatThread(rooms, dotlan_systems=(), ship_parser_change, char_parser_change)
@@ -483,9 +466,9 @@ if __name__ == "__main__":
     EsiInterface(cache_dir=getVintelDir())
     dotlan = MyMap(region="Delve")
 
-    t = ChatThread(dotlan_systems=dotlan.systems)
+    t = ChatMonitorThread(dotlan_systems=dotlan.systems)
     t.start()
     filewatcherThread = FileWatcherThread(path_to_logs)
-    filewatcherThread.file_change.connect(logFileChanged)
+    filewatcherThread.file_change.connect(logfile_changed)
     filewatcherThread.start()
     app.exec_()

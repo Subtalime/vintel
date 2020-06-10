@@ -16,8 +16,8 @@
 #
 #
 
-from vi.settings.SettingsFormTemplate import SettingsFormTemplate
 from vi.settings.settings import ChatroomSettings
+from vi.settings.SettingsFormTemplate import SettingsFormTemplate
 from vi.ui.ChatroomsForm import Ui_Form
 
 

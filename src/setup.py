@@ -69,7 +69,7 @@ move_files = (
 include_files = [
     os.path.join(sys.base_prefix, "DLLs", "tcl86t.dll"),
     os.path.join(sys.base_prefix, "DLLs", "tk86t.dll"),
-    ("vi/ui/res/logging.yaml", "logging.yaml.example"),
+    # ("logging.yaml", "logging.yaml.example"),
     ("docs/regionselect.txt", "docs/regionselect.txt"),
     ("docs/jumpbridgeformat.txt", "docs/jumpbridgeformat.txt"),
 ]
@@ -81,7 +81,7 @@ for pack in move_files:
         dest = pack[1]
     include_files.append((os.path.join(resourcePath(), src), dest))
 
-requires = [
+install_requires = [
     "requests",
     "PyQt5",
     "pyqtwebengine",
@@ -94,7 +94,7 @@ requires = [
     "pyswagger",
     "PyYAML",
     "colour",
-    "dbx-stopwatch",
+    "stopwatch",
 ]
 packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
 
@@ -126,7 +126,7 @@ try:
         description=DISPLAY,
         executables=executables,
         options={"build_exe": build_exe_options, "bdist_msi": bdist_msi_options,},
-        requires=requires,
+        requires=install_requires,
         author=AUTHOR,
         author_email=AUTHOR_EMAIL,
         url=URL,
