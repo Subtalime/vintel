@@ -296,7 +296,7 @@ class ChatThreadProcess(QThread):
             with sw.timer("mark Systems"):
                 if message.systems:
                     for system in message.systems:
-                        system.messages.append(message)
+                        system.add_message(message)
             self.message_updated_s.emit(message)
         self.LOGGER.debug(sw.get_report())
 

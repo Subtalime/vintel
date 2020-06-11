@@ -40,6 +40,7 @@ class AvatarThread(QThread):
         self.avatar_retry_delay = 120  # try again after x seconds
         self.last_try = None
         self.sw = Stopwatch()
+        self.cache = Cache()
 
     def add_chat_entry(self, chat_entry=None, clear_cache=False):
         try:
@@ -90,7 +91,11 @@ class AvatarThread(QThread):
                     #  try to do it with increasing time to skip Avatar-Load
                     #  or even do it within ESI to skip all calls!
                     with self.sw.timer("Avatar fetch"):
-                        avatar = EsiHelper().get_avatarByName(charname)
+                        avatar = self.cache.fetch("avatar_{}".format(charname))
+                        if not avatar:
+                            avatar = EsiHelper().get_avatarByName(charname)
+                            if avatar:
+                                self.cache.put("avatar_{}".format(charname), avatar)
                     self.switch_off_avatar()
                 if avatar:
                     self.LOGGER.debug(

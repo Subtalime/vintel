@@ -73,6 +73,15 @@ class System:
     def mapCoordinates(self):
         return self.map_coordinates
 
+    def add_message(self, message):
+        if not self.messages:
+            self.messages = []
+        self.messages.append(message)
+
+    def del_message(self, message):
+        if message in self.messages:
+            self.messages.remove(message)
+
     def getTransformOffsetPoint(self):
         if not self.cachedOffsetPoint:
             if self.transform:
