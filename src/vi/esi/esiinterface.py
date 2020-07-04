@@ -247,7 +247,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 except Exception as e:
                     self.LOGGER.error("Some unexpected error in Esi", e)
                     sys.exit(-1)
-            self.esiInterface.esiLoading = "complete"
+            # self.esiInterface.esiLoading = "complete"
 
         def waitForSecretKey(self):
             # Take the user to the EVE-Auth page in a Browser-Window
@@ -299,7 +299,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
         """
         cache_until = datetime.datetime.strptime(expireDate, "%a, %d %b %Y %H:%M:%S %Z")
         diff = (cache_until - self.currentEveTime()).total_seconds()
-        return diff
+        return int(diff)
 
     def calcExpiryResponse(self, resp: Response) -> int:
         """
@@ -544,9 +544,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
         :return: List
         """
         ships = []
+        cacheKey = "_".join(("esicache", "getshiplist"))
+        ships = self.cache.get(cacheKey)
         try:
-            cacheKey = "_".join(("esicache", "getshiplist"))
-            ships = self.cache.get(cacheKey)
             if ships is None or len(ships) == 0:
                 self.LOGGER.debug("Loading Ship-Data...")
                 ships = []
@@ -580,7 +580,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
             target = target + datetime.timedelta(1)
         target = datetime.datetime(target.year, target.month, target.day, 11, 0, 0, 0)
         delta = (target - now).total_seconds()
-        return delta
+        return int(delta)
 
 
 if __name__ == "__main__":

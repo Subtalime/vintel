@@ -257,7 +257,7 @@ class MessageParser:
         :type message: Message
         :return: bool: systems found in Message
         """
-        system_names = dotlan_systems.keys()
+        system_names = set(dotlan_systems.keys())
         # words to ignore on the system parser. use UPPER CASE
         WORDS_TO_IGNORE = ("IN", "IS", "AS")
 
@@ -524,10 +524,10 @@ class MessageParser:
             for start, end, name in matrix:
                 if len(name) > 3:
                     self.LOGGER.debug("Asking ESI for character '%s'", name.strip())
-                    char = EsiHelper().checkPlayerName(name.strip())
-                    if char is not None:
+                    player = EsiHelper().checkPlayerName(name.strip())
+                    if player:
                         self.LOGGER.debug('ESI found the character "%s"', name.strip())
-                        found_names.append((name.strip(), char))
+                        found_names.append((name.strip(), player))
                         return start, end, name
             return 0, 0, None
 

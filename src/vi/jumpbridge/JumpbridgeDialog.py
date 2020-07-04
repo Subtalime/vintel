@@ -44,15 +44,8 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
         url = RegionSettings().jump_bridge_url
         self.urlField.setText(url)
         # loading format explanation from textfile
-        try:
-            with open(resourcePath("docs/jumpbridgeformat.txt")) as f:
-                self.formatInfoField.setPlainText(f.read())
-        except FileNotFoundError:
-            try:
-                with open("docs/jumpbridgeformat.txt") as f:
-                    self.formatInfoField.setPlainText(f.read())
-            except FileNotFoundError:
-                pass
+        with open(resourcePath("docs/jumpbridgeformat.txt")) as f:
+            self.formatInfoField.setPlainText(f.read())
 
     def savePath(self):
         try:

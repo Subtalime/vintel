@@ -91,11 +91,11 @@ class AvatarThread(QThread):
                     #  try to do it with increasing time to skip Avatar-Load
                     #  or even do it within ESI to skip all calls!
                     with self.sw.timer("Avatar fetch"):
-                        avatar = self.cache.fetch("avatar_{}".format(charname))
+                        avatar = self.cache.get_avatar(charname)
                         if not avatar:
                             avatar = EsiHelper().get_avatarByName(charname)
                             if avatar:
-                                self.cache.put("avatar_{}".format(charname), avatar)
+                                self.cache.put_avatar(charname, avatar)
                     self.switch_off_avatar()
                 if avatar:
                     self.LOGGER.debug(

@@ -61,17 +61,12 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         # TODO: Then open the LogWindows which should attach to the Queue-Handler as Queue-Listener
         # TODO: see https://stackoverflow.com/questions/58592557/how-to-wrap-python-logging-module
         # TODO: also see below TODO!
-        config_path = (
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), config_file)
-            if not os.path.exists(config_file)
-            else config_file
-        )
-        self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
         path = os.path.split(config_file)
         if path[0] == "":
             config_path = self.getLogFilePath(config_file)
         else:
             config_path = config_file
+        self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
@@ -82,7 +77,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
                     # TODO: this eliminates ALL current and future Log-Handlers
                     # TODO: so for the Log-Window we need to add a handler to the Config before loading into the logging class
                     self.default(log_folder=self.log_folder)
-                    # logging.config.dictConfig(config)
+                    logging.config.dictConfig(config)
                     # success
                     LogConfiguration.LOG_FILE_PATH = config_path
                 except ImportError:
@@ -186,8 +181,8 @@ class LogConfigurationThread(threading.Thread):
                                 if self._logWindow:
                                     self._logWindow.addHandler(LogDisplayHandler())
                             self.LOGGER.debug("Configuration-Change applied")
-                        except:
-                            self.LOGGER.error("Error in Configuration!")
+                        except Exception as e:
+                            self.LOGGER.error("Error in Configuration! %r", e)
                             pass
 
     def quit(self) -> None:

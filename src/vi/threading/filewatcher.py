@@ -23,7 +23,6 @@ import glob
 from PyQt5.QtCore import QThread, pyqtSignal
 
 
-
 class FileWatcherThread(QThread):
     file_change = pyqtSignal(str)
     file_removed = pyqtSignal(str)

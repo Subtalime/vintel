@@ -59,7 +59,7 @@ class Regions:
     def getNames(self):
         return self.regions.keys()
 
-    def getUrlPart(self, region: "str"):
+    def getUrlPart(self, region: str):
         if region in self.regions.keys():
             return str(self.regions[region]).replace("/map/", "")
         return None

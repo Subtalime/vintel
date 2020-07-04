@@ -305,6 +305,5 @@ class Cache(object):
                 try:
                     getattr(obj, setting[1])(setting[2])
                 except Exception as e:
-                    self.LOGGER.error("{}: {} [{}]".format(__file__, e, setting[1]))
+                    self.LOGGER.error("Error while applying Setting %r: %r", setting[1], e)
                     self.delete(settings_identifier)
-                    raise CacheError(e)

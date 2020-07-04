@@ -30,6 +30,6 @@ class Ship(QWidget, vi.ship.ShipDialog.Ui_Dialog):
             return False
         if shipName:  # retreive the equivalent ID
             shipId = EsiHelper().getShipId(shipName)
-            if not shipId:
+            if shipId == 0:
                 logging.critical('Ship with name "{}" not found'.format(shipName))
         self.setupUi(self)

@@ -14,33 +14,19 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
-#
-#
-#     This program is free software: you can redistribute it and/or modify
-#     it under the terms of the GNU General Public License as published by
-#     the Free Software Foundation, either version 3 of the License, or
-#     (at your option) any later version.
-#
-#     This program is distributed in the hope that it will be useful,
-#     but WITHOUT ANY WARRANTY; without even the implied warranty of
-#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
-#     GNU General Public License for more details.
-#
-#     You should have received a copy of the GNU General Public License
-#     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
-#
-#
+
+import os
+from os.path import isfile
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from os.path import isfile
-import os
-from vi.settings.SettingsFormTemplate import SettingsFormTemplate
-from vi.settings.settings import RegionSettings
-from vi.ui.RegionsForm import Ui_Form
+from PyQt5.QtWidgets import QMessageBox, QListWidgetItem
+
 from vi.dotlan.regions import Regions
-from vi.resources import resourcePath, getVintelMap
+from vi.resources import getVintelMap, resourcePath
+from vi.settings.settings import RegionSettings
+from vi.settings.SettingsFormTemplate import SettingsFormTemplate
+from vi.ui.RegionsForm import Ui_Form
 
 
 class RegionsForm(SettingsFormTemplate, Ui_Form):
@@ -50,7 +36,6 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
         self.btnRegionHelp.clicked.connect(self.region_help_clicked)
 
         region_names = []
-        # self.cache_regions = Cache().fetch("region_name_range")
         self.cache_regions = RegionSettings().region_names
         if self.cache_regions:
             region_names = self.cache_regions.split(",")
@@ -108,7 +93,7 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
                 QMessageBox.information(None, "Region-Help", content)
         except FileNotFoundError:
             QMessageBox.warning(
-                None,
+                self,
                 "Help-File",
                 "Unable to find Help-File \n{}".format(
                     resourcePath("docs/regionselect.txt")
@@ -116,11 +101,11 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
             )
 
     def _get_selected(self):
-        litems = []
+        list_items = []
         for item in self.listRegion.selectedItems():
             if len(item.text()) > 0:
-                litems.append(item.text())
-        region_list = ",".join(litems)
+                list_items.append(item.text())
+        region_list = ",".join(list_items)
         if self.txtRegions.text():
             region_list += "," + self.txtRegions.text()
         return region_list.lstrip(",")

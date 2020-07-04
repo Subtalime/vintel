@@ -37,7 +37,6 @@ from vi.singleton import Singleton
 import pyglet
 import pyglet.clock
 import pyglet.resource
-from vi.settings.settings import SoundSettings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -233,18 +232,18 @@ class SoundManager(six.with_metaclass(Singleton)):
         # VoiceRss
 
         def playTTS(self, inputText=""):
+            mp3url = "http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us".format(
+                **locals()
+            )
             try:
-                mp3url = "http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us".format(
-                    **locals()
-                )
                 self.playAudioFile(requests.get(mp3url, stream=True).raw)
                 time.sleep(0.5)
             except requests.exceptions.RequestException as e:
-                LOGGER.error("playTTS error: %s" % mp3url, e)
+                LOGGER.error("playTTS error: %s: %r", mp3url, e)
 
         # google_tts
 
-        def audioExtractToMp3(self, inputText="", args=None):
+        def audioExtractToMp3(self, inputText=None, args=None):
             # This accepts :
             #   a dict,
             #   an audio_args named tuple

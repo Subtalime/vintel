@@ -17,68 +17,56 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
+import logging
 import sys
 import time
-import six
-import requests
 import webbrowser
-import vi.version
-import logging
 
-from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.QtCore import QPoint, pyqtSignal, QPointF
+import requests
+import six
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QPoint, QPointF, pyqtSignal
 from PyQt5.QtWidgets import (
-    QMessageBox,
     QAction,
-    QMainWindow,
-    QStyleOption,
     QActionGroup,
+    QMainWindow,
+    QMessageBox,
     QStyle,
+    QStyleOption,
     QStylePainter,
     QSystemTrayIcon,
-    QDialog,
-)
-from PyQt5.uic import loadUi
-from vi.settings.settings import (
-    GeneralSettings,
-    ChatroomSettings,
-    RegionSettings,
 )
 
-# from vi import states
-from vi.states import State
-from vi.logger.logwindow import LogWindow
-from vi.jumpbridge.Import import Import
+import vi.version
+from vi.about.dialog import AboutDialog
 from vi.cache.cache import Cache
-from vi.resources import resourcePath
-from vi.sound.soundmanager import SoundManager
-from vi.threading import *
-# from vi.threading.chattidyup import ChatTidyUpThread
-# from vi.threading.mapupdate import MapUpdateThread
-# from vi.threading.avatar import AvatarThread as AvatarFindThread
-# from vi.threading.statistics import StatisticsThread
-from vi.systemtray import TrayContextMenu
-from vi.threading.chatmonitor import ChatMonitorThread
+from vi.character.CharacterMenu import CharacterMenu, Characters
+from vi.chat.chatentrywidget import ChatEntryWidget
 from vi.chat.chatmessage import Message
-from vi.threading.filewatcher import FileWatcherThread
+from vi.chat.systemchat import SystemChat
+from vi.color.helpers import contrast_color, string_to_color
+from vi.dotlan.exception import DotlanException
+from vi.dotlan.mymap import MyMap
+from vi.dotlan.regions import Regions
 from vi.esi import EsiInterface
 from vi.esi.esihelper import EsiHelper
-from vi.chat.chatentrywidget import ChatEntryWidget
+from vi.jumpbridge.Import import Import
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
-from vi.chat.systemchat import SystemChat
-from vi.character.CharacterMenu import CharacterMenu, Characters
-from vi.region.RegionMenu import RegionMenu
-from vi.dotlan.regions import Regions
-from vi.dotlan.mymap import MyMap
-from vi.dotlan.exception import DotlanException
-from vi.ui.MainWindow import Ui_MainWindow
 from vi.logger.logconfig import LogConfigurationThread
-from vi.settings.SettingsDialog import SettingsDialog
-from vi.version import NotifyNewVersionThread
-from vi.systemtray import TrayIcon
+from vi.logger.logwindow import LogWindow
 from vi.logger.mystopwatch import ViStopwatch
-from vi.color.helpers import contrast_color, string_to_color
-
+from vi.region.RegionMenu import RegionMenu
+from vi.resources import resourcePath
+from vi.settings.settings import ChatroomSettings, GeneralSettings, RegionSettings
+from vi.settings.SettingsDialog import SettingsDialog
+from vi.sound.soundmanager import SoundManager
+from vi.states import State
+from vi.systemtray import TrayContextMenu, TrayIcon
+from vi.threading import *
+from vi.threading.chatmonitor import ChatMonitorThread
+from vi.threading.filewatcher import FileWatcherThread
+from vi.ui.MainWindow import Ui_MainWindow
+from vi.version import NotifyNewVersionThread
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -135,7 +123,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.clipboardTimer = QtCore.QTimer(self)
         self.oldClipboardContent = ""
         self.trayIcon = tray_icon
-        self.trayIcon.activated.connect(self.systemTrayActivated)
+        self.trayIcon.activated.connect(self.system_tray_activated)
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
         self.changeAlarmDistance(GeneralSettings().alarm_distance)
@@ -143,10 +131,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.initialZoom = None
         self.lastStatisticsUpdate = 0
         self.chatEntries = []
+
         self.refreshContent = None
         self.frameButton.setVisible(False)
         self.scanIntelForKosRequestsEnabled = False
         self.mapPositionsDict = {}
+
         self.content = None
         # if LogConfiguration().LOG_FILE_PATH is None:
         #     self.LOGGER.warning("Logging is set to default. Please adjust {}".format(LogConfiguration().getLogFilePath()))
@@ -197,6 +187,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.recallCachedSettings()
         self.setupThreads()
         self.setupMap(True)
+
+    def splitter_location(self, pos, index):
+        self.LOGGER.debug("Splitter Pos %d, Index %d, Geometry %r, State %r", pos, index, self.splitter.geometry(), self.splitter.saveState())
 
     def setColor(self, color: str = None) -> str:
         if color:
@@ -279,13 +272,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.jumpbridgesButton.clicked.connect(self.changeJumpbridgesVisibility)
         self.chatLargeButton.clicked.connect(self.chatLarger)
         self.chatSmallButton.clicked.connect(self.chatSmaller)
-        self.actionAbout.triggered.connect(self.showInfo)
+        self.actionAbout.triggered.connect(self.show_about_dialog)
         self.showChatAvatarsAction.triggered.connect(self.changeShowAvatars)
         self.alwaysOnTopAction.triggered.connect(self.changeAlwaysOnTop)
         self.chooseChatRoomsAction.triggered.connect(self.showChatroomChooser)
 
         self.showChatAction.triggered.connect(self.changeChatVisibility)
-        self.soundSetupAction.triggered.connect(self.showSoundSetup)
+        self.soundSetupAction.triggered.connect(self.edit_sound_setup)
         self.activateSoundAction.triggered.connect(self.trayIcon.sound_active)
         self.useSpokenNotificationsAction.triggered.connect(
             self.changeUseSpokenNotifications
@@ -308,13 +301,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.actionLogging.setEnabled(False)
         self.actionLogging.triggered.connect(self.showLoggingWindow)
 
+    def region_menu_update(self):
+        self.menuRegion.addItems()
+
     def viewChatlogs(self):
         logs = ""
         for log in self.chatThread.process_pool.keys():
             logs += "{}\r\n".format(log)
         QMessageBox.information(None, "Monitored logs", "%s" % logs, QMessageBox.Ok)
 
-    def settings(self, tabIndex: int = 0):
+    def settings(self, tabIndex: int = 0) -> bool:
 
         setting = SettingsDialog(self, tabIndex)
 
@@ -330,6 +326,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.messageExpiry(GeneralSettings().message_expiry)
             self.enableSelfNotify(GeneralSettings().self_notify)
             self.changeAlarmDistance(GeneralSettings().alarm_distance)
+            self.region_menu_update()
+            return True
+        return False
 
     def enableSelfNotify(self, enable: bool = None) -> bool:
         if enable is not None:
@@ -431,8 +430,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # TODO: therefore if we switch Region, we can update with previously found data
     # TODO: when clicking on System in Chat, scroll to the position within the Map
     def setupMap(self, initialize=False):
-        if self.filewatcherThread:
-            self.filewatcherThread.paused = True
         if self.mapUpdateThread:
             self.mapUpdateThread.pause(True)
         self.LOGGER.debug("Finding map file")
@@ -518,7 +515,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.clipboardTimer:
             try:
                 self.clipboardTimer.timeout.disconnect(self.clipboardChanged)
-            except:
+            except TimeoutError:
                 pass
             self.clipboardTimer.stop()
 
@@ -526,10 +523,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.stopClipboardTimer()
         self.startClipboardTimer()
 
-    def closeEvent(self, event):
-        """
-            Persisting things to the cache before closing the window
-        """
+    def save_settings(self):
         # Known playernames
         self.knownPlayers.storeData()
         # Program state to cache (to read it on next startup)
@@ -543,16 +537,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             (None, "changeOpacity", self.opacityGroup.checkedAction().opacity),
             (None, "changeAlwaysOnTop", self.alwaysOnTopAction.isChecked()),
             (None, "changeShowAvatars", self.showChatAvatarsAction.isChecked()),
-            # (None, "changeAlarmDistance", self.alarmDistance),
-            # (None, "enableCharacterParser", self.character_parser_enabled),
-            # (None, "enableShipParser", self.ship_parser_enabled),
-            # (None, "enableSelfNotify", self.selfNotify),
-            # (None, "enablePopupNotification", self.popup_notification),
-            # (None, "messageExpiry", self.message_expiry),
             (None, "changeSound", self.activateSoundAction.isChecked()),
             (None, "changeChatVisibility", self.showChatAction.isChecked()),
             (None, "loadInitialMapPositions", self.mapPositionsDict),
-            (None, "setColor", self.backgroundColor),
             (None, "changeFrameless", self.framelessWindowAction.isChecked()),
             (
                 None,
@@ -566,13 +553,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             ),
             (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled),
         )
-        try:
-            self.cache.save_settings("settings", settings, 60 * 60 * 24 * 30)
-        except Exception:
-            pass
-        # strsettings = str(settings)
-        # self.cache.put("settings", strsettings, 60 * 60 * 24 * 30)
+        self.cache.save_settings("settings", settings, 60 * 60 * 24 * 30)
 
+    def closeEvent(self, event):
+        """
+            Persisting things to the cache before closing the window
+        """
+        self.save_settings()
         # Stop the threads
         try:
             SoundManager().quit()
@@ -600,6 +587,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.logWindow:
             self.logWindow.close()
         # sys.exit(0)
+        super(MainWindow, self).closeEvent(event)
 
     def notifyNewerVersion(self, newestVersion):
         msg = (
@@ -831,13 +819,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.updateMapView()
 
     def scrollTo(self, x, y):
-        _scrollTo = str(
-            "window.scrollTo({}, {});".format(
-                x / self.mapView.page().zoomFactor(),
-                y / self.mapView.page().zoomFactor(),
-            )
-        )
-        # self.mapView.page().runJavaScript(_scrollTo)
         self.initialMapPosition = QPointF(x, y)
 
     def mapUpdate(self, newContent=None):
@@ -891,15 +872,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapPositionsDict = newDictionary
 
     def setInitialMapPositionForRegion(self, regionName):
-        try:
-            if not regionName:
-                regionName = self.cache.fetch("region_name")
-            if regionName:
-                xy, zoom = self.mapPositionsDict[regionName]
-                self.initialMapPosition = QPoint(xy[0], xy[1])
-                self.initialZoom = zoom
-        except:
-            pass
+        if not regionName:
+            regionName = self.cache.fetch("region_name")
+        if regionName and regionName in self.mapPositionsDict.keys():
+            xy, zoom = self.mapPositionsDict[regionName]
+            self.initialMapPosition = QPoint(xy[0], xy[1])
+            self.initialZoom = zoom
 
     def mapPositionChanged(self, qPointF):
         """store the current Scroll-Position for current Region.
@@ -990,26 +968,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def addMessageToIntelChat(self, message: Message):
         self.LOGGER.debug("Adding message to Intel: %r", message)
-        scrollToBottom = False
+        scroll_to_bottom = False
         if (
             self.chatListWidget.verticalScrollBar().value()
             == self.chatListWidget.verticalScrollBar().maximum()
         ):
-            scrollToBottom = True
+            scroll_to_bottom = True
+        # create widget
         chatEntryWidget = ChatEntryWidget(message)
         message.widgets.append(chatEntryWidget)
         listWidgetItem = QtWidgets.QListWidgetItem(self.chatListWidget)
         listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
+        # add widget to lost
         self.chatListWidget.addItem(listWidgetItem)
         self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)
-        self.avatarFindThread.add_chat_entry(chatEntryWidget)
         self.chatEntries.append(chatEntryWidget)
+        # allow for Link-Clicks in widget
         chatEntryWidget.mark_system.connect(self.markSystemOnMap)
         chatEntryWidget.ship_detail.connect(self.openShip)
         chatEntryWidget.enemy_detail.connect(self.openEnemy)
+        # find the Avatar
+        self.avatarFindThread.add_chat_entry(chatEntryWidget)
+        # let anyone else know that we added a widget
         self.chat_message_added.emit(chatEntryWidget)
-        self.pruneMessages()
-        if scrollToBottom:
+        if scroll_to_bottom:
             self.chatListWidget.scrollToBottom()
 
     def openEnemy(self, playerId):
@@ -1038,7 +1020,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.chatEntries.remove(widget)
                     self.chatListWidget.takeItem(0)
             except Exception as e:
-                self.LOGGER.error("Age is {diff} and expiry is {exp}: %r".format(diff=diff, exp=self.message_expiry), e)
+                self.LOGGER.error(
+                    "Age is {diff} and expiry is {exp}: %r".format(
+                        diff=diff, exp=self.message_expiry
+                    ),
+                    e,
+                )
         cleared = start - self.chatListWidget.count()
         if cleared:
             self.chatListWidget.scrollToBottom()
@@ -1069,23 +1056,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #     self.trayIcon.setIcon(self.taskbarIconQuiescent)
     #
 
-    def showInfo(self):
-        self.LOGGER.debug("Opening About-Dialog")
-        info_dialog = QDialog(self)
-        loadUi("vi/ui/Info.ui", info_dialog)
-        info_dialog.setModal(True)
-        info_dialog.versionLabel.setText(u"Version: {0}".format(vi.version.DISPLAY))
-        info_dialog.logoLabel.setPixmap(QtGui.QPixmap(resourcePath("logo.png")))
-        info_dialog.closeButton.clicked.connect(info_dialog.accept)
-        info_dialog.exec()
-        self.LOGGER.debug("Closed About-Dialog")
+    def show_about_dialog(self):
+        about = AboutDialog(self)
+        about.exec_()
 
-    def showSoundSetup(self):
+    def edit_sound_setup(self):
         self.settings(2)
-        # sd = SoundSettingDialog(self)
-        # sd.show()
 
-    def systemTrayActivated(self, reason):
+    def system_tray_activated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             if self.isMinimized():
                 self.showNormal()
@@ -1130,15 +1108,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         elif message.status == State["SOUND_TEST"]:
             SoundManager().playSound("alarm", message)
 
-        elif message.status == State["KOS_STATUS_REQUEST"]:
-            # Do not accept KOS requests from any but monitored intel channels
-            # as we don't want to encourage the use of xxx in those channels.
-            if message.room not in self.roomnames:
-                text = message.message[4:]
-                text = text.replace("  ", ",")
-                parts = (name.strip() for name in text.split(","))
-                self.trayIcon.setIcon(self.taskbarIconWorking)
-                self.kosRequestThread.addRequest(parts, "xxx", False)
+        # elif message.status == State["KOS_STATUS_REQUEST"]:
+        #     # Do not accept KOS requests from any but monitored intel channels
+        #     # as we don't want to encourage the use of xxx in those channels.
+        #     if message.room not in self.roomnames:
+        #         text = message.message[4:]
+        #         text = text.replace("  ", ",")
+        #         parts = (name.strip() for name in text.split(","))
+        #         self.trayIcon.setIcon(self.taskbarIconWorking)
+        #         self.kosRequestThread.addRequest(parts, "xxx", False)
         # Otherwise consider it a 'normal' chat message
         elif (
             message.user not in ("EVE-System", "EVE System")
@@ -1174,6 +1152,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             distance = data["distance"]
                             chars = nSystem.getLocatedCharacters()
                             if len(chars) > 0 and self.popup_notification:
+                                self.LOGGER.debug("Submitted Tray-Icon-Notification")
                                 self.trayIcon.showNotification(
                                     message, system.name, ", ".join(chars), distance
                                 )

@@ -165,7 +165,6 @@ def __uploadLog():
         session.quit()
     except Exception as e:
         logging.getLogger().error("Problem uploading Log-File", e)
-        pass
 
 
 def main_exception_hook(exceptionType, exceptionValue, tracebackObject):
@@ -177,12 +176,12 @@ def main_exception_hook(exceptionType, exceptionValue, tracebackObject):
     logging.getLogger().critical("{0}: {1}".format(exceptionType, exceptionValue))
     logging.getLogger().critical("-- ------------------- --")
     __uploadLog()
-    pass
 
 
-sys.excepthook = main_exception_hook
+# sys.excepthook = main_exception_hook
 
 app = Application(sys.argv)
 app.configure()
 app.startup()
-sys.exit(app.exec_())
+result = app.exec_()
+# sys.exit(result)

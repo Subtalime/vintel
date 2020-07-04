@@ -32,6 +32,7 @@ if not os.path.exists(destination):
 if not os.path.exists(setup_dir):
     os.makedirs(setup_dir)
 
+base = "Win32GUI"
 if sys.platform == "win32":
     base = "Win32GUI"
 
@@ -144,15 +145,15 @@ except FileNotFoundError:
 # create ZIP archive
 def zipdir(path, zipf):
     for root, dirs, files in os.walk(path):
-        for file in files:
-            zipf.write(os.path.join(root, file))
+        for file_name in files:
+            zipf.write(os.path.join(root, file_name))
 
 
 try:
-    prog_name = "{}-{}".format(PROGNAME, VERSION)
-    if os.path.isfile(os.path.join(destination, prog_name + ".zip")):
-        os.remove(os.path.join(destination, prog_name + ".zip"))
-    package_path = os.path.join(destination, prog_name)
+    program_name = "{}-{}".format(PROGNAME, VERSION)
+    if os.path.isfile(os.path.join(destination, program_name + ".zip")):
+        os.remove(os.path.join(destination, program_name + ".zip"))
+    package_path = os.path.join(destination, program_name)
     zip_path = package_path + ".zip"
     zip_file = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
     zipdir(package_path, zip_file)

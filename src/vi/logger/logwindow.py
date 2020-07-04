@@ -31,7 +31,7 @@ LOG_WINDOW_HANDLER_NAME = "_LogWindowHandler"
 
 
 class LogDisplayHandler(QtWidgets.QTextEdit):
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         QtWidgets.QTextEdit.__init__(self, parent=parent)
         self.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
         self.setTextInteractionFlags(

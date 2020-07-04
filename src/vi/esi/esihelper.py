@@ -38,7 +38,7 @@ class EsiHelper:
             imageurl = resp["px64x64"]
             avatar = requests.get(imageurl).content
             return avatar
-        return bytes("")
+        return bytes()
 
     def get_avatarById(self, characterId: int) -> bytes:
         resp = self.esi.getCharacterAvatar(characterId)
@@ -46,7 +46,7 @@ class EsiHelper:
             imageurl = resp["px64x64"]
             avatar = requests.get(imageurl).content
             return avatar
-        return bytes("")
+        return bytes()
 
     def checkPlayerName(self, characterName: str) -> dict:
         resp = self.esi.getCharacterId(characterName, True)

@@ -17,8 +17,6 @@
 #
 #
 from PyQt5.QtWidgets import (
-    QTableWidget,
-    QTableWidgetItem,
     QTableView,
     QAbstractItemView,
 )
@@ -88,15 +86,15 @@ class NotificationsTableView(QTableView):
                 headerdata: a list of strings
             """
             QAbstractTableModel.__init__(self, parent)
-            self.arraydata = datain
+            self.array_data = datain
             self.headerdata = headerdata
 
         def rowCount(self, parent=None):
-            return len(self.arraydata)
+            return len(self.array_data)
 
         def columnCount(self, parent=None):
-            if len(self.arraydata) > 0:
-                return len(self.arraydata[0])
+            if len(self.array_data) > 0:
+                return len(self.array_data[0])
             return 0
 
         def data(self, index, role=Qt.DisplayRole):
@@ -104,44 +102,45 @@ class NotificationsTableView(QTableView):
                 return QVariant()
             elif role != Qt.DisplayRole:
                 return QVariant()
-            return QVariant(self.arraydata[index.row()][index.column()])
+            return QVariant(self.array_data[index.row()][index.column()])
 
         def setData(self, index, value, role=Qt.EditRole):
             if not index.isValid():
                 return False
             if role != Qt.EditRole:
                 return False
-            self.arraydata[index.row()][index.column()] = value
+            self.array_data[index.row()][index.column()] = value
             self.data_changed.emit(index.row(), index.column())
             return True
 
         def getDataSet(self):
-            return self.arraydata
+            return self.array_data
 
         def getData(self, index):
             if not index.isValid():
                 return None
-            return self.arraydata[index.row()][index.column()]
+            return self.array_data[index.row()][index.column()]
 
         def getDataRow(self, row):
-            return self.arraydata[row]
+            return self.array_data[row]
 
-        def headerData(self, col, orientation, role):
+        def headerData(self, col: object, orientation: object, role: object) -> object:
             if orientation == Qt.Horizontal and role == Qt.DisplayRole:
                 return QVariant(self.headerdata[col])
             return QVariant()
 
-        def sort(self, Ncol, order):
+        def sort(self, ncol: object, order: object) -> object:
             """
             Sort table by given column number.
             """
             self.layout_to_be_changed.emit()
-            self.arraydata = sorted(self.arraydata, key=lambda operator: operator[Ncol])
+            self.array_data = sorted(self.array_data, key=lambda operator: operator[ncol])
             if order == Qt.DescendingOrder:
-                self.arraydata.reverse()
+                self.array_data.reverse()
             self.layout_changed.emit()
 
     def __init__(self, notification_set: Notifications):
+        super().__init__()
         self.data = notification_set
         header = ["Duration", "Background-Color", "Text-Color"]
         self.setModel(self.MyTableModel(self.data.notifications, header, self))

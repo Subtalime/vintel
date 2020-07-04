@@ -15,12 +15,14 @@
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
 #
-import os
-from vi.cache import Cache
-from vi.states import State
-import pickle
-from vi.resources import soundPath
 import logging
+import os
+import pickle
+
+from vi.cache import Cache
+from vi.resources import soundPath
+from vi.states import State
+
 
 class _Settings:
     ship_parser: bool = False
@@ -58,9 +60,13 @@ class _Settings:
 
     @setting.setter
     def setting(self, value):
+        if self.KEY not in self._config.keys():
+            self._config[self.KEY] = self.defaults
         k = list(value.keys())[0]
-        if k not in self._config[self.KEY]:
-            logging.getLogger(__name__).error(f"Key '{k}' not in {self.KEY} Configuration")
+        if k not in set(self._config[self.KEY].keys()):
+            logging.getLogger(__name__).error(
+                f"Key '{k}' not in {self.KEY} Configuration"
+            )
         self._config[self.KEY][k] = value[k]
         self._set_property()
 
@@ -350,7 +356,6 @@ class GeneralSettings(_Settings):
     def clipboard_check_interval(self, value: int):
         v = {"clipboard_check_interval": int(value)}
         self.setting = v
-
 
 
 if __name__ == "__main__":

@@ -296,7 +296,11 @@ class ChatThreadProcess(QThread):
             with sw.timer("mark Systems"):
                 if message.systems:
                     for system in message.systems:
-                        system.add_message(message)
+                        try:
+                            system.add_message(message)
+                        except AttributeError as e:
+                            self.LOGGER.error("Adding %r to System %r: %r", message, system, e)
+
             self.message_updated_s.emit(message)
         self.LOGGER.debug(sw.get_report())
 
