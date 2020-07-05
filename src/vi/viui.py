@@ -47,7 +47,7 @@ from vi.chat.systemchat import SystemChat
 from vi.color.helpers import contrast_color, string_to_color
 from vi.dotlan.exception import DotlanException
 from vi.dotlan.mymap import MyMap
-from vi.dotlan.regions import Regions
+from vi.dotlan.regions import Regions, convert_region_name
 from vi.esi import EsiInterface
 from vi.esi.esihelper import EsiHelper
 from vi.jumpbridge.Import import Import
@@ -359,13 +359,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # Dialog to select Regions to monitor
     def showRegionChooser(self):
         self.settings(3)
-        # def handleRegionsChosen(regionList):
-        #     LOGGER.debug("Chosen new Regions to monitor")
-        #     self.menuRegion.addItems()
-        #
-        # chooser = RegionChooserList(self)
-        # chooser.new_region_range_chosen.connect(handleRegionsChosen)
-        # chooser.show()
 
     def updatePlayers(self, player_list: list):
         self.knownPlayers.add_names(player_list)
@@ -431,7 +424,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         regionName = RegionSettings().selected_region
         if not regionName:
             regionName = "Delve"
-
+        regionName = convert_region_name(regionName)
         try:
             self.dotlan = MyMap(parent=self, region=regionName)
         except DotlanException as e:
