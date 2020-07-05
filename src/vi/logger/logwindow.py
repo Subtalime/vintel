@@ -18,236 +18,151 @@
 #
 
 from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtWidgets import QMenu
-from PyQt5.QtCore import pyqtSignal, QEvent, Qt, QObject
+from PyQt5.QtCore import QEvent, Qt
 from vi.cache.cache import Cache
 import logging
-import queue
-import threading
-from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
-from time import time
-from logging import LogRecord
-from vi.version import DISPLAY
+import os
+from logging import LogRecord, Formatter
+from logging.handlers import QueueHandler
+from vi.logger import LogLevelPopup
+import vi.version
 
-LOGGER = logging.getLogger(__name__)
-
-_lock = threading.RLock()
 LOG_WINDOW_HANDLER_NAME = "_LogWindowHandler"
 
-class LogWindowHandler(logging.Handler, QObject):
-    new_message = pyqtSignal(logging.LogRecord)
 
-    def __init__(self, parent = None):
-        logging.Handler.__init__(self)
-        QObject.__init__(self)
-        self.parent = parent
-        formatter = logging.Formatter('%(asctime)s: %(message)s', datefmt='%H:%M:%S')
-        # always log all messages ! The Window-Output is managed by self.logLevel
-        self.setLevel(logging.DEBUG)
-        self.setFormatter(formatter)
-        self.set_name(LOG_WINDOW_HANDLER_NAME)
-
-    def emit(self, record):
-        self.new_message.emit(record)
-
-def _acquireLock():
-    """
-    Acquire the module-level lock for serializing access to shared data.
-    This should be released with _releaseLock().
-    """
-    if _lock:
-        _lock.acquire()
-
-
-def _releaseLock():
-    """
-    Release the module-level lock acquired by calling _acquireLock().
-    """
-    if _lock:
-        _lock.release()
-
-
-class LogWindow(QtWidgets.QWidget):
-    """
-    Output-Window of all Log-File-Content. More convenient than "tail -F" on the Log-File
-    Also, ability to Filter by Log-Level
-    """
-    logging_level_event = pyqtSignal(int)
-
+class LogDisplayHandler(QtWidgets.QTextEdit):
     def __init__(self, parent=None):
+        QtWidgets.QTextEdit.__init__(self, parent=parent)
+        self.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
+        self.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction
+        )
+
+
+class LogTextFieldHandler(logging.Handler, QtCore.QObject):
+    appendLogMessage = QtCore.pyqtSignal(str)
+
+    def __init__(
+        self,
+        parent,
+        log_level: int = logging.WARNING,
+        log_formatter: Formatter = logging.Formatter(
+            "%(asctime)s|%(name)s|%(levelname)s: %(message)s", datefmt="%H:%M:%S"
+        ),
+    ):
+        """Text-Widget to handle output of Log-Message
+
+        :param parent: Parent window
+        :param log_level: default Log-Level
+        :type log_level: int
+        :param log_formatter: logging.Formatter to be used
+        :type log_formatter: Formatter
+        """
+        logging.Handler.__init__(self)
+        QtCore.QObject.__init__(self)
+
+        self.setFormatter(log_formatter)
+        self.setLevel(log_level)
+        self.log_record_text = LogDisplayHandler(parent)
+        self.appendLogMessage.connect(self.log_record_text.append)
+
+    def emit(self, record: LogRecord) -> None:
+        msg = self.format(record)
+        if record.levelno == self.level:
+            self.appendLogMessage.emit(msg)
+
+
+class LogWindow(QtWidgets.QWidget, logging.Handler):
+    log_handler = None
+    log_level = logging.WARNING
+    cache_visible = "log_window_visible"
+    cache_size = "log_window"
+    cache_level = "log_window_level"
+    icon_path = None
+
+    def __init__(self, parent=None, log_handler: QueueHandler = None):
         QtWidgets.QWidget.__init__(self, parent)
+        self.LOGGER = logging.getLogger(__name__)
         self.cache = Cache()
-        # keep maximum of 5k lines in buffer
-        self.tidySize = 5000
-        self.pruneTime = time()
-        self._tidying = False
-        self.msg_queue = None
-        self.logHandler = None
-        self.queue_listener = None
-        self.queue_handler = None
-        # check only every hour
-        self.pruneDelay = 60 * 60  # 1 hour
-        # Log-Messages stored here
-        self.log_records = []
-
-        # oh, now actually build the window...
-        self.setBaseSize(400, 300)
+        try:
+            self.restoreGeometry(self.cache.fetch(self.cache_size))
+        except Exception as e:
+            self.setBaseSize(400, 600)
+            pass
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
-        self.textEdit = QtWidgets.QTextEdit(self)
-        self.textEdit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
-        self.textEdit.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction)
-        self.textEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.textEdit.customContextMenuRequested.connect(self.contextMenuEvent)
-        vbox = QtWidgets.QVBoxLayout()
-        self.setLayout(vbox)
-        self.setBaseSize(400, 300)
-        vbox.addWidget(self.textEdit)
-        self.addHandler(LogWindowHandler(parent))
-        self.logLevel = self.cache.getFromCache("log_window_level")
-        if not self.logLevel:
-            # by default, have warnings only shown here
-            self.logLevel = logging.WARNING
-        self.setTitle()
-
-        rect = self.cache.getFromCache("log_window")
-        if rect:
-            self.restoreGeometry(rect)
-
-        vis = self.cache.getFromCache("log_window_visible")
+        self.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, False)
+        self.create_content()
+        vis = self.cache.fetch(self.cache_visible, default=False)
         if bool(vis):
             self.show()
 
-    def addHandler(self, logHandler: LogWindowHandler):
-        if not self.msg_queue:
-            # setup a blocking Queue in case LogWindow can't keep up
-            self.msg_queue = queue.Queue(-1)  # unlimited
-            self.queue_handler = QueueHandler(self.msg_queue)
-        # all done, now create new Handler
-        logging.getLogger().addHandler(self.queue_handler)
-        # our own Log-Handler
-        self.logHandler = logHandler
-        # the queue will send to Log-Window-Handler
-        if self.queue_listener:
-            self.queue_listener.stop()
-        self.queue_listener = QueueListener(self.msg_queue, self.logHandler)
-        # any new Log-Messages, send to storage
-        self.logHandler.new_message.connect(self.store)
-        # start the Log-Queue
-        self.queue_listener.start()
+    def create_content(self):
+        self.log_level = self.cache.fetch(self.cache_level, default=self.log_level)
+        self.log_handler = LogTextFieldHandler(self, self.log_level)
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addWidget(self.get_handler().log_record_text)
+        self.setLayout(vbox)
+        self.set_handler()
+        self.set_title_and_icon()
 
-    def setTitle(self):
-        self.setWindowTitle("{} Logging ({})".format(DISPLAY, logging.getLevelName(self.logLevel)))
+    def set_handler(self):
+        self.get_handler().setLevel(self.log_level)
+        formatter = logging.Formatter(
+            "%(asctime)s|%(name)s|%(levelname)s: %(message)s", datefmt="%H:%M:%S"
+        )
+        self.get_handler().setFormatter(formatter)
+        # maybe this should be only the Root Logger?
+        logging.getLogger().addHandler(self.get_handler())
+        # self.LOGGER.addHandler(self.get_handler())
 
-    def write(self, text):
-        self.textEdit.setFontWeight(QtGui.QFont.Normal)
-        self.textEdit.append(text)
+    def get_handler(self):
+        return self.log_handler
 
-    def prune(self):
-        if not self._tidying and self.pruneTime + self.pruneDelay < time():
-            self.pruneTime = time()
-            num_records = len(self.log_records)
-            if num_records > self.tidySize:
-                try:
-                    _acquireLock()
-                    self._tidying = True
-                    LOGGER.debug("LogWindow Tidy-Up start")
-                    del self.log_records[:num_records - self.tidySize]
-                except Exception as e:
-                    LOGGER.error("Error in Tidy-Up of Log-Window", e)
-                finally:
-                    _releaseLock()
-                    self._tidying = False
-                    self.refresh()
-                    LOGGER.debug("LogWindow Tidy-Up complete")
+    def set_title_and_icon(self):
+        self.setWindowTitle(
+            "{} Logging ({})".format(
+                vi.version.DISPLAY, logging.getLevelName(self.log_level)
+            )
+        )
+        if not self.icon_path:
+            self.icon_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "..", "icon.ico"
+            )
+            if os.path.exists(self.icon_path):
+                self.setWindowIcon(QtGui.QIcon(self.icon_path))
 
-    def store(self, record: LogRecord):
-        self.log_records.append(record)
-        if record.levelno >= self.logLevel:
-            self.write(self.logHandler.format(record))
-        self.prune()
-
-    def refresh(self):
-        self.textEdit.clear()
-        for record in self.log_records:
-            if record.levelno >= self.logLevel:
-                self.write(self.logHandler.format(record))
-        self.textEdit.verticalScrollBar().setValue(self.textEdit.verticalScrollBar().maximum())
-
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        super(LogWindow, self).resizeEvent(event)
-        self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
-
-    def changeEvent(self, event: QtCore.QEvent) -> None:
-        super(LogWindow, self).changeEvent(event)
-        if event.type() == QEvent.WindowStateChange:
-            if self.windowState() & Qt.WindowMinimized:
-                self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
-                self.cache.putIntoCache("log_window_visible", str(False))
-                LOGGER.debug("LogWindow hidden")
-                self.hide()
-            else:
-                LOGGER.debug("LogWindow visible")
-                self.show()
+    # def changeEvent(self, event: QtCore.QEvent) -> None:
+    #     super(LogWindow, self).changeEvent(event)
+    #     if event.type() == QEvent.WindowStateChange:
+    #         if int(self.windowState()) & Qt.WindowMinimized:
+    #             self.cache.put(self.cache_size, self.saveGeometry())
+    #             self.cache.put(self.cache_visible, str(False))
+    #             self.LOGGER.debug("LogWindow changeEvent hidden")
+    #             self.hide()
+    #             event.accept()
+    #         else:
+    #             self.cache.put(self.cache_visible, str(True))
+    #             self.LOGGER.debug("LogWindow changeEvent visible")
+    #             self.show()
+    #             event.accept()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self.cache.putIntoCache("log_window", bytes(self.saveGeometry()))
-        self.cache.putIntoCache("log_window_visible", not self.isHidden())
-        LOGGER.debug("LogWindow closed")
-        self.queue_listener.stop()
-
-    # default QAction to make "checkable"
-    class LogAction(QtWidgets.QAction):
-        def __init__(self, name: str = None):
-            QtWidgets.QAction.__init__(self, name)
-            self.setCheckable(True)
+        super(LogWindow, self).closeEvent(event)
+        self.cache.put(self.cache_visible, self.isVisible())
+        self.cache.put(self.cache_size, self.saveGeometry())
+        self.LOGGER.debug("LogWindow closeEvent")
+        event.accept()
 
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
-        currLevel = self.logLevel
-        menu = QMenu(self)
-        debug = self.LogAction("Debug")
-        if currLevel == logging.DEBUG:
-            debug.setChecked(True)
-        menu.addAction(debug)
-        info = self.LogAction("Info")
-        if currLevel == logging.INFO:
-            info.setChecked(True)
-        menu.addAction(info)
-        warning = self.LogAction("Warning")
-        if currLevel == logging.WARN:
-            warning.setChecked(True)
-        menu.addAction(warning)
-        error = self.LogAction("Error")
-        if currLevel == logging.ERROR:
-            error.setChecked(True)
-        menu.addAction(error)
-        crit = self.LogAction("Critical")
-        if currLevel == logging.CRITICAL:
-            crit.setChecked(True)
-        menu.addAction(crit)
-        menu.addSeparator()
-        clear = QtWidgets.QAction("Clear Log-Window")
-        menu.addAction(clear)
-        setting = menu.exec_(self.mapToGlobal(event))
-        if setting == debug:
-            currLevel = logging.DEBUG
-        elif setting == info:
-            currLevel = logging.INFO
-        elif setting == warning:
-            currLevel = logging.WARN
-        elif setting == error:
-            currLevel = logging.ERROR
-        elif setting == crit:
-            currLevel = logging.CRITICAL
-        elif setting == clear:
-            self.textEdit.clear()
-        if self.logLevel != currLevel:
-            self.logLevel = currLevel
-            self.refresh()
-
-        Cache().putIntoCache("log_window_level", self.logLevel)
-        self.setTitle()
-        self.logging_level_event.emit(self.logLevel)
-
-
+        context_menu = LogLevelPopup(self, self.log_level)
+        setting = context_menu.exec_(self.mapToGlobal(event.pos()))
+        if setting:
+            self.LOGGER.debug(
+                "Log-Level changed to %d (%s)"
+                % (setting.log_level(), logging.getLevelName(setting.log_level()))
+            )
+            self.log_level = setting.log_level()
+            Cache().put(self.cache_level, self.log_level)
+            self.get_handler().setLevel(self.log_level)
+            self.set_title_and_icon()

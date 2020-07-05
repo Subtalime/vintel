@@ -26,57 +26,67 @@ import logging
 
 # TODO: add emit-action on click
 class CharacterMenu(QMenu):
-    def __init__(self, menuname: str, parent: QObject = None, characters: Characters = None):
-        super(CharacterMenu, self).__init__(menuname, parent)
+    """Track players characters on this machine.
+    I can't remember the right intention I had with this.
+    I believe it was to dis/enable character tracking on the Map-Interface?
+    """
+    def __init__(
+        self, menu_name: str, parent: QObject = None, characters: Characters = None
+    ):
+        super(CharacterMenu, self).__init__(menu_name, parent)
         self._listWidget = QListWidget()
-        self._menu_actions = dict()
-        self.setObjectName("menu"+menuname)
+        self._menu_actions = {}
+        self.setObjectName("menu_" + menu_name)
         if characters is not None:
-            self.addItems(characters)
+            self.add_characters(characters)
 
     def _actionName(self, action: str) -> str:
-        return str(action).replace(' ', '_').replace('-', '_') + "_action"
+        return str(action).replace(" ", "_").replace("-", "_") + "_action"
 
-    def addItem(self, character: Character) -> bool:
+    def add_character(self, character: Character) -> bool:
         if not isinstance(character, Character):
-            logging.critical("addItem(characters) must be of type \"Characters\"")
+            logging.critical('addItem(characters) must be of type "Characters"')
             return False
         # prevent duplicates
         if character.getName() in self._menu_actions.keys():
             return False
-        action = QAction(character.getName(), self, checkable=True)
+        action = QAction(character.getName(), self)
+        action.setCheckable(True)
         action.setData(self._actionName(character.getName()))
         action.setObjectName(character.getName())
         action.setChecked(character.getStatus())
+        # TODO: not sure what to do with this yet...
+        action.setEnabled(False)
         action.setToolTip("deselect to disable monitoring")
         self._menu_actions[character.getName()] = action
         self.addAction(action)
         return True
 
-    def addItems(self, characters: Characters) -> bool:
+    def add_characters(self, characters: Characters) -> bool:
         if not isinstance(characters, Characters):
-            logging.critical("addItems(characters) must be of type \"Characters\"")
+            logging.critical('addItems(characters) must be of type "Characters"')
             return False
         od = OrderedDict(sorted(characters.items()))
         for key in od.keys():
-            self.addItem(od[key])
+            self.add_character(od[key])
         return True
 
-    def removeItem(self, character: Character) -> bool:
+    def remove_character(self, character: Character) -> bool:
         if not isinstance(character, Character):
-            logging.critical("removeItem(character) must be of type \"Character\"")
+            logging.critical('remove_character(character) must be of type "Character"')
         elif character.getName() in self._menu_actions.keys():
             self.removeAction(self._menu_actions.get(character.getName()))
             self._menu_actions.pop(character.getName())
             return True
         return False
 
-    def removeItems(self):
+    def remove_characters(self):
         try:
-            for menuitem in self._menu_actions:
-                obj = self.findChild(QAction, menuitem)
-                if obj:
-                    self.removeAction(obj)
+            self.clear()
+            # for menuitem in self._menu_actions:
+            #     obj = self.findChild(QAction, menuitem)
+            #     if obj:
+            #         self.removeAction(obj)
             self._menu_actions = dict()
         except Exception:
             raise

@@ -24,7 +24,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Bridges(list):
-
     def export(self):
         bridgeList = []
         for bridge in self:
@@ -34,8 +33,15 @@ class Bridges(list):
 
 
 class Bridge(object):
-    def __init__(self, region: str, start: str, end: str, status: str = "Online",
-                 distance: float = 0., direction: str = "<>"):
+    def __init__(
+        self,
+        region: str,
+        start: str,
+        end: str,
+        status: str = "Online",
+        distance: float = 0.0,
+        direction: str = "<>",
+    ):
         self.region = u"{}".format(region)
         self.start = u"{}".format(start)
         self.end = u"{}".format(end)
@@ -60,7 +66,9 @@ class Import:
             if columns[2] != "@" or columns[5] != "@":
                 continue
 
-            self.bridges.append(Bridge(columns[0], columns[1], columns[4], columns[7], columns[10]))
+            self.bridges.append(
+                Bridge(columns[0], columns[1], columns[4], columns[7], columns[10])
+            )
         if len(self.bridges) == 0:
             # maybe it's already in Export-Format?
             for line in fileContent:
@@ -68,21 +76,25 @@ class Import:
                 columns = line.split(" ")
                 if len(columns) != 3:
                     break
-                self.bridges.append(Bridge(None, columns[0], columns[2], direction=columns[1]))
+                self.bridges.append(
+                    Bridge(None, columns[0], columns[2], direction=columns[1])
+                )
 
         return self.bridges.export()
 
-    def readGarpaFile(self, fileName: str = None, clipboard: str = None):
+    def readGarpaFile(self, file_name: str = None, clipboard: str = None):
         try:
             if not clipboard:
-                with open(fileName, "r") as f:
+                with open(file_name, "r") as f:
                     content = f.read().splitlines(keepends=False)
             else:
                 content = clipboard.splitlines(keepends=False)
             if content:
                 return self.convertGarpaData(content)
         except Exception as e:
-            LOGGER.error("Error in importing Garpa Jumpbridges: %r", e)
+            LOGGER.error(
+                "Error in importing Garpa Jumpbridges: %s, %r" % (file_name, e)
+            )
         return []
 
 

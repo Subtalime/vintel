@@ -23,7 +23,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>3</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab_general">
          <attribute name="title">
@@ -105,8 +105,22 @@
              <bool>true</bool>
             </property>
             <layout class="QGridLayout" name="gridLayout_5">
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="text">
+                <string>Pop-Up notification:</string>
+               </property>
+              </widget>
+             </item>
              <item row="1" column="1">
               <widget class="QCheckBox" name="checkNotifyOwn">
+               <property name="text">
+                <string>enabled</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QCheckBox" name="checkPopupNotification">
                <property name="text">
                 <string>enabled</string>
                </property>
@@ -119,17 +133,17 @@
                </property>
               </widget>
              </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_7">
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_13">
                <property name="text">
-                <string>Pop-Up notification:</string>
+                <string>Jump-Distance-Alert:</string>
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
-              <widget class="QCheckBox" name="checkPopupNotification">
-               <property name="text">
-                <string>enabled</string>
+             <item row="3" column="1">
+              <widget class="QLineEdit" name="txtJumpDistance">
+               <property name="maxLength">
+                <number>1</number>
                </property>
               </widget>
              </item>
@@ -170,9 +184,9 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="tab_map_display">
+        <widget class="QWidget" name="tab_color_display">
          <attribute name="title">
-          <string>Map-Display</string>
+          <string>Color</string>
          </attribute>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
@@ -185,24 +199,37 @@
             </property>
             <layout class="QGridLayout" name="gridLayout_4">
              <item row="2" column="0">
-              <widget class="QPushButton" name="btnMapAddTime">
+              <widget class="QPushButton" name="colorAddTime">
                <property name="text">
                 <string>add Time</string>
                </property>
               </widget>
              </item>
              <item row="0" column="0">
-              <widget class="QComboBox" name="cmbAlertType"/>
+              <widget class="QComboBox" name="colorType"/>
              </item>
              <item row="2" column="1">
-              <widget class="QPushButton" name="btnMapDelTime">
+              <widget class="QPushButton" name="colorDelTime">
                <property name="text">
                 <string>delete Time</string>
                </property>
               </widget>
              </item>
              <item row="1" column="0" colspan="2">
-              <widget class="QTableView" name="tableViewMap"/>
+              <widget class="QTableView" name="colorTable"/>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>Background-Colors will blend over from the lowest timeline to the next highest and end up in WHITE</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -310,6 +337,29 @@
              <string>Help me on this...</string>
             </property>
            </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_chatroom">
+         <attribute name="title">
+          <string>Chatrooms</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>Enter the chatrooms to watch into the following field. Separate them by comma.</string>
+            </property>
+            <property name="textFormat">
+             <enum>Qt::PlainText</enum>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPlainTextEdit" name="txtChatrooms"/>
           </item>
          </layout>
         </widget>

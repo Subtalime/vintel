@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'Info.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -747,11 +748,9 @@ class Ui_Dialog(object):
 "Public License instead of this License.  But first, please read\n"
 "<http://www.gnu.org/philosophy/why-not-lgpl.html>.\n"
 ""))
-        self.label.setText(_translate("Dialog", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Vintel</span> - Visual Intel Chat Analyzer<br/><br/><br/>Dev Team: <a href=\"mailto:xanthos.eve@gmail.com\"><span style=\" text-decoration: underline; color:#0000ff;\">Xanthos</span></a>, <a href=\"mailto:lightlazer@gmail.com\"><span style=\" text-decoration: underline; color:#0000ff;\">Parrion Hukondo</span></a>, <a href=\"mailto:cberg@3wsolutions.se\"><span style=\" text-decoration: underline; color:#0000ff;\">chriz</span></a><br/><br/>This software is based on original work by Sebastian Meyer <br/>and is open source licensed under GPL v3.<br/>Find current sources and documentation at<br/><a href=\"https://github.com/XanthosX/vintel\"><span style=\" text-decoration: underline; color:#0000ff;\">https://github.com/xanthos-eve/vintel</span></a></p><p align=\"center\">Donations of ISK are appreciated.</p><p align=\"center\">NRDS!</p></body></html>"))
+        self.label.setText(_translate("Dialog", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Vintel</span> - Visual Intel Chat Analyzer<br/><br/><br/>Dev Team: <a href=\"mailto:xanthos.eve@gmail.com\"><span style=\" text-decoration: underline; color:#0000ff;\">Xanthos</span></a>, <a href=\"mailto:lightlazer@gmail.com\"><span style=\" text-decoration: underline; color:#0000ff;\">Parrion Hukondo</span></a>, <a href=\"mailto:cberg@3wsolutions.se\"><span style=\" text-decoration: underline; color:#0000ff;\">chriz</span></a>,  <a href=\"mailto:github@tschache.com\"><span style=\" text-decoration: underline; color:#0000ff;\">Subtalime</span></a><br/><br/>This software is based on original work by Sebastian Meyer and Xanthos<br/>and is open source licensed under GPL v3.<br/>Find current sources and documentation at<br/><a href=\"https://github.com/Subtalime/vintel\"><span style=\" text-decoration: underline; color:#0000ff;\">https://github.com/Subtalime/vintel</span></a></p><p align=\"center\">Donations of ISK are appreciated.</p><p align=\"center\">NRDS!</p></body></html>"))
         self.versionLabel.setText(_translate("Dialog", "Version: "))
         self.closeButton.setText(_translate("Dialog", "Close"))
         self.logoLabel.setText(_translate("Dialog", "TextLabel"))
         self.groupBox2.setTitle(_translate("Dialog", "Audio:"))
         self.label2.setText(_translate("Dialog", "<html><head/><body><p>Audio Files © Keith W. \'zimbot\' Blackwell (CC-BY 3.0), available @ <a href=\"http://www.freesound.org/people/zimbot/\"><span style=\" text-decoration: underline; color:#0057ae;\">freesound.org</span></a></p></body></html>"))
-
-

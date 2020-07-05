@@ -31,7 +31,7 @@ class Character:
     def __init__(self, charname: str, status: bool = True, location: str = None):
         self.charname = charname
         self.monitor = bool(eval(str(status)))
-        self.location = None if location == 'None' else location
+        self.location = None if location == "None" else location
 
     def update(self, monitor: bool = None, location: str = None):
         if monitor:
@@ -73,8 +73,9 @@ class Characters(dict):
     def __init__(self, path_to_logs: str = None):
         self._logPath = path_to_logs
         self._cache = Cache()
+        self.pilots = []
         # initialize by Cache-Content
-        self.loadData()
+        self.load_data()
 
     def remove(self, *args):
         if len(args) > 0 and isinstance(args[0], Character):
@@ -82,86 +83,91 @@ class Characters(dict):
         elif len(args) > 0:
             self.pop(args[0])
 
-    def addName(self, charname: str, status: bool = True, location: str = None,
-                store: bool = False) -> bool:
+    def addName(
+        self,
+        charname: str,
+        status: bool = True,
+        location: str = None,
+        store: bool = False,
+    ) -> bool:
         if not isinstance(charname, str):
-            LOGGER.critical("addName(charname) must be of type \"str\"")
+            LOGGER.critical('addName(charname) must be of type "str"')
             return False
         if charname not in self.keys():
             self[charname] = Character(charname, status, location)
             if store:
-                self.storeData()
+                self.store_data()
         else:
             return False
         return True
 
-    def addNames(self, charnames: list) -> bool:
+    def add_names(self, charnames: list) -> bool:
         if not isinstance(charnames, list):
-            LOGGER.critical("addNames(charnames) must be of type \"list\"")
+            LOGGER.critical('addNames(charnames) must be of type "list"')
             return False
-        newAddition = False
+        new = False
         for charname in charnames:
             if self.addName(charname):
-                newAddition = True
-        return newAddition
+                new = True
+        return new
 
-    def addCharacter(self, character: Character, store: bool = False) -> bool:
+    def add_character(self, character: Character, store: bool = False) -> bool:
         if not isinstance(character, Character):
-            LOGGER.critical("addCharacter(character) needs to be type of \"Character\"")
+            LOGGER.critical('addCharacter(character) needs to be type of "Character"')
             return False
         if character.getName() not in self.keys():
             self[character.getName()] = character
             if store:
-                self.storeData()
+                self.store_data()
         else:
             return False
         return True
 
     def pop(self, charname: str, store: bool = False):
         if not isinstance(charname, str):
-            LOGGER.critical("pop(charname) is to be of type \"str\"")
+            LOGGER.critical('pop(charname) is to be of type "str"')
         elif charname in self.keys():
             del self[charname]
             if store:
-                self.storeData()
+                self.store_data()
         else:
-            LOGGER.warning("tried to remove character \"{}\" which does not exist".format(charname))
+            LOGGER.warning(
+                'tried to remove character "{}" which does not exist'.format(charname)
+            )
 
     def get(self, charname: str) -> Character:
         if not isinstance(charname, str):
-            LOGGER.critical("get(charname) is to be of type \"str\"")
-        elif charname in self.keys():
-            return self[charname]
-        return None
+            LOGGER.critical('get(charname) is to be of type "str"')
+        return self[charname]
 
-    def getNames(self) -> list:
+    def get_names(self) -> list:
         chars = []
         for player in self.keys():
             chars.append(player)
         return chars
 
-    def getActiveNames(self) -> list:
+    def get_active_names(self) -> list:
         chars = []
         for player in self.keys():
             if self[player].getStatus():
                 chars.append(player)
         return chars
 
-    def loadData(self):
-        knownPlayerData = self._cache.getFromCache("known_players")
-        if knownPlayerData:
-            charsets = set(knownPlayerData.split(","))
+    def load_data(self):
+        known_player_data = self._cache.fetch("known_players")
+        if known_player_data:
+            charsets = set(known_player_data.split(","))
             for character in charsets:
                 try:
                     arr = list(character.split("."))
-                    self.addCharacter(Character(arr[0], arr[1], arr[2]))
+                    self.add_character(Character(arr[0], arr[1], arr[2]))
                 except Exception as e:
-                    LOGGER.error("could not add player \"%s\": %r", character, e)
+                    LOGGER.error('could not add player "%s": %r', character, e)
                     pass
 
-    def storeData(self):
+    def store_data(self):
         value = ",".join(str(x) for x in self.values())
-        self._cache.putIntoCache("known_players", value, 60 * 60 * 24 * 30)
+        self._cache.put("known_players", value, 60 * 60 * 24 * 30)
 
     def __repr__(self) -> str:
         return str(list(self.keys()))

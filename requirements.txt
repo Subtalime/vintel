@@ -14,3 +14,6 @@ PyQtWebEngine
 # for creating EXE
 # pywin32
 cx-Freeze
+dbx-stopwatch
+colour
+PyYAML

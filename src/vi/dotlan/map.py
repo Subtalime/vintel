@@ -18,19 +18,43 @@
 
 import time
 import logging
+import re
 import requests
 import six
 from bs4 import BeautifulSoup
 from vi.esi import EsiInterface
-from vi.dotlan.mysystem import MySystem as System
+from vi.dotlan.system import System
 from vi.dotlan.exception import DotlanException
+from vi.dotlan.jumpbridge import Jumpbridge
 from vi.cache.cache import Cache
 from vi.version import URL
 
 LOGGER = logging.getLogger(__name__)
-JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
-             "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
-             "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
+JB_COLORS = (
+    "800000",
+    "808000",
+    "BC8F8F",
+    "ff00ff",
+    "c83737",
+    "FF6347",
+    "917c6f",
+    "ffcc00",
+    "88aa00" "FFE4E1",
+    "008080",
+    "00BFFF",
+    "4682B4",
+    "00FF7F",
+    "7FFF00",
+    "ff6600",
+    "CD5C5C",
+    "FFD700",
+    "66CDAA",
+    "AFEEEE",
+    "5F9EA0",
+    "FFDEAD",
+    "696969",
+    "2F4F4F",
+)
 
 
 class Map(object):
@@ -48,7 +72,7 @@ class Map(object):
         # Update the marker
         if not self.marker["opacity"] == "0":
             now = time.time()
-            newValue = (1 - (now - float(self.marker["activated"])) / 10)
+            newValue = 1 - (now - float(self.marker["activated"])) / 10
             if newValue < 0:
                 newValue = "0"
             self.marker["opacity"] = newValue
@@ -63,27 +87,32 @@ class Map(object):
 
         # Get map from dotlan if not in the cache
         if not svgFile:
-            svg = cache.getFromCache("map_" + self.region)
+            svg = cache.fetch("map_" + self.region)
         else:
             svg = svgFile
         if not svg or str(svg).startswith("region not found"):
             try:
                 svg = self._getSvgFromDotlan(self.region)
-                cache.putIntoCache("map_" + self.region, svg,
-                                   EsiInterface().secondsTillDowntime() + 60 * 60)
+                cache.put(
+                    "map_" + self.region,
+                    svg,
+                    EsiInterface().secondsTillDowntime() + 60 * 60,
+                )
             except Exception as e:
                 self.outdatedCacheError = e
-                svg = cache.getFromCache("map_" + self.region, True)
+                svg = cache.fetch("map_" + self.region, True)
                 if not svg:
-                    t = "No Map in cache, nothing from dotlan. Must give up " \
-                        "because this happened:\n{0} {1}\n\nThis could be a " \
-                        "temporary problem (like dotlan is not reachable), or " \
-                        "everythig went to hell. Sorry. This makes no sense " \
-                        "without the map.\n\nRemember the site for possible " \
+                    t = (
+                        "No Map in cache, nothing from dotlan. Must give up "
+                        "because this happened:\n{0} {1}\n\nThis could be a "
+                        "temporary problem (like dotlan is not reachable), or "
+                        "everythig went to hell. Sorry. This makes no sense "
+                        "without the map.\n\nRemember the site for possible "
                         "updates: {2}".format(type(e), six.text_type(e), URL)
+                    )
                     raise DotlanException(t)
         # Create soup from the svg
-        self.soup = BeautifulSoup(svg, 'html.parser')
+        self.soup = BeautifulSoup(svg, "html.parser")
 
         self.systems = self._extractSystemsFromSoup(self.soup)
         self.systemsById = {}
@@ -115,13 +144,19 @@ class Map(object):
                 mapCoordinates = {}
                 for keyname in ("x", "y", "width", "height"):
                     mapCoordinates[keyname] = float(uses[symbolId][keyname])
-                mapCoordinates["center_x"] = (mapCoordinates["x"] + (mapCoordinates["width"] / 2))
-                mapCoordinates["center_y"] = (mapCoordinates["y"] + (mapCoordinates["height"] / 2))
+                mapCoordinates["center_x"] = mapCoordinates["x"] + (
+                    mapCoordinates["width"] / 2
+                )
+                mapCoordinates["center_y"] = mapCoordinates["y"] + (
+                    mapCoordinates["height"] / 2
+                )
                 try:
                     transform = uses[symbolId]["transform"]
                 except KeyError:
                     transform = "translate(0,0)"
-                systems[name] = System(name, element, self.soup, mapCoordinates, transform, systemId)
+                systems[name] = System(
+                    name, element, self.soup, mapCoordinates, transform, systemId
+                )
         return systems
 
     def _prepareSvg(self, soup, systems):
@@ -132,28 +167,56 @@ class Map(object):
             line["class"] = "j"
 
         # Current system marker ellipse
-        group = soup.new_tag("g", id="select_marker", opacity="0", activated="0", transform="translate(0, 0)")
-        ellipse = soup.new_tag("ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF")
+        group = soup.new_tag(
+            "g",
+            id="select_marker",
+            opacity="0",
+            activated="0",
+            transform="translate(0, 0)",
+        )
+        ellipse = soup.new_tag(
+            "ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF"
+        )
         group.append(ellipse)
 
         # The giant cross-hairs
         for coord in ((0, -10000), (-10000, 0), (10000, 0), (0, 10000)):
-            line = soup.new_tag("line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF")
+            line = soup.new_tag(
+                "line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF"
+            )
             group.append(line)
         svg.insert(0, group)
 
         # Create jumpbridge markers in a variety of colors
-        for jbColor in JB_COLORS:
+        for jbColor in Jumpbridge.JB_COLORS:
             startPath = soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
-            startMarker = soup.new_tag("marker", viewBox="0 0 20 20", id="arrowstart_{0}".format(jbColor),
-                                       markerUnits="strokeWidth", markerWidth="20", markerHeight="15", refx="-15",
-                                       refy="5", orient="auto", style="stroke:#{0};fill:#{0}".format(jbColor))
+            startMarker = soup.new_tag(
+                "marker",
+                viewBox="0 0 20 20",
+                id="arrowstart_{0}".format(jbColor),
+                markerUnits="strokeWidth",
+                markerWidth="20",
+                markerHeight="15",
+                refx="-15",
+                refy="5",
+                orient="auto",
+                style="stroke:#{0};fill:#{0}".format(jbColor),
+            )
             startMarker.append(startPath)
             svg.insert(0, startMarker)
             endpath = soup.new_tag("path", d="M 0 0 L 10 5 L 0 10 z")
-            endmarker = soup.new_tag("marker", viewBox="0 0 20 20", id="arrowend_{0}".format(jbColor),
-                                     markerUnits="strokeWidth", markerWidth="20", markerHeight="15", refx="25",
-                                     refy="5", orient="auto", style="stroke:#{0};fill:#{0}".format(jbColor))
+            endmarker = soup.new_tag(
+                "marker",
+                viewBox="0 0 20 20",
+                id="arrowend_{0}".format(jbColor),
+                markerUnits="strokeWidth",
+                markerWidth="20",
+                markerHeight="15",
+                refx="25",
+                refy="5",
+                orient="auto",
+                style="stroke:#{0};fill:#{0}".format(jbColor),
+            )
             endmarker.append(endpath)
             svg.insert(0, endmarker)
         jumps = soup.select("#jumps")[0]
@@ -162,11 +225,22 @@ class Map(object):
         for systemId, system in self.systemsById.items():
             coords = system.mapCoordinates
             text = "stats n/a"
-            style = "text-anchor:middle;font-size:8;font-weight:normal;font-family:Arial;"
-            svgtext = soup.new_tag("text", x=coords["center_x"], y=coords["y"] + coords["height"] + 6, fill="blue",
-                                   style=style, visibility="hidden", transform=system.transform)
+            style = (
+                "text-anchor:middle;font-size:8;font-weight:normal;font-family:Arial;"
+            )
+            svgtext = soup.new_tag(
+                "text",
+                x=coords["center_x"],
+                y=coords["y"] + coords["height"] + 6,
+                fill="blue",
+                style=style,
+                visibility="hidden",
+                transform=system.transform,
+            )
             svgtext["id"] = "stats_" + str(systemId)
-            svgtext["class"] = ["statistics", ]
+            svgtext["class"] = [
+                "statistics",
+            ]
             svgtext.string = text
             jumps.append(svgtext)
 
@@ -190,6 +264,10 @@ class Map(object):
         content = requests.get(url).text
         if content.startswith("region not found"):
             raise Exception(content)
+        content = re.sub(
+            r"<\?xml.*\?>", r'<?xml version="1.0" encoding="ISO-8859-1"?>', content
+        )
+
         return content
 
     def addSystemStatistics(self, statistics):
@@ -203,7 +281,7 @@ class Map(object):
                 system.setStatistics(None)
         LOGGER.info("addSystemStatistics complete")
 
-    def setJumpbridges(self, jumpbridgesData):
+    def setJumpbridges(self, jumpbridgesData, parent=None):
         """
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
@@ -236,14 +314,19 @@ class Map(object):
             systemTwo.setJumpbridgeColor(jbColor)
 
             # Construct the line, color it and add it to the jumps
-            line = soup.new_tag("line", x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
-                                y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
-                                x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
-                                y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
-                                visibility="hidden",
-                                style="stroke:#{0}".format(jbColor))
+            line = soup.new_tag(
+                "line",
+                x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
+                y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
+                x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
+                y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
+                visibility="hidden",
+                style="stroke:#{0}".format(jbColor),
+            )
             line["stroke-width"] = 2
-            line["class"] = ["jumpbridge", ]
+            line["class"] = [
+                "jumpbridge",
+            ]
             if "<" in connection:
                 line["marker-start"] = "url(#arrowstart_{0})".format(jbColor)
             if ">" in connection:

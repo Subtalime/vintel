@@ -27,31 +27,25 @@ from vi.resources import resourcePath
 import clipboard
 import vi.ui.JumpbridgeChooser
 from vi.jumpbridge import Import
-
-LOGGER = logging.getLogger(__name__)
+from vi.settings.settings import RegionSettings
 
 
 class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
     set_jump_bridge_url = pyqtSignal(str, str)
+    LOGGER = logging.getLogger(__name__)
 
-    def __init__(self, parent, url):
+    def __init__(self, parent, url=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
         self.saveButton.clicked.connect(self.savePath)
         self.cancelButton.clicked.connect(self.reject)
         self.clipboardButton.clicked.connect(self.saveClipboard)
         self.clipboardButton.setEnabled(True)
+        url = RegionSettings().jump_bridge_url
         self.urlField.setText(url)
         # loading format explanation from textfile
-        try:
-            with open(resourcePath("docs/jumpbridgeformat.txt")) as f:
-                self.formatInfoField.setPlainText(f.read())
-        except FileNotFoundError:
-            try:
-                with open("docs/jumpbridgeformat.txt") as f:
-                    self.formatInfoField.setPlainText(f.read())
-            except FileNotFoundError:
-                pass
+        with open(resourcePath("docs/jumpbridgeformat.txt")) as f:
+            self.formatInfoField.setPlainText(f.read())
 
     def savePath(self):
         try:
@@ -61,24 +55,40 @@ class JumpbridgeDialog(QtWidgets.QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             elif url != "":
                 open(url, "r")
             self.accept()
+            RegionSettings().jump_bridge_url = url
             self.set_jump_bridge_url.emit(url, None)
         except Exception as e:
-            LOGGER.error("Finding Jumpbridgedata failed for \"%s\": %r", url, e)
+            self.LOGGER.error('Finding Jumpbridgedata failed for "%s": %r' % (url, e,))
 
     def accept(self) -> None:
         QDialog.accept(self)
         self.close()
 
     def saveClipboard(self):
-            try:
-                data = clipboard.paste()
-                if data:
-                    jb = Import.Import().readGarpaFile(clipboard=data)
-                    if len(jb) > 0:
-                        self.accept()
-                        self.set_jump_bridge_url.emit(None, data)
-                        self.close()
-                    else:
-                        QtWidgets.QMessageBox.warning(self, "Jumpbridgedata from Clipboard", "Invalid data found in Clipboard")
-            except Exception as e:
-                LOGGER.error("Error while using Clipboard-Jumpdata: %r", e)
+        try:
+            data = clipboard.paste()
+            if data:
+                jb = Import.Import().readGarpaFile(clipboard=data)
+                if len(jb) > 0:
+                    self.accept()
+                    RegionSettings().jump_bridge_data = data
+                    self.set_jump_bridge_url.emit(None, data)
+                    self.close()
+                else:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Jumpbridgedata from Clipboard",
+                        "Invalid data found in Clipboard",
+                    )
+        except Exception as e:
+            self.LOGGER.error("Error while using Clipboard-Jumpdata: %r", e)
+
+
+if __name__ == "__main__":
+    import sys
+    from PyQt5.Qt import QApplication
+
+    a = QApplication(sys.argv)
+    d = JumpbridgeDialog(None)
+    d.show()
+    sys.exit(a.exec_())

@@ -27,7 +27,9 @@ class Ui_EsiWaitDialog(object):
     def retranslateUi(self, EsiWaitDialog):
         _translate = QtCore.QCoreApplication.translate
         EsiWaitDialog.setWindowTitle(_translate("EsiWaitDialog", "Web-Server-Response"))
-        self.label.setText(_translate("EsiWaitDialog", "Waiting for user to complete EVE-Authorization..."))
+        self.label.setText(
+            _translate(
+                "EsiWaitDialog", "Waiting for user to complete EVE-Authorization..."
+            )
+        )
         self.buttonCancel.setText(_translate("EsiWaitDialog", "Cancel ..."))
-
-

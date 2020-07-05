@@ -40,14 +40,21 @@ def updateDatabase(oldVersion, con):
     """
     queries = []
     if oldVersion < 1:
-        queries += ["CREATE TABLE version (version INT)", "INSERT INTO version (version) VALUES (1)"]
+        queries += [
+            "CREATE TABLE version (version INT)",
+            "INSERT INTO version (version) VALUES (1)",
+        ]
     if oldVersion < 2:
-        queries += ["CREATE TABLE playernames (charname VARCHAR PRIMARY KEY, status INT, modified INT)",
-                    "CREATE TABLE avatars (charname VARCHAR PRIMARY KEY, data  BLOB, modified INT)",
-                    "UPDATE version SET version = 2"]
+        queries += [
+            "CREATE TABLE playernames (charname VARCHAR PRIMARY KEY, status INT, modified INT)",
+            "CREATE TABLE avatars (charname VARCHAR PRIMARY KEY, data  BLOB, modified INT)",
+            "UPDATE version SET version = 2",
+        ]
     if oldVersion < 3:
-        queries += ["CREATE TABLE cache (key VARCHAR PRIMARY KEY, data BLOB, modified INT, maxage INT)",
-                    "UPDATE version SET version = 3"]
+        queries += [
+            "CREATE TABLE cache (key VARCHAR PRIMARY KEY, data BLOB, modified INT, maxage INT)",
+            "UPDATE version SET version = 3",
+        ]
     for query in queries:
         con.execute(query)
     for update in databaseUpdates:
@@ -55,13 +62,14 @@ def updateDatabase(oldVersion, con):
             con.execute(update[0])
     con.commit()
 
+
 def _hash(data):
     """ generate a hash from data object to be used as cache key """
-    hash_algo = hashlib.new('md5')
+    hash_algo = hashlib.new("md5")
     hash_algo.update(pickle.dumps(data))
     # prefix allows possibility of multiple applications
     # sharing same keyspace
-    return 'esi_' + hash_algo.hexdigest()
+    return "esi_" + hash_algo.hexdigest()
 
 
 class EsiCache(BaseCache):
@@ -83,16 +91,18 @@ class EsiCache(BaseCache):
             self.dbPath = os.path.join(self.BASE_DIR, "esi_cache.sqlite3")
         else:
             base_path = os.path.abspath(".")
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 base_path = sys._MEIPASS
             self.dbPath = os.path.join(base_path, "esi_cache.sqlite3")
+        if not getattr(sys, "frozen", False):
+            self.dbPath = self.dbPath.replace(".", "_deb.")
         try:
             self.con = sqlite3.connect(self.dbPath, check_same_thread=False)
             with EsiCache.SQLITE_WRITE_LOCK:
                 self.checkVersion()
             EsiCache.VERSION_CHECKED = True
         except Exception as e:
-            raise FileNotFoundError("Unable to access DB at \"%s\"" % self.dbPath, e)
+            raise FileNotFoundError('Unable to access DB at "%s"' % self.dbPath, e)
 
     def checkVersion(self):
         if not self.__cache_enabled:
@@ -102,15 +112,17 @@ class EsiCache(BaseCache):
             query = "SELECT version FROM version;"
             version = self.con.execute(query).fetchall()[0][0]
         except Exception as e:
-            if (isinstance(e, sqlite3.OperationalError) and "no such table: version" in str(e)):
+            if isinstance(
+                e, sqlite3.OperationalError
+            ) and "no such table: version" in str(e):
                 pass
-            elif (isinstance(e, IndexError)):
+            elif isinstance(e, IndexError):
                 pass
             else:
                 raise e
         updateDatabase(version, self.con)
 
-    def getFromCache(self, key, outdated=False, default=None):
+    def fetch(self, key, outdated=False, default=None):
         return self.get(key, outdated, default)
 
     # outdated defaults to True, because it may contain ESI refresh tokens
@@ -126,7 +138,11 @@ class EsiCache(BaseCache):
             founds = self.con.execute(query, (_hash(key),)).fetchall()
             if founds is None or len(founds) == 0:
                 return default
-            elif founds[0][3] and founds[0][2] + founds[0][3] < time.time() and not outdated:
+            elif (
+                founds[0][3]
+                and founds[0][2] + founds[0][3] < time.time()
+                and not outdated
+            ):
                 return default
             value = founds[0][1]
             return pickle.loads(value)
@@ -143,7 +159,7 @@ class EsiCache(BaseCache):
         except Exception as e:
             raise e
 
-    def putIntoCache(self, key, value, max_age=None):
+    def put(self, key, value, max_age=None):
         self.set(key, value, max_age)
 
     def set(self, key, value, max_age=None):
@@ -167,7 +183,7 @@ class EsiCache(BaseCache):
             except Exception as e:
                 raise e
 
-    def delFromCache(self, key):
+    def delete(self, key):
         self.invalidate(key)
 
     def invalidate(self, key):

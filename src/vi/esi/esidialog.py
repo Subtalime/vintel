@@ -76,5 +76,3 @@ class Ui_EsiDialog(object):
         self.checkBox.setText(_translate("EsiDialog", "store Secret Key"))
         self.cancelButton.setText(_translate("EsiDialog", "Cancel"))
         self.okButton.setText(_translate("EsiDialog", "OK"))
-
-

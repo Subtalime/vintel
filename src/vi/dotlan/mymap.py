@@ -17,284 +17,403 @@
 #
 #
 
-from bs4.element import  CData
-from PyQt5 import  QtWidgets
-from vi.dotlan.map import Map
-from vi.resources import getVintelMap
-from vi.dotlan.javascript import JavaScript
+import datetime
+import logging
+import os
+import re
 import sys
 import time
-import logging
-import math
-import os
-import datetime
 
-JB_COLORS = ("800000", "808000", "BC8F8F", "ff00ff", "c83737", "FF6347", "917c6f", "ffcc00",
-             "88aa00" "FFE4E1", "008080", "00BFFF", "4682B4", "00FF7F", "7FFF00", "ff6600",
-             "CD5C5C", "FFD700", "66CDAA", "AFEEEE", "5F9EA0", "FFDEAD", "696969", "2F4F4F")
-LOGGER = logging.getLogger(__name__)
+from bs4.element import CData
+from bs4 import BeautifulSoup
+from PyQt5 import QtWidgets
+from vi.cache import Cache
+from vi.dotlan.colorjavascript import ColorJavaScript
+from vi.dotlan.jumpbridge import Jumpbridge
+from vi.dotlan.system import System
+from vi.dotlan.exception import DotlanException
+from vi.esi import EsiInterface
+from vi.logger.mystopwatch import ViStopwatch
+from vi.resources import getVintelMap
+from vi.states import State
+import requests
 
 
-class MyMap(Map):
-    # var
-    # ALARM_COLORS = [60 * 4, "#FF0000", "#FFFFFF", 60 * 10, "#FF9B0F", "#000000",
-    #                 60 * 15, "#FFFA0F", "#000000", 60 * 25, "#FFFDA2", "#000000",
-    #                 60 * 60 * 24, "#FFFFFF", "#000000"];
-    # var
-    # REQUEST_COLORS = [60 * 2, "#ffaaff", "#000000",
-    #                   60 * 60 * 24, "#FFFFFF", "#000000"];
-    # var
-    # CLEAR_COLORS = [60 * 2, "#59FF6C", "#000000",
-    #                 60 * 60 * 24, "#FFFFFF", "#000000"];
+class MapData:
+    """get the SVG content from wherever it resides.
+    """
 
-    def addTimerJs(self):
-        realtime_js = """
-        const pSBC=(p,c0,c1,l)=>{
-            let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
-            if(typeof(p)!="number"||p<-1||p>1||typeof(c0)!="string"||(c0[0]!='r'&&c0[0]!='#')||(c1&&!a))return null;
-            if(!this.pSBCr)this.pSBCr=(d)=>{
-                let n=d.length,x={};
-                if(n>9){
-                    [r,g,b,a]=d=d.split(","),n=d.length;
-                    if(n<3||n>4)return null;
-                    x.r=i(r[3]=="a"?r.slice(5):r.slice(4)),x.g=i(g),x.b=i(b),x.a=a?parseFloat(a):-1
-                }else{
-                    if(n==8||n==6||n<4)return null;
-                    if(n<6)d="#"+d[1]+d[1]+d[2]+d[2]+d[3]+d[3]+(n>4?d[4]+d[4]:"");
-                    d=i(d.slice(1),16);
-                    if(n==9||n==5)x.r=d>>24&255,x.g=d>>16&255,x.b=d>>8&255,x.a=m((d&255)/0.255)/1000;
-                    else x.r=d>>16,x.g=d>>8&255,x.b=d&255,x.a=-1
-                }return x};
-            h=c0.length>9,h=a?c1.length>9?true:c1=="c"?!h:false:h,f=pSBCr(c0),P=p<0,t=c1&&c1!="c"?pSBCr(c1):P?{r:0,g:0,b:0,a:-1}:{r:255,g:255,b:255,a:-1},p=P?p*-1:p,P=1-p;
-            if(!f||!t)return null;
-            if(l)r=m(P*f.r+p*t.r),g=m(P*f.g+p*t.g),b=m(P*f.b+p*t.b);
-            else r=m((P*f.r**2+p*t.r**2)**0.5),g=m((P*f.g**2+p*t.g**2)**0.5),b=m((P*f.b**2+p*t.b**2)**0.5);
-            a=f.a,t=t.a,f=a>=0||t>=0,a=f?a<0?t:t<0?a:a*P+t*p:0;
-            if(h)return"rgb"+(f?"a(":"(")+r+","+g+","+b+(f?","+m(a*1000)/1000:"")+")";
-            else return"#"+(4294967296+r*16777216+g*65536+b*256+(f?m(a*255):0)).toString(16).slice(1,f?undefined:-2)
-        }
+    DOTLAN_BASE_URL = u"http://evemaps.dotlan.net/svg/{0}.svg"
 
-        // max time for alarm, rect color, secondLine color
-        """
-        realtime_js += JavaScript().getJs()
-        realtime_js += """
-        var UNKNOWN_COLOR = "#FFFFFF";
-        var CLEAR_COLOR = "#59FF6C";
-        var STATE = ['alarm', 'was alarmed', 'clear', 'unknown', 'ignore', 'no change', 'request', 'location'];
-        // seconds to start at, text-line, rectangle, where current state
-        function showTimer(currentTime, state, secondline, rect, rectice) {
-            var bgcolor = UNKNOWN_COLOR; // the default
-            var endcolor = CLEAR_COLOR;
-            var slcolor = '#000000';
-            var arrayoffset = -1;
-            var maxtime = 0;
-            var startTime = new Date().getTime() - currentTime * 1000;
-            window.setInterval(function() {
-                var time = new Date().getTime() - startTime;
-                var elapsed = Math.ceil(time / 100) / 10;
-                if (elapsed >= maxtime) {
-                    if (state == STATE[0]) { // Alarm
-                        while (arrayoffset + 1 < ALARM_COLORS.length / 3 && elapsed > maxtime) {
-                            arrayoffset += 1;
-                            bgcolor = endcolor =  ALARM_COLORS[arrayoffset * 3 + 1];
-                            if (arrayoffset + 1 < ALARM_COLORS.length / 3) {
-                                endcolor = ALARM_COLORS[(arrayoffset + 1) * 3 + 1];
-                            }
-                            slcolor = ALARM_COLORS[arrayoffset * 3 + 2];
-                            maxtime = ALARM_COLORS[arrayoffset * 3];
-                        }
-                    }
-                    else if (state == STATE[2]) { // Clear
-                        while (arrayoffset + 1 < CLEAR_COLORS.length / 3 && elapsed > maxtime) {
-                            arrayoffset += 1;
-                            bgcolor = endcolor = CLEAR_COLORS[arrayoffset * 3 + 1];
-                            if (arrayoffset + 1 < CLEAR_COLORS.length / 3) {
-                                endcolor = CLEAR_COLORS[(arrayoffset + 1) * 3 + 1];
-                            }
-                            slcolor = CLEAR_COLORS[arrayoffset * 3 + 2];
-                            maxtime = CLEAR_COLORS[arrayoffset * 3];
-                        }
-                    }
-                    else if (state == STATE[6]) { // Request
-                        while (arrayoffset + 1 < REQUEST_COLORS.length / 3 && elapsed > maxtime) {
-                            arrayoffset += 1;
-                            bgcolor = endcolor = REQUEST_COLORS[arrayoffset * 3 + 1];
-                            if (arrayoffset + 1 < REQUEST_COLORS.length / 3) {
-                                endcolor = REQUEST_COLORS[(arrayoffset + 1) * 3 + 1];
-                            }
-                            slcolor = REQUEST_COLORS[arrayoffset * 3 + 2];
-                            maxtime = REQUEST_COLORS[arrayoffset * 3];
-                        }
-                    }
-                }
-                var minutes = parseInt(elapsed / 60, 10);
-                var seconds = parseInt(elapsed % 60, 10);
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-                secondline.setAttribute("style", "fill: "+slcolor);
-                //secondline.style.fill = "#000000";
-                var achieved = 0;
-                if (arrayoffset >= 0) {
-                    achieved = elapsed / maxtime;
-                }
-                var newcolor = pSBC(achieved, bgcolor, endcolor, 1);
-                rect.setAttribute('style', "fill: "+newcolor);
-                rectice.setAttribute('style', "fill: "+newcolor);
-                secondline.textContent = minutes + ":" + seconds;
-            }, 1000);
-        }
-        """
+    def __init__(self, region: str):
+        self.region = region
+        self.svg = None
 
-        js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
-        if not js:
-            js = self.soup.new_tag("script", attrs={"id": "timer", "type": "text/javascript"})
-        js.string = CData(realtime_js)
-        self.soup.svg.append(js)
-
-    @property
-    def svg(self):
-        self.addTimerJs()
-        # Re-render all systems
-        onload = []
-        # for system in self.mySystems.values():
-        for system in self.systems.values():
-            system.update()
-            if len(system.timerload):
-                onload.append("showTimer({0}, '{1}', document.querySelector('#{2}'), document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
-                system.timerload[0], system.timerload[1], system.timerload[2], system.timerload[3], system.timerload[4]))
-        # Update the marker
-        js_onload = self.soup.find("script", attrs={"id": "onload"})
-        if not js_onload:
-            js_onload = self.soup.new_tag("script",
-                                          attrs={"id": "onload", "type": "text/javascript"})
-            self.soup.svg.append(js_onload)
-        js_onload = self.soup.find("script", attrs={"id": "onload"})
-        if len(onload) > 0:
-            startjs = "window.onload = function () {\n"
-            for load in onload:
-                startjs += load + "\n"
-            startjs += "}\n"
-            js_onload.string = startjs
-
-        # Update the marker
-        if not self.marker["opacity"] == "0":
-            now = time.time()
-            newValue = (1 - (now - float(self.marker["activated"])) / 10)
-            if newValue < 0:
-                newValue = "0"
-            self.marker["opacity"] = newValue
-        content = str(self.soup)
-        if not getattr(sys, 'frozen', False):
-            self.debugWriteSoup(content)
+    def _get_svg_from_dotlan(self):
+        url = self.DOTLAN_BASE_URL.format(self.region)
+        try:
+            content = requests.get(url).text
+            if content.startswith("region not found"):
+                raise DotlanException(content)
+        except Exception as e:
+            raise DotlanException(e)
         return content
 
-    def __init__(self, parent=None):
-        self.progress = None
-        self.parent = parent
-        self.region = None
+    def _from_dotlan(self):
+        self.svg = self._get_svg_from_dotlan()
+        Cache().put(
+            "map_" + self.region,
+            self.svg,
+            EsiInterface().secondsTillDowntime() + 60 * 60,
+        )
 
-    def loadMap(self, regionName):
-        testFile = getVintelMap(regionName=regionName)
-        self.region = regionName
+    def _fix_svg(self):
+        # replace the header to show encoding
+        self.svg = re.sub(
+            r"<\?xml.*\?>", r'<?xml version="1.0" encoding="ISO-8859-1"?>', self.svg,
+        )
+
+    def _from_cache(self):
+        self.svg = Cache().fetch("map_" + self.region)
+        if not self.svg:
+            raise
+
+    def _from_file(self):
+        file_path = getVintelMap(regionName=self.region)
+        with open(file_path, "r") as f:
+            self.svg = f.read()
+
+    def load(self):
+        # try in sequence
         try:
-            with open(testFile, "r") as f:
-                self.svgData = f.read()
-        except FileNotFoundError as e:
-            self.svgData = None
-            pass
+            self._from_cache()
+        except:
+            try:
+                self._from_file()
+            except:
+                try:
+                    self._from_dotlan()
+                except DotlanException as e:
+                    t = (
+                        "No Map in cache, nothing from dotlan. Must give up "
+                        "because this happened:\n{0} {1}\n\nThis could be a "
+                        "temporary problem (like dotlan is not reachable), or "
+                        "everythig went to hell. Sorry. This makes no sense "
+                        "without the map.".format(type(e), e)
+                    )
+                    raise DotlanException(t)
+        self._fix_svg()
+        return self.svg
+
+
+class MyMap:
+    def __init__(self, parent=None, region="Delve"):
+        self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Initializing Map for {}".format(region))
+        self.region = region
+        self.parent = parent
+        self.progress = None
+        self.sw = ViStopwatch()
+        self.system_updates = 0
+        self.soup = None
+        self.systems = None
+        self._jumpMapsVisible = False
+        self._statisticsVisible = False
+
+        svg = MapData(self.region).load()
         if self.parent:
             if not self.progress:
-                self.progress = QtWidgets.QProgressDialog("Loading map data...", None, 0, 1, self.parent)
+                self.progress = QtWidgets.QProgressDialog(
+                    "Loading map data...", "", 0, 1, self.parent
+                )
                 self.progress.setModal(False)
 
-        super(MyMap, self).__init__(regionName, self.svgData)
-        # self.addTimerJs()
+        # Create soup from the svg
+        self.soup = BeautifulSoup(svg, "html.parser")
+        self.systems = self._extractSystemsFromSoup()
+        self.systemsById = {}
+        for system in self.systems.values():
+            self.systemsById[system.system_id] = system
+        self._prepareSvg()
+        self._connectNeighbours()
+        self.marker = self.soup.select("#select_marker")[0]
+        self.LOGGER.debug("Initializing Map for {}: Done".format(region))
         if self.parent:
             # this closes...
             self.progress.setValue(1)
             self.progress = None
-        return self
+
+    def _extractSystemsFromSoup(self):
+        systems = {}
+        uses = {}
+        for use in self.soup.select("use"):
+            useId = use["xlink:href"][1:]
+            uses[useId] = use
+        symbols = self.soup.select("symbol")
+        for symbol in symbols:
+            symbolId = symbol["id"]
+            systemId = symbolId[3:]
+            try:
+                systemId = int(systemId)
+            except ValueError:
+                continue
+            for element in symbol.select(".sys"):
+                name = element.select("text")[0].text.strip().upper()
+                mapCoordinates = {}
+                for keyname in ("x", "y", "width", "height"):
+                    mapCoordinates[keyname] = float(uses[symbolId][keyname])
+                mapCoordinates["center_x"] = mapCoordinates["x"] + (
+                    mapCoordinates["width"] / 2
+                )
+                mapCoordinates["center_y"] = mapCoordinates["y"] + (
+                    mapCoordinates["height"] / 2
+                )
+                try:
+                    transform = uses[symbolId]["transform"]
+                except KeyError:
+                    transform = "translate(0,0)"
+                systems[name] = System(
+                    name, element, self.soup, mapCoordinates, transform, systemId
+                )
+        return systems
+
+    def _prepareSvg(self):
+        svg = self.soup.select("svg")[0]
+        # Disable dotlan mouse functionality and make all jump lines black
+        svg["onmousedown"] = "return false;"
+        for line in self.soup.select("line"):
+            line["class"] = "j"
+
+        # Current system marker ellipse
+        group = self.soup.new_tag(
+            "g",
+            id="select_marker",
+            opacity="0",
+            activated="0",
+            transform="translate(0, 0)",
+        )
+        ellipse = self.soup.new_tag(
+            "ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF"
+        )
+        group.append(ellipse)
+
+        # The giant cross-hairs
+        for coord in ((0, -10000), (-10000, 0), (10000, 0), (0, 10000)):
+            line = self.soup.new_tag(
+                "line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF"
+            )
+            group.append(line)
+        svg.insert(0, group)
+
+        # Create jumpbridge markers in a variety of colors
+        for jbColor in Jumpbridge.JB_COLORS:
+            startPath = self.soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
+            startMarker = self.soup.new_tag(
+                "marker",
+                viewBox="0 0 20 20",
+                id="arrowstart_{0}".format(jbColor),
+                markerUnits="strokeWidth",
+                markerWidth="20",
+                markerHeight="15",
+                refx="-15",
+                refy="5",
+                orient="auto",
+                style="stroke:#{0};fill:#{0}".format(jbColor),
+            )
+            startMarker.append(startPath)
+            svg.insert(0, startMarker)
+            endpath = self.soup.new_tag("path", d="M 0 0 L 10 5 L 0 10 z")
+            endmarker = self.soup.new_tag(
+                "marker",
+                viewBox="0 0 20 20",
+                id="arrowend_{0}".format(jbColor),
+                markerUnits="strokeWidth",
+                markerWidth="20",
+                markerHeight="15",
+                refx="25",
+                refy="5",
+                orient="auto",
+                style="stroke:#{0};fill:#{0}".format(jbColor),
+            )
+            endmarker.append(endpath)
+            svg.insert(0, endmarker)
+        jumps = self.soup.select("#jumps")[0]
+
+        # Set up the tags for system statistics
+        for systemId, system in self.systemsById.items():
+            coords = system.map_coordinates
+            text = "stats n/a"
+            style = (
+                "text-anchor:middle;font-size:8;font-weight:normal;font-family:Arial;"
+            )
+            svgtext = self.soup.new_tag(
+                "text",
+                x=coords["center_x"],
+                y=coords["y"] + coords["height"] + 6,
+                fill="blue",
+                style=style,
+                visibility="hidden",
+                transform=system.transform,
+            )
+            svgtext["id"] = "stats_" + str(systemId)
+            svgtext["class"] = [
+                "statistics",
+            ]
+            svgtext.string = text
+            jumps.append(svgtext)
+
+    def _connectNeighbours(self):
+        """
+            This will find all neighbours of the systems and connect them.
+            It takes a look at all the jumps on the map and gets the system under
+            which the line ends
+        """
+        for jump in self.soup.select("#jumps")[0].select(".j"):
+            if "jumpbridge" in jump["class"]:
+                continue
+            parts = jump["id"].split("-")
+            if parts[0] == "j":
+                startSystem = self.systemsById[int(parts[1])]
+                stopSystem = self.systemsById[int(parts[2])]
+                startSystem.addNeighbour(stopSystem)
+
+    def addSystemStatistics(self, statistics):
+        self.LOGGER.info("addSystemStatistics start")
+        if statistics is not None:
+            for systemId, system in self.systemsById.items():
+                if systemId in statistics:
+                    system.setStatistics(statistics[systemId])
+        else:
+            for system in self.systemsById.values():
+                system.setStatistics(None)
+        self.LOGGER.info("addSystemStatistics complete")
+
+    def changeStatisticsVisibility(self):
+        newStatus = False if self._statisticsVisible else True
+        value = "visible" if newStatus else "hidden"
+        for line in self.soup.select(".statistics"):
+            line["visibility"] = value
+        self._statisticsVisible = newStatus
+        return newStatus
+
+    def changeJumpbridgesVisibility(self):
+        newStatus = False if self._jumpMapsVisible else True
+        value = "visible" if newStatus else "hidden"
+        for line in self.soup.select(".jumpbridge"):
+            line["visibility"] = value
+        self._jumpMapsVisible = newStatus
+        return newStatus
+
+    def addTimerJs(self):
+        realtime_js = ColorJavaScript().js_color_all()
+        realtime_js += ColorJavaScript().show_timer()
+        js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
+        if not js:
+            js = self.soup.new_tag(
+                "script", attrs={"id": "timer", "type": "text/javascript"}
+            )
+        js.string = CData(realtime_js)
+        self.soup.svg.append(js)
+
+    def time_report(self, extra_msg: str = None):
+        self.LOGGER.debug(self.sw.get_report(extra_msg))
+
+    def timerload(self, timerload):
+        return (
+            "showTimer({0}, '{1}', document.querySelector('#{2}'), "
+            "document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
+                timerload[0], timerload[1], timerload[2], timerload[3], timerload[4],
+            )
+        )
+
+    @property
+    def svg(self):
+        # time this complete block
+        with self.sw.timer("SVG"):
+            with self.sw.timer("add Timer JS"):
+                self.addTimerJs()
+            # Re-render all systems
+            with self.sw.timer("System update"):
+                onload = []
+                count = 0
+                cjs = ColorJavaScript()
+                for system in self.systems.values():
+                    if (
+                        len(system.timerload) and system.timerload[0] >= 60 * 60 * 2
+                    ):  # remove timers older than 2 hours
+                        system.setStatus(State["UNKNOWN"])
+                    # TODO: when changing System, rescan all Chats and update markers that way
+                    if system.update(cjs):
+                        count += 1
+                        if str(system.secondLine.string).startswith("-"):
+                            self.LOGGER.error(system)
+                    if len(system.timerload):  # remove timers older than 2 hours
+                        onload.append(self.timerload(system.timerload))
+                self.system_updates = count
+            # Update the OnLoad JavaScript in the page
+            with self.sw.timer("add window.onload JS"):
+                js_onload = self.soup.find("script", attrs={"id": "onload"})
+                if not js_onload:
+                    js_onload = self.soup.new_tag(
+                        "script", attrs={"id": "onload", "type": "text/javascript"}
+                    )
+                    self.soup.svg.append(js_onload)
+                js_onload = self.soup.find("script", attrs={"id": "onload"})
+                if len(onload) > 0:
+                    startjs = "window.onload = function () {\n"
+                    for load in onload:
+                        startjs += load + "\n"
+                    startjs += "};\n"
+                    js_onload.string = startjs
+            # Update the marker
+            with self.sw.timer("Update Opacity Marker"):
+                if not self.marker["opacity"] == "0":
+                    now = time.time()
+                    new_value = 1 - (now - float(self.marker["activated"])) / 10
+                    if new_value < 0:
+                        new_value = "0"
+                    self.marker["opacity"] = new_value
+            with self.sw.timer("Build Map Content"):
+                content = str(self.soup)
+            if not getattr(sys, "frozen", False):
+                with self.sw.timer("Dump Map To disc"):
+                    # pass
+                    self.debugWriteSoup(content)
+        self.time_report("\tNumber of timers in SVG: %d" % self.system_updates)
+        return content
 
     def debugWriteSoup(self, svgData):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
         from vi.resources import getVintelLogDir
-        dir, file = os.path.split(os.path.abspath(__file__))
+
         ts = datetime.datetime.fromtimestamp(time.time()).strftime("%H_%M_%S")
         try:
-            with open(os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+") as svgFile:
+            with open(
+                os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+"
+            ) as svgFile:
                 svgFile.write(svgData)
         except Exception as e:
-            LOGGER.error(e)
+            self.LOGGER.error(e)
 
-    def setJumpbridges(self, parent, jumpbridgesData):
+    def setJumpbridges(self, jumpbridge_data, parent=None):
         """
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
         """
-        if not jumpbridgesData or len(jumpbridgesData) <= 0:
+        if not jumpbridge_data or len(jumpbridge_data) <= 0:
             return
-        try:
-            progress = QtWidgets.QProgressDialog("Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridgesData), parent)
-            progress.setWindowTitle("Jump-Bridge")
-            progress.setModal(True)
-            progress.setValue(0)
-            soup = self.soup
-            # remove existing Jump-Brdiges
-            for bridge in soup.select(".jumpbridge"):
-                bridge.decompose()
-            jumps = soup.select("#jumps")[0]
-            colorCount = 0
-            jumpCount = 0
-            for bridge in jumpbridgesData:
-                jumpCount += 1
-                if jumpCount % 4:
-                    progress.setValue(jumpCount)
-                if progress.wasCanceled():
-                    break
-                sys1 = bridge[0]
-                connection = bridge[1]
-                sys2 = bridge[2]
-                if not (sys1 in self.systems and sys2 in self.systems):
-                    continue
-
-                if colorCount > len(JB_COLORS) - 1:
-                    colorCount = 0
-                jbColor = JB_COLORS[colorCount]
-                colorCount += 1
-                systemOne = self.systems[sys1]
-                systemTwo = self.systems[sys2]
-                systemOneCoords = systemOne.mapCoordinates
-                systemTwoCoords = systemTwo.mapCoordinates
-                systemOneOffsetPoint = systemOne.getTransformOffsetPoint()
-                systemTwoOffsetPoint = systemTwo.getTransformOffsetPoint()
-
-                systemOne.setJumpbridgeColor(jbColor)
-                systemTwo.setJumpbridgeColor(jbColor)
-
-                # Construct the arc, color it and add it to the jumps
-                x1 = systemOneCoords["center_x"] + systemOneOffsetPoint[0]
-                y1 = systemOneCoords["center_y"] + systemOneOffsetPoint[1]
-                x2 = systemTwoCoords["center_x"] + systemTwoOffsetPoint[0]
-                y2 = systemTwoCoords["center_y"] + systemTwoOffsetPoint[1]
-                cx = (x1 + x2) / 2
-                cy = (y1 + y2) / 2
-                dx = (x2 - x1) / 2
-                dy = (y2 - y1) / 2
-                dd = math.sqrt(dx * dx + dy * dy)
-                ex = cx + dy/dd * 40
-                ey = cy - dx/dd * 40
-                line = soup.new_tag("path", d="M{} {}Q{} {} {} {}".format(x1, y1, ex, ey, x2, y2), visibility="hidden",
-                                    style="stroke:#{0}; fill: none".format(jbColor))
-                line["stroke-width"] = 2
-                line["class"] = ["jumpbridge", ]
-                if "<" in connection:
-                    line["marker-start"] = "url(#arrowstart_{0})".format(jbColor)
-                if ">" in connection:
-                    line["marker-end"] = "url(#arrowend_{0})".format(jbColor)
-                jumps.insert(0, line)
-        except Exception:
-            raise
-        finally:
-            if progress:
-                # this will close it
-                progress.setValue(len(jumpbridgesData))
+        jb_builder = Jumpbridge(self.systems, self.soup, jumpbridge_data)
+        progress = QtWidgets.QProgressDialog(
+            "Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridge_data), parent
+        )
+        progress.setWindowTitle("Jump-Bridge")
+        progress.setModal(True)
+        progress.setValue(0)
+        jumps = 0
+        for data, loc in jb_builder.build():
+            jumps += 1
+            if not jumps % 4:
+                progress.setValue(jumps)
+            if progress.wasCanceled():
+                break
+        progress.setValue(len(jumpbridge_data))

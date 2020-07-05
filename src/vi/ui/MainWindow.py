@@ -2,9 +2,10 @@
 
 # Form implementation generated from reading ui file 'MainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.12.1
+# Created by: PyQt5 UI code generator 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -12,7 +13,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(936, 695)
+        MainWindow.resize(1363, 798)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("../../icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        MainWindow.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
@@ -66,7 +70,7 @@ class Ui_MainWindow(object):
         self.jumpbridgesButton = QtWidgets.QPushButton(self.mapbuttonwidget)
         self.jumpbridgesButton.setMaximumSize(QtCore.QSize(16777215, 19))
         self.jumpbridgesButton.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.jumpbridgesButton.setCheckable(False)
+        self.jumpbridgesButton.setCheckable(True)
         self.jumpbridgesButton.setChecked(False)
         self.jumpbridgesButton.setObjectName("jumpbridgesButton")
         self.horizontalLayout_2.addWidget(self.jumpbridgesButton)
@@ -133,22 +137,16 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.splitter, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 936, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1363, 21))
         self.menubar.setObjectName("menubar")
-        self.menu = QtWidgets.QMenu(self.menubar)
-        self.menu.setObjectName("menu")
         self.menuChat = QtWidgets.QMenu(self.menubar)
         self.menuChat.setObjectName("menuChat")
         self.menuSound = QtWidgets.QMenu(self.menubar)
         self.menuSound.setObjectName("menuSound")
-        self.menuRegion = QtWidgets.QMenu(self.menubar)
-        self.menuRegion.setObjectName("menuRegion")
         self.menuWindow = QtWidgets.QMenu(self.menubar)
         self.menuWindow.setObjectName("menuWindow")
         self.menuTransparency = QtWidgets.QMenu(self.menuWindow)
         self.menuTransparency.setObjectName("menuTransparency")
-        self.menuCharacters = QtWidgets.QMenu(self.menubar)
-        self.menuCharacters.setObjectName("menuCharacters")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
         self.menuEdit = QtWidgets.QMenu(self.menubar)
@@ -240,9 +238,6 @@ class Ui_MainWindow(object):
         self.actionQuit.setObjectName("actionQuit")
         self.actionSettings = QtWidgets.QAction(MainWindow)
         self.actionSettings.setObjectName("actionSettings")
-        self.menu.addAction(self.autoScanIntelAction)
-        self.menu.addAction(self.kosClipboardActiveAction)
-        self.menu.addSeparator()
         self.menuChat.addAction(self.showChatAction)
         self.menuChat.addAction(self.chooseChatRoomsAction)
         self.menuChat.addAction(self.showChatAvatarsAction)
@@ -260,11 +255,8 @@ class Ui_MainWindow(object):
         self.menuEdit.addAction(self.actionSettings)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuEdit.menuAction())
-        self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menuChat.menuAction())
-        self.menubar.addAction(self.menuCharacters.menuAction())
         self.menubar.addAction(self.menuSound.menuAction())
-        self.menubar.addAction(self.menuRegion.menuAction())
         self.menubar.addAction(self.menuWindow.menuAction())
 
         self.retranslateUi(MainWindow)
@@ -281,13 +273,10 @@ class Ui_MainWindow(object):
         self.chatbox.setTitle(_translate("MainWindow", "All Intel (past 20 minutes)"))
         self.chatLargeButton.setText(_translate("MainWindow", "+"))
         self.chatSmallButton.setText(_translate("MainWindow", "-"))
-        self.menu.setTitle(_translate("MainWindow", "Kos"))
         self.menuChat.setTitle(_translate("MainWindow", "Chat"))
         self.menuSound.setTitle(_translate("MainWindow", "Sound"))
-        self.menuRegion.setTitle(_translate("MainWindow", "Region"))
         self.menuWindow.setTitle(_translate("MainWindow", "Window"))
         self.menuTransparency.setTitle(_translate("MainWindow", "Transparency"))
-        self.menuCharacters.setTitle(_translate("MainWindow", "Characters"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuEdit.setTitle(_translate("MainWindow", "Edit"))
         self.infoAction.setText(_translate("MainWindow", "Info"))
@@ -330,6 +319,4 @@ class Ui_MainWindow(object):
         self.actionAbout.setText(_translate("MainWindow", "About"))
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
         self.actionSettings.setText(_translate("MainWindow", "Settings..."))
-
-
 from vi.PanningWebView import PanningWebView

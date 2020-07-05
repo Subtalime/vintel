@@ -19,12 +19,13 @@
 import requests
 import logging
 import queue
+import os
 from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
 
-VERSION = "1.2.4"
-SNAPSHOT = True  # set to false when releasing
+VERSION = "1.2.6"
+SNAPSHOT = False  # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 PROGNAME = "Vintel"
 DISPLAY = PROGNAME + " " + VERSION + "{dev}".format(dev="-SNAPSHOT" if SNAPSHOT else "")
@@ -32,8 +33,11 @@ AUTHOR = "S. Tschache"
 AUTHOR_EMAIL = "github@tschache.com"
 MAINTAINER = AUTHOR
 MAINTAINER_EMAIL = AUTHOR_EMAIL
-
+PRODUCT_NAME = PROGNAME + " - Visual-Intel for EVE"
+SUB_PRODUCT = PROGNAME
 LOGGER = logging.getLogger(__name__)
+
+ROOT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 
 def getNewestVersion():

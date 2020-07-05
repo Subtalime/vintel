@@ -17,44 +17,48 @@
 #
 #
 
-from PyQt5.QtWidgets import QMenu, QAction, QActionGroup
-from PyQt5.QtCore import QObject
-from vi.cache.cache import Cache
 import logging
+
+from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import QAction, QActionGroup, QMenu
+
+from vi.cache.cache import Cache
+from vi.settings.settings import RegionSettings
 
 LOGGER = logging.getLogger(__name__)
 
 
-def getRegionName(word: str):
+def get_region_name(word: str):
     if word.endswith(".svg"):
-        regionName = word.replace(".svg", "")
+        region_name = word.replace(".svg", "")
     else:
-        regionName = word
-    return regionName
+        region_name = word
+    return region_name.capitalize()
 
 
 class RegionMenu(QMenu):
     def __init__(self, menuname: str, parent: QObject = None):
         super(RegionMenu, self).__init__(menuname, parent)
-        self.group = QActionGroup(self, exclusive=True)
+        self.group = QActionGroup(self)
+        self.group.setExclusive(True)
         self._menu_actions = dict()
-        self.selectedRegion = None
         self.regionNames = ["Delve"]
         self.addItems()
 
     @staticmethod
-    def _actionName(region: str) -> str:
-        return str(region).replace(' ', '_').replace('-', '_') + "_action"
+    def _action_name(region: str) -> str:
+        return str(region).replace(" ", "_").replace("-", "_") + "_action"
 
-    def addItem(self, regionName: str) -> QAction:
-        if regionName in self._menu_actions.keys():
-            return None
-        action = QAction(regionName, self, checkable=True)
-        action.setData(self._actionName(regionName))
-        action.setProperty("regionName", regionName)
-        action.setObjectName(regionName)
-        action.setChecked(regionName == self.selectedRegion)
-        self._menu_actions[regionName] = action
+    def addItem(self, region_name: str) -> QAction:
+        if region_name in self._menu_actions.keys():
+            return QAction()
+        action = QAction(region_name, self)
+        action.setCheckable(True)
+        action.setData(self._action_name(region_name))
+        action.setProperty("region_name", region_name)
+        action.setObjectName(region_name)
+        action.setChecked(region_name == self.selectedRegion)
+        self._menu_actions[region_name] = action
         a = self.group.addAction(action)
         self.addAction(a)
         return a
@@ -73,27 +77,37 @@ class RegionMenu(QMenu):
         self._menu_actions["jumpbridge"] = action
         self.addAction(action)
 
-    def addItems(self):
+    def addItems(self, region_names: str = None):
+        """removes all Region-Menu items and re-creates
+
+        :param region_names: string of region names separated by commas. None = loads settings
+        :type region_names: str
+        :return:
+        """
         self.removeItems()
-        regionNames = Cache().getFromCache("region_name_range")
-        LOGGER.debug("Updating Region-Menu with {}".format(regionNames))
-        if regionNames:
-            self.regionNames = [getRegionName(y) for y in regionNames.split(",")]
+        # regionNames = Cache().fetch("region_name_range")
+        if not region_names:
+            region_names = RegionSettings().region_names
+        LOGGER.debug("Updating Region-Menu with %s", region_names)
+        if region_names:
+            self.regionNames = [get_region_name(y) for y in region_names.split(",")]
             for name in self.regionNames:
                 if name is None or name == "":
                     self.regionNames.pop()
         self.regionNames.sort()
-        self.selectedRegion = self.getSelectedRegion
         if self.selectedRegion not in self.regionNames:
             self.selectedRegion = self.regionNames[0]
-            Cache().putIntoCache("region_name", self.selectedRegion)
         for region in self.regionNames:
             self.addItem(region)
         self._addRemainder()
 
     @property
-    def getSelectedRegion(self) -> str:
-        return Cache().getFromCache("region_name", True)
+    def selectedRegion(self) -> str:
+        return Cache().fetch("region_name", True)
+
+    @selectedRegion.setter
+    def selectedRegion(self, value):
+        Cache().put("region_name", value)
 
     def removeItems(self):
         try:
@@ -109,3 +123,13 @@ class RegionMenu(QMenu):
             self._menu_actions = dict()
         except Exception:
             raise
+
+
+if __name__ == "__main__":
+    from PyQt5.QtWidgets import QApplication
+    import sys
+
+    app = QApplication(sys.argv)
+    men = RegionMenu("Regions")
+
+    app.exec_()

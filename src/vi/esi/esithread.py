@@ -65,8 +65,7 @@ class EsiThread(Thread, QObject):
             # this can take a while... loading Swagger and loading Ship-Data
             try:
                 # load the Interface
-                EsiInterface(use_caching=self.__use_cache,
-                             cache_dir=self.__cache_dir)
+                EsiInterface(use_caching=self.__use_cache, cache_dir=self.__cache_dir)
                 self.__esiComplete = True
                 # used frequently, so pre-load
                 EsiInterface().getShipList

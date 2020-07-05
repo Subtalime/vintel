@@ -18,11 +18,13 @@
 
 import pytest
 import os
+
+
 @pytest.fixture(scope=locals())
 def esi_cache():
     return os.path.join(esi_cache_dir(), "esi-cache.sqlite3")
 
+
 @pytest.fixture
 def esi_cache_dir():
     return os.path.join(os.path.dirname(__file__), "data")
-
