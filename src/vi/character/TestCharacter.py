@@ -32,8 +32,8 @@ class CharTestMainForm(QMainWindow):
         self.characters.remove("test")
         self.characters.remove("del")
         self.characters.addName("precious")
-        self.charmenu.removeItems()
-        self.charmenu.addItems(self.characters)
+        self.charmenu.remove_characters()
+        self.charmenu.add_characters(self.characters)
         self.menubar.removeAction(self.charmenu.menuAction())
         self.menubar.removeAction(self.delete.menuAction())
         self.menubar.insertMenu(self.others.menuAction(), self.charmenu)
@@ -43,7 +43,7 @@ class CharTestMainForm(QMainWindow):
         self.characters[q.text()].setMonitoring(q.isChecked())
 
     def closeEvent(self, *args, **kwargs):
-        self.characters.storeData()
+        self.characters.store_data()
 
 
 # The main application

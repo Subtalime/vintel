@@ -25,20 +25,27 @@ from vi.states import State
 
 
 class _Settings:
-    ship_parser: bool = False
-    character_parser: bool = False
+    """base class to store settings in cache, but provide an easy interface without
+    having to remember the "cache_name" variable
 
-    def __init__(self):
-        self._cache = Cache()
+    """
+    def __init__(self, cache_storage):
+        """you can provide your own Storage-Function (i.e. for testing)
+
+        :param cache_storage: class, which provides same "fetch/put" facilities as "Cache"
+        """
+        self._cache = cache_storage
+        if not cache_storage:
+            self._cache = Cache()
         self._config = {}
         self.KEY = "OVERRIDE"
         res = self._cache.fetch("my_settings", outdated=True)
         if res:
-            self._config = pickle.loads(res)
+            self._config = res
         self.defaults = {}
 
     def _set_property(self):
-        self._cache.put("my_settings", pickle.dumps(self._config))
+        self._cache.put("my_settings", self._config)
 
     def _get_property(self, property_name):
         try:
@@ -72,8 +79,10 @@ class _Settings:
 
 
 class RegionSettings(_Settings):
-    def __init__(self):
-        super().__init__()
+    """anything to do with Regions and Maps
+    """
+    def __init__(self, cache_storage=None):
+        super().__init__(cache_storage)
         self.KEY = "regions"
         self.defaults = {
             "region_names": "delve,querious",
@@ -120,8 +129,10 @@ class RegionSettings(_Settings):
 
 
 class ColorSettings(_Settings):
-    def __init__(self):
-        super().__init__()
+    """color values for Map indicators and alarms
+    """
+    def __init__(self, cache_storage=None):
+        super().__init__(cache_storage)
         self.KEY = "colors"
         self.defaults = {
             "js_alarm_colors": {
@@ -146,8 +157,10 @@ class ColorSettings(_Settings):
 
 
 class ChatroomSettings(_Settings):
-    def __init__(self):
-        super().__init__()
+    """chat-room monitoring
+    """
+    def __init__(self, cache_storage=None):
+        super().__init__(cache_storage)
         self.KEY = "chatroom"
         self.defaults = {"room_names": "querius.imperium,delve.imperium"}
 
@@ -162,8 +175,10 @@ class ChatroomSettings(_Settings):
 
 
 class SoundSettings(_Settings):
-    def __init__(self):
-        super().__init__()
+    """what sound to play on what alarm
+    """
+    def __init__(self, cache_storage=None):
+        super().__init__(cache_storage)
         self.KEY = "sound"
         self._defaults()
 
@@ -178,7 +193,9 @@ class SoundSettings(_Settings):
             listing.append(entry)
         listing.append(["KOS", os.path.join(soundPath(), "warning.wav"), 25])
         listing.append(["Request", os.path.join(soundPath(), "request.wav"), 25])
-        self.defaults["sound"] = listing
+        self.defaults = {
+            "sound": listing,
+        }
 
     @property
     def sound(self) -> list:
@@ -191,8 +208,10 @@ class SoundSettings(_Settings):
 
 
 class GeneralSettings(_Settings):
-    def __init__(self):
-        _Settings.__init__(self)
+    """all individual values you want stored
+    """
+    def __init__(self, cache_storage=None):
+        super().__init__(cache_storage)
         self.KEY = "general"
         self.defaults = {
             "message_expiry": 20 * 60,

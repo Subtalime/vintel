@@ -137,7 +137,7 @@ class Cache(object):
                 query = "DELETE FROM cache WHERE key = ?"
                 self.con.execute(query, (key,))
                 query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
-                self.con.execute(query, (key, value, time.time(), maxAge))
+                self.con.execute(query, (key, pickle.dumps(value), time.time(), maxAge))
                 self.con.commit()
             except Exception as e:
                 self.LOGGER.error("Cache-Error put: %s -> %r" % (key, value,), e)
@@ -160,19 +160,21 @@ class Cache(object):
             outdated = returns the value also if it is outdated
         """
         try:
-            query = "SELECT key, data, modified, maxage FROM cache WHERE key = ?"
+            query = "SELECT data, modified, maxage FROM cache WHERE key = ?"
             founds = self.con.execute(query, (key,)).fetchall()
             if len(founds) == 0:
                 return default
-            elif founds[0][2] + founds[0][3] < time.time() and not outdated:
+            elif founds[0][1] + founds[0][2] < time.time() and not outdated:
                 return default
             else:
-                return founds[0][1]
+                if isinstance(founds[0][0], bytes):
+                    return pickle.loads(founds[0][0])
+                return founds[0][0]
         except Exception as e:
             self.LOGGER.error("Cache-Error fetch: %s" % (key,), e)
             raise CacheReadError(e)
 
-    def put_player_name(self, name: str, status: str):
+    def put_player_status(self, name: str, status: str):
         """
         Putting a playername into the cache
         """
@@ -189,7 +191,7 @@ class Cache(object):
                 )
                 raise CacheWriteError(e)
 
-    def get_player_name(self, name: str):
+    def get_player_status(self, name: str):
         """
         Getting back infos about playername from Cache. Returns None if the name was
         not found, else it returns the status

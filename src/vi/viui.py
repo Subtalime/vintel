@@ -62,9 +62,9 @@ from vi.settings.SettingsDialog import SettingsDialog
 from vi.sound.soundmanager import SoundManager
 from vi.states import State
 from vi.systemtray import TrayContextMenu, TrayIcon
-from vi.threading import *
-from vi.threading.chatmonitor import ChatMonitorThread
-from vi.threading.filewatcher import FileWatcherThread
+from vi.threads import *
+from vi.threads.chatmonitor import ChatMonitorThread
+from vi.threads.filewatcher import FileWatcherThread
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.version import NotifyNewVersionThread
 
@@ -138,22 +138,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapPositionsDict = {}
 
         self.content = None
-        # if LogConfiguration().LOG_FILE_PATH is None:
-        #     self.LOGGER.warning("Logging is set to default. Please adjust {}".format(LogConfiguration().getLogFilePath()))
-        # Load user's toon names
+        # Load toon names of this User
         self.knownPlayers = Characters()
         # here we are resetting our own menus, not the one from UI
-        self.menubar.removeAction(self.menuCharacters.menuAction())
-        self.menubar.removeAction(self.menuRegion.menuAction())
         self.menuCharacters = CharacterMenu("Characters", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuCharacters)
+        # TODO: not working yet, so disable
+        # self.menuCharacters.setEnabled(False)
         self.updateCharacterMenu()
         self.menuRegion = RegionMenu("Regions", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
-        # Set up user's intel rooms
-        roomnames = ChatroomSettings().room_names
-        if roomnames:
-            self.roomnames = roomnames.split(",")
 
         # Disable the sound UI if sound is not available
         if not SoundManager().soundAvailable:
@@ -162,7 +156,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.changeSound()
 
         # Set up Transparency menu - fill in opacity values and make connections
-        self.opacityGroup = QActionGroup(self.menu)
+        self.opacityGroup = QActionGroup(self.menubar)
         for i in (100, 80, 60, 40, 20):
             action = QAction("Opacity {0}%".format(i), None)
             action.setCheckable(True)
@@ -223,11 +217,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def updateCharacterMenu(self):
         try:
-            self.menuCharacters.removeItems()
+            self.menuCharacters.remove_characters()
             self.LOGGER.debug(
                 "Updating Character-Menu with Players: {}".format(self.knownPlayers)
             )
-            self.menuCharacters.addItems(self.knownPlayers)
+            self.menuCharacters.add_characters(self.knownPlayers)
             self.menuCharacters.triggered.connect(self.char_menu_clicked)
         except Exception as e:
             self.LOGGER.error("updateCharacterMenu", e)
@@ -357,9 +351,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.LOGGER.debug("Opened JumpBridge dialog")
             self.showJumpBridgeChooser()
         else:
-            RegionSettings().selected_region = qAction.text()
-            self.LOGGER.debug("Set Region to {}".format(qAction.text()))
-            self.setupMap()
+            if RegionSettings().selected_region != qAction.text():
+                RegionSettings().selected_region = qAction.text()
+                self.LOGGER.debug("Set Region to {}".format(qAction.text()))
+                self.setupMap()
 
     # Dialog to select Regions to monitor
     def showRegionChooser(self):
@@ -373,7 +368,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # chooser.show()
 
     def updatePlayers(self, player_list: list):
-        self.knownPlayers.addNames(player_list)
+        self.knownPlayers.add_names(player_list)
         self.updateCharacterMenu()
 
     def setupThreads(self):
@@ -525,7 +520,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def save_settings(self):
         # Known playernames
-        self.knownPlayers.storeData()
+        self.knownPlayers.store_data()
         # Program state to cache (to read it on next startup)
         settings = (
             (None, "restoreGeometry", bytes(self.saveGeometry())),
@@ -596,7 +591,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 vi.version.PROGNAME, vi.version.VERSION, newestVersion, vi.version.URL
             )
         )
-        self.LOGGER.warning(msg)
+        self.LOGGER.info(msg)
         self.trayIcon.showMessage("Newer Version", msg)
 
     def changeChatVisibility(self, newValue=None):
@@ -740,10 +735,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #
     def changeAlarmDistance(self, distance: int):
         self.alarmDistance = int(distance)
-        for cm in TrayContextMenu.instances:
-            for action in cm.distanceGroup.actions():
-                if action.alarmDistance == distance:
-                    action.setChecked(True)
+        for action in self.trayIcon.context_menu.distanceGroup.actions():
+            if action.alarmDistance == distance:
+                action.setChecked(True)
         self.trayIcon.alarmDistance = int(distance)
 
     def changeJumpbridgesVisibility(self):
@@ -1135,7 +1129,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         )
                     except KeyError:  # Map-System may have changed in the mean time
                         pass
-                    activePlayers = self.knownPlayers.getActiveNames()
+                    activePlayers = self.knownPlayers.get_active_names()
                     # notify User if we don't have locations for active Players
                     self.checkPlayerLocations()
                     if message.status in (State["REQUEST"], State["ALARM"]) and (

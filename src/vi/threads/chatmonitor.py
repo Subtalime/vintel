@@ -449,7 +449,7 @@ class ChatThreadProcess(QThread):
 
 if __name__ == "__main__":
     from PyQt5.Qt import QApplication
-    from vi.threading.filewatcher import FileWatcherThread
+    from vi.threads.filewatcher import FileWatcherThread
     from vi.resources import getEveChatlogDir, getVintelDir
     from vi.dotlan.mymap import MyMap
     from vi.esi import EsiInterface

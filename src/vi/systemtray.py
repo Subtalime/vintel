@@ -18,6 +18,7 @@
 
 import logging
 import time
+import zroya
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal
@@ -29,7 +30,7 @@ from vi.resources import resourcePath
 from vi.settings.settings import SoundSettings, GeneralSettings
 from vi.sound.soundmanager import SoundManager
 from vi.states import State
-
+import vi.version
 
 class TrayIcon(QtWidgets.QSystemTrayIcon):
     # Min seconds between two notifications
@@ -41,6 +42,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     refresh_map = pyqtSignal()
     view_map_source = pyqtSignal()
     sound_active = pyqtSignal(bool)
+    MAX_MESSAGES = 10
 
     def __init__(self, app):
         self.LOGGER = logging.getLogger(__name__)
@@ -54,8 +56,11 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self.showRequest = GeneralSettings().show_requests
         self.alarmDistance = GeneralSettings().alarm_distance
         self.soundActive = GeneralSettings().sound_active
-
-        self.setContextMenu(TrayContextMenu(self))
+        self._messages = []
+        self.context_menu = TrayContextMenu(self)
+        self.setContextMenu(self.context_menu)
+        # zroya.init(vi.version.PROGNAME, vi.version.MAINTAINER, vi.version.PRODUCT_NAME, vi.version.SUB_PRODUCT, vi.version.VERSION)
+        # self.notification = zroya.Template(zroya.TemplateType.ImageAndText1)
 
     def viewMapSource(self):
         self.view_map_source.emit()
@@ -72,12 +77,19 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
     def changeFrameless(self):
         self.change_frameless.emit()
 
-    @property
-    def distanceGroup(self):
-        return self.contextMenu().distanceGroup
-
     def f_quit(self):
         self.quit_me.emit()
+
+    def showMessage(
+        self,
+        title: str,
+        msg: str,
+        icon: "QSystemTrayIcon.MessageIcon" = QSystemTrayIcon.Information,
+        msecs: int = 10000,
+    ) -> None:
+        # self.notification.setFirstLine(msg)
+        # zroya.show(self.notification)
+        super().showMessage(title, msg, icon, msecs)
 
     def switchAlarm(self):
         newValue = not self.showAlarm
@@ -168,9 +180,9 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             else:
                 SoundManager().playSound("request", volume, text)
         if title or text:
-            if not text or text == "":
-                text = "{}".format(**locals())
-            self.LOGGER.debug('Systemtray-Message: "%s"', text)
+            # if not text or text == "":
+            #     text = "{}".format(**locals())
+            self.LOGGER.debug('Systemtray-Message: "%s": "%s"', title, text)
             self.showMessage(title, text, icon)
 
 

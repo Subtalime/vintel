@@ -37,6 +37,7 @@ from vi.singleton import Singleton
 import pyglet
 import pyglet.clock
 import pyglet.resource
+from vi.settings.settings import GeneralSettings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,11 +81,11 @@ class SoundManager(six.with_metaclass(Singleton)):
 
     @property
     def enable_sound(self) -> bool:
-        return self._soundActive
+        return GeneralSettings().sound_active
 
     @enable_sound.setter
     def enable_sound(self, value: bool):
-        self._soundActive = value
+        GeneralSettings().sound_active = value
 
     def playSoundFile(self, path, volume=25, message="", abbreviatedMessage=""):
         if self.soundAvailable and self.enable_sound:

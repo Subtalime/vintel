@@ -47,9 +47,7 @@ class Notifications:
         self.notifications = []
 
     def load(self):
-        self.notifications = pickle.loads(
-            Cache().fetch("{}_notifications".format(self.name), True)
-        )
+        self.notifications = Cache().fetch("{}_notifications".format(self.name), True)
 
     def add(self, notification: Notification):
         self.remove(notification.duration)
@@ -62,7 +60,7 @@ class Notifications:
 
     def save(self):
         Cache().put(
-            "{}_notifications".format(self.name), pickle.dumps(self.notifications)
+            "{}_notifications".format(self.name), self.notifications
         )
 
     def __repr__(self):

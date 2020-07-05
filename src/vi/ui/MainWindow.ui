@@ -350,11 +350,6 @@
     <addaction name="separator"/>
     <addaction name="useSpokenNotificationsAction"/>
    </widget>
-   <widget class="QMenu" name="menuRegion">
-    <property name="title">
-     <string>Region</string>
-    </property>
-   </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
      <string>Window</string>
@@ -371,11 +366,6 @@
     <addaction name="separator"/>
     <addaction name="actionAbout"/>
    </widget>
-   <widget class="QMenu" name="menuCharacters">
-    <property name="title">
-     <string>Characters</string>
-    </property>
-   </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
@@ -391,9 +381,7 @@
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuChat"/>
-   <addaction name="menuCharacters"/>
    <addaction name="menuSound"/>
-   <addaction name="menuRegion"/>
    <addaction name="menuWindow"/>
   </widget>
   <action name="infoAction">

@@ -110,9 +110,14 @@ Please try to delete Vintel's Cache. It is located in the EVE-directory where th
 On first Start-Up if needs to load the Swagger from ESI and it will also load all Ships which are available in the Game. This will only happen on the very first Start-Up of Vintel or if you delete the Cache.
 Vintel asks the operating system to notifiy when a change has been made to the ChatLogs directory - this will happen when a new log is created or an existing one is updated. In response to this notification, Vintel examines all of the files in the directory to analysze the changes. If you have a lot of chat logs this can make Vintel slow to scan for file changes. Try perodically moving all the chatlogs out of the ChatLogs directory (zip them up and save them somewhere else if you think you may need them some day).
 
+**Vintel doesn't alert me!**
+
+If you start Vintel after you have logged into the game, it may not be aware where your pilots are located. It examines the EVE-Local-Chatlog to determine where you currently are. This gets updated once you change system or log in. To ensure the location of all your pilots, start Vintel **before** you log in to EVE.
+
+
 **Vintel is misbehaving and I dont know why - how can I easily help diagnose problems with Vintel**
 
-Vintel writes its own set of logs to the \Documents\EVE\vintel\vintel directory. A new log is created as the old one fills up to its maximum size setting. Each entry inside the log file is time-stamped. These logs are emitted in real-time so you can watch the changes to the file as you use the app.
+Vintel writes its own set of logs to the \Documents\EVE\vintel\logs directory. A new log is created as the old one fills up to its maximum size setting. Each entry inside the log file is time-stamped. These logs are emitted in real-time so you can watch the changes to the file as you use the app.
 
 **I love Vintel - how can I help?**
 
