@@ -33,7 +33,7 @@
 #
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt
+from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt, QObject
 from PyQt5.QtWidgets import QApplication
 from PyQt5 import QtGui
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
@@ -65,7 +65,7 @@ class PanningWebView(QWidget):
             LOGGER.debug("Control-Delta %r" % a0.Delta())
         a0.accept()
 
-    def eventFilter(self, a0: "QObject", a1: "QEvent") -> bool:
+    def eventFilter(self, a0: QObject, a1: QEvent) -> bool:
         if a1.type() == QEvent.Wheel:
             modifier = QApplication.keyboardModifiers()
             if modifier == Qt.ControlModifier:
@@ -87,7 +87,7 @@ class PanningWebView(QWidget):
     def page(self) -> QWebEnginePage:
         return self.mapView
 
-    def setHtml(self, p_str: str, baseUrl: QUrl = None, *args, **kwargs):
+    def setHtml(self, p_str: str, base_url: QUrl = None, *args, **kwargs):
         if self.oldContent != p_str:
-            self.page().setHtml(p_str, baseUrl, *args, **kwargs)
+            self.page().setHtml(p_str, base_url, *args, **kwargs)
             self.oldContent = p_str

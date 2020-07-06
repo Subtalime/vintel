@@ -18,7 +18,7 @@
 #
 
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
-from PyQt5.QtCore import pyqtSignal, QPointF, QUrl, QEvent, Qt
+from PyQt5.QtCore import pyqtSignal, QPointF, QUrl, Qt, QObject
 from PyQt5.QtWidgets import QApplication
 from PyQt5 import QtGui
 from queue import Queue
@@ -31,7 +31,7 @@ class MapViewPage(QWebEnginePage):
     link_clicked = pyqtSignal(QUrl)
     scroll_detected = pyqtSignal(QPointF)
 
-    def __init__(self, parent: "QObject" = None):
+    def __init__(self, parent: QObject = None):
         super().__init__(parent)
         self.load_complete = False
         self.javaQueue = Queue()
@@ -53,10 +53,10 @@ class MapViewPage(QWebEnginePage):
     def onLoadStarted(self):
         self.load_complete = False
 
-    def setHtml(self, p_str: str, baseUrl: QUrl = None, *args, **kwargs):
+    def setHtml(self, p_str: str, base_url: QUrl = None, *args, **kwargs):
         if self.currentHtml != p_str:
             self.currentHtml = p_str
-            super().setHtml(p_str, QUrl(baseUrl), *args, **kwargs)
+            super().setHtml(p_str, QUrl(base_url), *args, **kwargs)
 
     def zoomChanged(self, value: float):
         self.setZoomFactor(value)
