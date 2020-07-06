@@ -13,3 +13,7 @@
 *.sqlite3
 /src/vi/dotlan/*.svg
 /src/*.html
+*.iss
+*.log
+*.cfg
+*.pem

@@ -18,8 +18,17 @@
 #
 
 import requests
+import string
 from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
+
+
+def convert_region_name(name: str) -> str:
+    """Converts a (system)name to the format that dotland uses.
+    """
+    cap_word = string.capwords(name)
+    cap_word = cap_word.replace(" ", "_")
+    return cap_word
 
 
 class Regions:
@@ -67,25 +76,26 @@ class Regions:
     def __repr__(self):
         return ",".join("{}.{}".format(key, val) for key, val in self.regions.items())
 
-    def convertRegionName(self, name):
+    def convertRegionName(self, name: str):
+        """Converts a (system)name to the format that dotland uses.
         """
-            Converts a (system)name to the format that dotland uses
-        """
-        converted = []
-        nextUpper = False
-
-        for index, char in enumerate(name):
-            if index == 0:
-                converted.append(char.upper())
-            else:
-                if char in (u" ", u"_"):
-                    char = "_"
-                    nextUpper = True
-                else:
-                    if nextUpper:
-                        char = char.upper()
-                    else:
-                        char = char.lower()
-                    nextUpper = False
-                converted.append(char)
-        return u"".join(converted)
+        cap_word = string.capwords(name)
+        cap_word = cap_word.replace(" ", "_")
+        return cap_word
+        # converted = []
+        # nextUpper = False
+        # for index, char in enumerate(name):
+        #     if index == 0:
+        #         converted.append(char.upper())
+        #     else:
+        #         if char in (u" ", u"_"):
+        #             char = "_"
+        #             nextUpper = True
+        #         else:
+        #             if nextUpper:
+        #                 char = char.upper()
+        #             else:
+        #                 char = char.lower()
+        #             nextUpper = False
+        #         converted.append(char)
+        # return u"".join(converted)
