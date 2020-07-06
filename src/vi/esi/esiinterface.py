@@ -85,7 +85,7 @@ class EsiInterface(metaclass=EsiInterfaceType):
                 logging.getLogger(__name__).error(
                     "Esi already currently being loaded..."
                 )
-                while EsiInterface.esiLoading is not "complete":
+                while EsiInterface.esiLoading != "complete":
                     pass
                 return
             EsiInterface._esiLoading = True
