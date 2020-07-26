@@ -19,27 +19,32 @@
 
 import logging
 import re
+import requests
 
 LOGGER = logging.getLogger(__name__)
 
 
 class Bridges(list):
-    def export(self):
-        bridgeList = []
+    def export(self) -> list:
+        """search for duplicates and return
+        """
+        bridge_list = []
         for bridge in self:
             routes = [bridge.start, bridge.direction, bridge.end]
-            bridgeList.append(routes)
-        return bridgeList
+            bridge_list.append(routes)
+        return bridge_list
 
 
 class Bridge(object):
+    """a Jump-Bridge within a Region.
+    """
     def __init__(
         self,
         region: str,
         start: str,
         end: str,
         status: str = "Online",
-        distance: float = 0.0,
+        distance: str = "0.0",
         direction: str = "<>",
     ):
         self.region = u"{}".format(region)
@@ -51,12 +56,12 @@ class Bridge(object):
 
 
 class Import:
-    def __init__(self):
-        self.bridges = Bridges()
+    """convert known formats into an internal Jump-Bridge-Structure.
+    """
 
-    def convertGarpaData(self, fileContent: list):
-        self.bridges.clear()
-        for line in fileContent:
+    def _convert_garpa_data(self, data_list: list):
+        bridges = Bridges()
+        for line in data_list:
             line = re.sub("[ \t]+", " ", line)
             if line.find("@") == -1:
                 continue
@@ -65,41 +70,64 @@ class Import:
                 continue
             if columns[2] != "@" or columns[5] != "@":
                 continue
-
-            self.bridges.append(
-                Bridge(columns[0], columns[1], columns[4], columns[7], columns[10])
-            )
-        if len(self.bridges) == 0:
+            the_bridge = Bridge(
+                    region=columns[0],
+                    start=columns[1],
+                    end=columns[4],
+                    status=columns[7],
+                    distance=columns[10]
+                )
+            for cur_bridge in bridges:
+                if cur_bridge.start == the_bridge.end and cur_bridge.end == the_bridge.start:
+                    the_bridge = None
+                    break
+            if the_bridge is not None:
+                bridges.append(the_bridge)
+        if len(bridges) == 0:
             # maybe it's already in Export-Format?
-            for line in fileContent:
+            for line in data_list:
                 line = re.sub("[ \t]+", " ", line)
                 columns = line.split(" ")
                 if len(columns) != 3:
                     break
-                self.bridges.append(
-                    Bridge(None, columns[0], columns[2], direction=columns[1])
-                )
+                the_bridge = Bridge(
+                        region="",
+                        start=columns[0],
+                        end=columns[2],
+                        direction=columns[1]
+                    )
 
-        return self.bridges.export()
+                for cur_bridge in bridges:
+                    if cur_bridge.start == the_bridge.end and cur_bridge.end == the_bridge.start:
+                        the_bridge = None
+                        break
+                if the_bridge is not None:
+                    bridges.append(the_bridge)
 
-    def readGarpaFile(self, file_name: str = None, clipboard: str = None):
-        try:
-            if not clipboard:
-                with open(file_name, "r") as f:
-                    content = f.read().splitlines(keepends=False)
+        return bridges.export()
+
+    def garpa_data(self, any_data_source: str) -> list:
+        if any_data_source.strip() != "":
+            import_data = ""
+            if any_data_source.strip().startswith("http"):
+                try:
+                    import_data = requests.get(any_data_source.strip()).text.splitlines(keepends=False)
+                except ConnectionError:
+                    pass
             else:
-                content = clipboard.splitlines(keepends=False)
-            if content:
-                return self.convertGarpaData(content)
-        except Exception as e:
-            LOGGER.error(
-                "Error in importing Garpa Jumpbridges: %s, %r" % (file_name, e)
-            )
+                try:
+                    with open(any_data_source.strip(), "rt") as file:
+                        import_data = file.read().splitlines(keepends=False)
+                except FileNotFoundError:
+                    import_data = any_data_source.splitlines(keepends=False)
+                    pass
+            if len(import_data):
+                return self._convert_garpa_data(import_data)
         return []
 
 
 if __name__ == "__main__":
-    importFile = "D:\\Develop\\vintel\\src\\vi\\ui\\res\\mapdata\\Goons-jump.txt"
+    importFile = "http://vintel.tschache.com/logfiles/goon_jump.txt"
 
-    data = Import().readGarpaFile(importFile)
+    data = Import().garpa_data(importFile)
     print(data)

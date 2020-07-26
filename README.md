@@ -2,7 +2,8 @@
 <p align="center">
   <img align="middle" src="src/vi/ui/res/logo.png">
 </p>
-# Welcome To Vintel
+
+# Welcome To Vintel 
 
 Visual intel chat analysis, planning and notification application for [EVE Online](http://www.eveonline.com). Gathers status through in-game intelligence channels on all known hostiles and presents all the data on a [dotlan](http://evemaps.dotlan.net/map/Cache#npc24) generated regional map. The map is annotated in real-time as players report intel in monitored chat channels.
 

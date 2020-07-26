@@ -16,9 +16,15 @@
 #
 #
 from bs4 import BeautifulSoup
+from math import sqrt
+import requests
+from vi.jumpbridge.Import import Import
 
 
 class Bridge:
+    """a bridge between two systems.
+    This is based on how it is stored in the String-List
+    """
     def __init__(self, current_systems, bridge_data, color_data):
         self.bridge = bridge_data
         self.color = color_data
@@ -37,20 +43,62 @@ class Bridge:
         systemTwoCoords = systemTwo.map_coordinates
         systemOneOffsetPoint = systemOne.getTransformOffsetPoint()
         systemTwoOffsetPoint = systemTwo.getTransformOffsetPoint()
-
         systemOne.setJumpbridgeColor(self.color)
         systemTwo.setJumpbridgeColor(self.color)
 
+        systemOnePoint = systemOne.map_points
+        systemTwoPoint = systemTwo.map_points
+
         # Construct the line, color it and add it to the jumps
+        # self.line = soup.new_tag(
+        #     "line",
+        #     x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
+        #     y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
+        #     x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
+        #     y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
+        #     visibility="hidden",
+        #     style="stroke:#{0}".format(self.color),
+        # )
+
+
+        def arc_link(point_1, point_2, r) -> str:
+            cx = (point_1[0] + point_2[0]) / 2
+            cy = (point_1[1] + point_2[1]) / 2
+            dx = (point_2[0] - point_1[0]) / 2
+            dy = (point_2[1] - point_1[1]) / 2
+            dd = sqrt(dx * dx + dy * dy)
+            ex = cx + dy/dd * r
+            ey = cy - dx/dd * r
+            return "M{x1:.2f} {y1:.2f}Q{ex:.2f} {ey:.2f} {x2:.2f} {y2:.2f}".format(
+                x1=point_1[0],
+                y1=point_1[1],
+                ex=ex,
+                ey=ey,
+                x2=point_2[0],
+                y2=point_2[1],
+            )
+
+        system_one = [sum(x) for x in zip(systemOnePoint, systemOneOffsetPoint)]
+        system_two = [sum(x) for x in zip(systemTwoPoint, systemTwoOffsetPoint)]
         self.line = soup.new_tag(
-            "line",
-            x1=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
-            y1=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
-            x2=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
-            y2=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
+            "path",
+            d=arc_link(system_one, system_two, 40,),
             visibility="hidden",
             style="stroke:#{0}".format(self.color),
+            fill="none",
         )
+        # self.line = soup.new_tag(
+        #     "path",
+        #     d="M {x1},{y1} a{x2},{y2} 0 0,1 {x2},{y2}".format(
+        #         x2=systemOneCoords["center_x"] + systemOneOffsetPoint[0],
+        #         y2=systemOneCoords["center_y"] + systemOneOffsetPoint[1],
+        #         x1=systemTwoCoords["center_x"] + systemTwoOffsetPoint[0],
+        #         y1=systemTwoCoords["center_y"] + systemTwoOffsetPoint[1],
+        #     ),
+        #     visibility="hidden",
+        #     style="stroke:#{0}".format(self.color),
+        #     fill="none",
+        # )
         self.line["stroke-width"] = 2
         self.line["class"] = [
             "jumpbridge",
@@ -91,21 +139,22 @@ class Jumpbridge:
     )
 
     def __init__(self, system, soup, jumpbridge_data):
-        """
-            Adding the jumpbridges to the map soup; format of data:
+        """Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
         """
         self.soup = soup
-        # destroy any previous bridges that may exist
-        for bridge in self.soup.select(".jumpbridge"):
-            bridge.decompose()
         self.jump_locations = self.soup.select("#jumps")[0]
         self.jump_bridge_data = jumpbridge_data
         self.system = system
 
+    def clear(self):
+        # destroy any previous bridges that may exist
+        for bridge in self.soup.select(".jumpbridge"):
+            bridge.decompose()
+
     def build(self):
         color_count = 0
-        bridge_list = []
+        self.clear()
         for bridge_data in self.jump_bridge_data:
             if color_count > len(self.JB_COLORS) - 1:
                 color_count = 0

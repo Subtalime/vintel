@@ -27,13 +27,14 @@ import time
 from bs4.element import CData
 from bs4 import BeautifulSoup
 from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QProgressDialog
 from vi.cache import Cache
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.dotlan.jumpbridge import Jumpbridge
 from vi.dotlan.system import System
 from vi.dotlan.exception import DotlanException
 from vi.esi import EsiInterface
-from vi.logger.mystopwatch import ViStopwatch
+from vi.stopwatch.mystopwatch import ViStopwatch
 from vi.resources import getVintelMap
 from vi.states import State
 import requests
@@ -276,6 +277,7 @@ class MyMap:
                 startSystem = self.systemsById[int(parts[1])]
                 stopSystem = self.systemsById[int(parts[2])]
                 startSystem.addNeighbour(stopSystem)
+                stopSystem.addNeighbour(startSystem)
 
     def addSystemStatistics(self, statistics):
         self.LOGGER.info("addSystemStatistics start")
@@ -288,21 +290,17 @@ class MyMap:
                 system.setStatistics(None)
         self.LOGGER.info("addSystemStatistics complete")
 
-    def changeStatisticsVisibility(self):
-        newStatus = False if self._statisticsVisible else True
-        value = "visible" if newStatus else "hidden"
+    def setStatisticsVisibility(self, visible: bool):
+        value = "visible" if visible else "hidden"
         for line in self.soup.select(".statistics"):
             line["visibility"] = value
-        self._statisticsVisible = newStatus
-        return newStatus
+        self._statisticsVisible = visible
 
-    def changeJumpbridgesVisibility(self):
-        newStatus = False if self._jumpMapsVisible else True
-        value = "visible" if newStatus else "hidden"
+    def setJumpbridgesVisibility(self, visible: bool):
+        value = "visible" if visible else "hidden"
         for line in self.soup.select(".jumpbridge"):
             line["visibility"] = value
-        self._jumpMapsVisible = newStatus
-        return newStatus
+        self._jumpMapsVisible = visible
 
     def addTimerJs(self):
         realtime_js = ColorJavaScript().js_color_all()
@@ -403,11 +401,12 @@ class MyMap:
         if not jumpbridge_data or len(jumpbridge_data) <= 0:
             return
         jb_builder = Jumpbridge(self.systems, self.soup, jumpbridge_data)
-        progress = QtWidgets.QProgressDialog(
+        progress = QProgressDialog(
             "Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridge_data), parent
         )
         progress.setWindowTitle("Jump-Bridge")
         progress.setModal(True)
+        progress.setAutoClose(True)
         progress.setValue(0)
         jumps = 0
         for data, loc in jb_builder.build():
@@ -415,5 +414,7 @@ class MyMap:
             if not jumps % 4:
                 progress.setValue(jumps)
             if progress.wasCanceled():
+                jb_builder.clear()
                 break
         progress.setValue(len(jumpbridge_data))
+        del progress

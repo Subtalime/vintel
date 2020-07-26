@@ -31,7 +31,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from vi.chat.chatmessage import Message
 from vi.chat.messageparser import MessageParser, parse_line
 from vi.dotlan import system as systems
-from vi.logger.mystopwatch import ViStopwatch
+from vi.stopwatch.mystopwatch import ViStopwatch
 from vi.settings.settings import ChatroomSettings, GeneralSettings
 from vi.states import State
 

@@ -14,23 +14,6 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
-#
-#
-#   This program is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program.	 If not, see <http://www.gnu.org/licenses/>.
-#
-#
-#
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt, QObject
@@ -40,14 +23,14 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from vi.map.MapViewPage import MapViewPage
 import logging
 
-LOGGER = logging.getLogger(__name__)
-
 
 class PanningWebView(QWidget):
     zoom_factor = pyqtSignal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.LOGGER = logging.getLogger(__name__)
+
         self.pressed = False
         self.mapView = MapViewPage()
         self.view = QWebEngineView()
@@ -62,14 +45,14 @@ class PanningWebView(QWidget):
     def wheelEvent(self, a0: QtGui.QWheelEvent) -> None:
         modifier = QApplication.keyboardModifiers()
         if modifier == Qt.ControlModifier:
-            LOGGER.debug("Control-Delta %r" % a0.Delta())
+            self.LOGGER.debug("Control-Delta %r" % a0.Delta())
         a0.accept()
 
     def eventFilter(self, a0: QObject, a1: QEvent) -> bool:
         if a1.type() == QEvent.Wheel:
             modifier = QApplication.keyboardModifiers()
             if modifier == Qt.ControlModifier:
-                LOGGER.debug("Ctrl-Mouse-Scroll %r" % a1.Delta())
+                self.LOGGER.debug("Ctrl-Mouse-Scroll %r" % a1.Delta())
         return False
 
     def setZoomFactor(self, value: float):

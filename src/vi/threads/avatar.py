@@ -24,7 +24,7 @@ from six.moves import queue as SixQueue
 from vi.cache.cache import Cache
 from vi.chat.chatentrywidget import ChatEntryWidget
 from vi.esi.esihelper import EsiHelper
-from vi.logger.mystopwatch import ViStopwatch as Stopwatch
+from vi.stopwatch.mystopwatch import ViStopwatch as Stopwatch
 from vi.resources import resourcePath
 
 

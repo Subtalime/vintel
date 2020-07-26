@@ -19,25 +19,27 @@
 
 # TODO: consider "pyaudiotools"
 
+import logging
 import os
+import re
 import subprocess
 import sys
-import re
-import requests
 import time
-import six
 import wave
-
-from threading import Thread
 from collections import namedtuple
-from vi.resources import soundPath
-from six.moves import queue
-import logging
-from vi.singleton import Singleton
+from threading import Thread
+
 import pyglet
-import pyglet.clock
-import pyglet.resource
+import requests
+import six
+from six.moves import queue
+
+from vi.resources import soundPath
+
+# import pyglet.clock
+# import pyglet.resource
 from vi.settings.settings import GeneralSettings
+from vi.singleton import Singleton
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,13 +60,13 @@ class SoundManager(six.with_metaclass(Singleton)):
     _soundThread = None
 
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.soundThread = self.SoundThread()
         self.soundAvailable = self.platformSupportsAudio()
         if not self.platformSupportsSpeech():
             self.useSpokenNotifications = False
-        if self.soundAvailable:
-            if self.soundThread:
-                self.soundThread.start()
+        if self.soundAvailable and self.soundThread:
+            self.soundThread.start()
 
     def platformSupportsAudio(self):
         # return self.platformSupportsSpeech() or gPygletAvailable
@@ -88,6 +90,7 @@ class SoundManager(six.with_metaclass(Singleton)):
         GeneralSettings().sound_active = value
 
     def playSoundFile(self, path, volume=25, message="", abbreviatedMessage=""):
+        self.logger.debug(f"put on Queue: '{path}' Volume:{volume}")
         if self.soundAvailable and self.enable_sound:
             if self.useSpokenNotifications:
                 path = None
@@ -107,6 +110,7 @@ class SoundManager(six.with_metaclass(Singleton)):
     def playSound(self, name="alarm", volume=25, message="", abbreviatedMessage=""):
         """ Schedules the work, which is picked up by SoundThread.run()
         """
+        self.logger.debug(f"playSound: {name}")
         if self.soundAvailable and self.enable_sound:
             if self.useSpokenNotifications:
                 audioFile = None
@@ -135,10 +139,12 @@ class SoundManager(six.with_metaclass(Singleton)):
         volume = 25
 
         def __init__(self):
-            Thread.__init__(self, name="SoundThread")
-            self.queue = queue.Queue()
+            super(self.__class__, self).__init__(name="SoundThread")
+            self.logger = logging.getLogger(__name__)
+            self.logger.debug("initialize SoundThread")
             self.player = pyglet.media.Player()
             self.player.loop = False
+            self.queue = queue.Queue()
             self.active = True
             self.currently_playing = False
 
@@ -148,6 +154,9 @@ class SoundManager(six.with_metaclass(Singleton)):
         def run(self):
             while True:
                 audioFile, volume, message, abbreviatedMessage = self.queue.get()
+                self.logger.debug(
+                    "got from Queue: '%s', Active: %d", audioFile, self.active
+                )
                 if not self.active:
                     return
                 if SoundManager().useSpokenNotifications and (
@@ -199,6 +208,9 @@ class SoundManager(six.with_metaclass(Singleton)):
                             / float(f.getnchannels() * f.getframerate())
                             / 2
                         )
+                    self.logger.debug(
+                        "'%s' Vol:%f Duration:%f", filename, volume, duration
+                    )
                     src = pyglet.media.load(filename, streaming=stream)
                     self.player.queue(src)
                     self.player.volume = volume
@@ -211,10 +223,8 @@ class SoundManager(six.with_metaclass(Singleton)):
                     )
             except Exception as e:
                 # wave.open throws weird errors, hence the logging like thi
-                LOGGER.error(
-                    "SoundThread.playAudioFile exception on {0}: {1}".format(
-                        filename, str(e)
-                    )
+                self.logger.error(
+                    "SoundThread.playAudioFile exception on %s: %r", filename, e
                 )
                 # self.player = media.Player()
                 # self.player.loop = False
@@ -228,7 +238,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                     "say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message)
                 )
             except Exception as e:
-                LOGGER.error("SoundThread.darwinSpeak exception: %s" % message, e)
+                self.logger.error("SoundThread.darwinSpeak exception: %s" % message, e)
 
         # VoiceRss
 
@@ -240,7 +250,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 self.playAudioFile(requests.get(mp3url, stream=True).raw)
                 time.sleep(0.5)
             except requests.exceptions.RequestException as e:
-                LOGGER.error("playTTS error: %s: %r", mp3url, e)
+                self.logger.error("playTTS error: %s: %r", mp3url, e)
 
         # google_tts
 
@@ -287,7 +297,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                         )
                         time.sleep(0.5)
                     except requests.exceptions.RequestException as e:
-                        LOGGER.error("audioExtractToMp3 error: %s" % mp3url, e)
+                        self.logger.error("audioExtractToMp3 error: %s" % mp3url, e)
             args.output.close()
             return args.output.name
 
@@ -347,5 +357,5 @@ class SoundManager(six.with_metaclass(Singleton)):
                 return combinedText
 
             return splitTextRecursive(
-                inputText.replace("\n", ""), ["([\,|\.|;]+)", "( )"]
+                inputText.replace("\n", ""), [r"([\,|\.|;]+)", "( )"]
             )

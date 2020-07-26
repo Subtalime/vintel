@@ -103,11 +103,13 @@ class RegionMenu(QMenu):
 
     @property
     def selectedRegion(self) -> str:
-        return Cache().fetch("region_name", True)
+        return RegionSettings().selected_region
+        # return Cache().fetch("region_name", True)
 
     @selectedRegion.setter
     def selectedRegion(self, value):
-        Cache().put("region_name", value)
+        RegionSettings().selected_region = value
+        # Cache().put("region_name", value)
 
     def removeItems(self):
         try:

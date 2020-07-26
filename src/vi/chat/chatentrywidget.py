@@ -37,7 +37,6 @@ LOGGER = logging.getLogger(__name__)
 class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     TEXT_SIZE = 11
     SHOW_AVATAR = True
-    questionMarkPixmap = None
     mark_system = pyqtSignal(str)
     ship_detail = pyqtSignal(str)
     enemy_detail = pyqtSignal(str)
@@ -45,23 +44,21 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     # TODO: Hover over Ship-Bookmark gives Description?
     # Will not work on a Label... maybe use different type in the Widget...
     def __init__(self, message):
-        QWidget.__init__(self)
-        if not self.questionMarkPixmap:
-            self.questionMarkPixmap = QPixmap(resourcePath("qmark.png")).scaledToHeight(
-                32
-            )
+        # QWidget.__init__(self)
+        super(ChatEntryWidget, self).__init__()
         self.setupUi(self)
-        self.avatarLabel.setPixmap(self.questionMarkPixmap)
+        self.QuestionMarkPixMap = QPixmap(resourcePath("qmark.png")).scaledToHeight(32)
+        self.avatarLabel.setPixmap(self.QuestionMarkPixMap)
         self.message = message
         self.updateText()
-        self.textLabel.linkActivated.connect(self.linkClicked)
+        self.textLabel.linkActivated.connect(self.link_clicked)
         if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
             ChatEntryWidget.TEXT_SIZE = 8
         self.changeFontSize(self.TEXT_SIZE)
         if not ChatEntryWidget.SHOW_AVATAR:
             self.avatarLabel.setVisible(False)
 
-    def linkClicked(self, link):
+    def link_clicked(self, link):
         link = six.text_type(link)
         function, parameter = link.split("/", 1)
         if function == "mark_system":

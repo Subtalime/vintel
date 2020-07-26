@@ -75,29 +75,30 @@ class LogTextFieldHandler(logging.Handler, QtCore.QObject):
 class LogWindow(QtWidgets.QWidget, logging.Handler):
     log_handler = None
     log_level = logging.WARNING
-    cache_visible = "log_window_visible"
-    cache_size = "log_window"
-    cache_level = "log_window_level"
+    CACHE_VISIBLE = "log_window_visible"
+    CACHE_SIZE = "log_window"
+    CACHE_LEVEL = "log_window_level"
     icon_path = None
 
     def __init__(self, parent=None, log_handler: QueueHandler = None):
         QtWidgets.QWidget.__init__(self, parent)
-        self.LOGGER = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.cache = Cache()
         try:
-            self.restoreGeometry(self.cache.fetch(self.cache_size))
-        except Exception as e:
+            size = self.cache.fetch(self.CACHE_SIZE)
+            self.restoreGeometry(size)
+        except Exception:
             self.setBaseSize(400, 600)
             pass
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
         self.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, False)
         self.create_content()
-        vis = self.cache.fetch(self.cache_visible, default=False)
+        vis = self.cache.fetch(self.CACHE_VISIBLE, default=False)
         if bool(vis):
             self.show()
 
     def create_content(self):
-        self.log_level = self.cache.fetch(self.cache_level, default=self.log_level)
+        self.log_level = self.cache.fetch(self.CACHE_LEVEL, default=self.log_level)
         self.log_handler = LogTextFieldHandler(self, self.log_level)
         vbox = QtWidgets.QVBoxLayout()
         vbox.addWidget(self.get_handler().log_record_text)
@@ -131,26 +132,13 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
             if os.path.exists(self.icon_path):
                 self.setWindowIcon(QtGui.QIcon(self.icon_path))
 
-    # def changeEvent(self, event: QtCore.QEvent) -> None:
-    #     super(LogWindow, self).changeEvent(event)
-    #     if event.type() == QEvent.WindowStateChange:
-    #         if int(self.windowState()) & Qt.WindowMinimized:
-    #             self.cache.put(self.cache_size, self.saveGeometry())
-    #             self.cache.put(self.cache_visible, str(False))
-    #             self.LOGGER.debug("LogWindow changeEvent hidden")
-    #             self.hide()
-    #             event.accept()
-    #         else:
-    #             self.cache.put(self.cache_visible, str(True))
-    #             self.LOGGER.debug("LogWindow changeEvent visible")
-    #             self.show()
-    #             event.accept()
-
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         super(LogWindow, self).closeEvent(event)
-        self.cache.put(self.cache_visible, self.isVisible())
-        self.cache.put(self.cache_size, self.saveGeometry())
-        self.LOGGER.debug("LogWindow closeEvent")
+        self.cache.put(self.CACHE_VISIBLE, self.isVisible())
+        self.cache.put(self.CACHE_SIZE, self.saveGeometry())
+        # close the Log-Handler
+        self.get_handler().close()
+        self.logger.debug("LogWindow closeEvent")
         event.accept()
 
     # popup to set Log-Level
@@ -158,11 +146,11 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
         context_menu = LogLevelPopup(self, self.log_level)
         setting = context_menu.exec_(self.mapToGlobal(event.pos()))
         if setting:
-            self.LOGGER.debug(
+            self.logger.debug(
                 "Log-Level changed to %d (%s)"
                 % (setting.log_level(), logging.getLevelName(setting.log_level()))
             )
             self.log_level = setting.log_level()
-            Cache().put(self.cache_level, self.log_level)
+            self.cache.put(self.CACHE_LEVEL, self.log_level)
             self.get_handler().setLevel(self.log_level)
             self.set_title_and_icon()

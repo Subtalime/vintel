@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ###########################################################################
 #  Vintel - Visual Intel Chat Analyzer									  #
 #  Copyright (C) 2014-15 Sebastian Meyer (sparrow.242.de+eve@gmail.com )  #
@@ -25,13 +25,13 @@ import sys
 import time
 import traceback
 
-from PyQt5 import QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMessageBox
+
+from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
+from PyQt5.QtGui import QGuiApplication, QPixmap
 
 from vi.systemtray import TrayIcon
 from vi.viui import MainWindow
 from vi.cache.cache import Cache
-from vi.color.helpers import contrast_color, string_to_color
 from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 from vi.resources import (
@@ -49,6 +49,7 @@ class MyMainException(Exception):
     pass
 
 
+# class Application(QGuiApplication):
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
@@ -67,7 +68,6 @@ class Application(QApplication):
 
             my_app_id = u"{}.{}.{}".format(PROGNAME, VERSION, SNAPSHOT)
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(my_app_id)
-            # and maybe this...
 
         if sys.platform != "win32" and len(sys.argv) <= 2:
             msg = "Usage: python vintel.py <chatlogsdir>"
@@ -98,12 +98,6 @@ class Application(QApplication):
 
         createResourceDirs(True)
         LogConfiguration()
-        try:
-            self.splash = QtWidgets.QSplashScreen(
-                QtGui.QPixmap(resourcePath("logo.png"))
-            )
-        except Exception as e:
-            raise MyMainException("Failed to load Splash", e)
 
         Cache.PATH_TO_CACHE = getVintelDir()
         try:
@@ -113,12 +107,6 @@ class Application(QApplication):
 
         self.logLevel = GeneralSettings().log_level
         logging.getLogger().setLevel(self.logLevel)
-        # self.backGroundColor = GeneralSettings().background_color
-        # foreground = contrast_color(string_to_color(self.backGroundColor))
-        # self.setStyleSheet(
-        #     "QWidget { background-color: %s; color: %s; }"
-        #     % (self.backGroundColor, foreground)
-        # )
 
         logging.getLogger().info(
             "------------------- %s %s starting up -------------------",
@@ -128,20 +116,26 @@ class Application(QApplication):
         logging.getLogger().info("Looking for chat logs at: %s", getEveChatlogDir())
         logging.getLogger().info("Cache maintained here: %s", Cache.PATH_TO_CACHE)
         logging.getLogger().info("Writing logs to: %s", getVintelLogDir())
-        # let's hope, this will speed up start-up
-        EsiInterface(cache_dir=getVintelDir())
 
     def startup(self):
-        self.splash.show()
-        self.processEvents()
+        try:
+            pix = QPixmap(resourcePath("logo.png"))
+            splash = QSplashScreen(pix)
+            splash.show()
+        except Exception as e:
+            raise MyMainException("Failed to load Splash", e)
+        # # let's hope, this will speed up start-up
+        # EsiInterface(cache_dir=getVintelDir())
+        # self.processEvents()
         self.trayIcon = TrayIcon(self)
         self.trayIcon.show()
         self.mainWindow = MainWindow(
             self.chatLogDirectory, self.trayIcon, self.backGroundColor
         )
+        splash.finish(self.mainWindow)
         self.mainWindow.show()
-        self.mainWindow.raise_()
-        self.splash.finish(self.mainWindow)
+        # self.mainWindow.raise_()
+        # self.splash.finish(self.mainWindow)
 
 
 __name__ = PROGNAME
@@ -151,25 +145,22 @@ __version__ = VERSION
 
 # TODO: Get log file from logconfig!
 def __uploadLog():
-    """
-    upload Log-File for further analysis
+    """upload Log-File for further analysis.
     :return: None
     """
     try:
         session = ftplib.FTP("vintel.tschache.com", "vintellog", "jYie93#7")
         log_filename = LogConfiguration.LOG_FILE_PATH
-        file_hdl = open(log_filename, "rb")
-        destination = str(time.time()) + "_output.log"
-        session.storlines("STOR " + destination, file_hdl)
-        file_hdl.close()
+        with open(log_filename, "rb") as file_hdl:
+            destination = str(time.time()) + "_output.log"
+            session.storlines("STOR " + destination, file_hdl)
         session.quit()
     except Exception as e:
         logging.getLogger().error("Problem uploading Log-File", e)
 
 
 def main_exception_hook(exceptionType, exceptionValue, tracebackObject):
-    """
-        Global function to catch unhandled exceptions.
+    """Global function to catch unhandled exceptions.
     """
     logging.getLogger().critical("-- Unhandled Exception --")
     logging.getLogger().critical("".join(traceback.format_tb(tracebackObject)))
@@ -178,10 +169,9 @@ def main_exception_hook(exceptionType, exceptionValue, tracebackObject):
     __uploadLog()
 
 
-# sys.excepthook = main_exception_hook
+sys.excepthook = main_exception_hook
 
 app = Application(sys.argv)
 app.configure()
 app.startup()
 result = app.exec_()
-# sys.exit(result)

@@ -24,16 +24,17 @@ from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
 
-VERSION = "1.2.6"
+VERSION = "1.2.7"
 SNAPSHOT = False  # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
+RELEASES = f"{URL}/releases"
 PROGNAME = "Vintel"
 DISPLAY = PROGNAME + " " + VERSION + "{dev}".format(dev="-SNAPSHOT" if SNAPSHOT else "")
 AUTHOR = "S. Tschache"
 AUTHOR_EMAIL = "github@tschache.com"
 MAINTAINER = AUTHOR
 MAINTAINER_EMAIL = AUTHOR_EMAIL
-PRODUCT_NAME = PROGNAME + " - Visual-Intel for EVE"
+PRODUCT_NAME = PROGNAME + " - Visual-Intel for EVE-Online"
 SUB_PRODUCT = PROGNAME
 LOGGER = logging.getLogger(__name__)
 

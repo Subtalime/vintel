@@ -54,10 +54,10 @@ from vi.jumpbridge.Import import Import
 from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
 from vi.logger.logconfig import LogConfigurationThread
 from vi.logger.logwindow import LogWindow
-from vi.logger.mystopwatch import ViStopwatch
+from vi.stopwatch.mystopwatch import ViStopwatch
 from vi.region.RegionMenu import RegionMenu
-from vi.resources import resourcePath
-from vi.settings.settings import ChatroomSettings, GeneralSettings, RegionSettings
+from vi.resources import resourcePath, getVintelDir
+from vi.settings.settings import GeneralSettings, RegionSettings
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.sound.soundmanager import SoundManager
 from vi.states import State
@@ -88,6 +88,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # set the Splitter-Location
         self.splitter.setStretchFactor(8, 2)
         self.logWindow = LogWindow()
+        # let's hope, this will speed up start-up
+        EsiInterface(cache_dir=getVintelDir())
 
         self.LOGGER = logging.getLogger(__name__)
         # self.splitter.setSizes([1065, 839])
@@ -148,12 +150,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.updateCharacterMenu()
         self.menuRegion = RegionMenu("Regions", self)
         self.menubar.insertMenu(self.menuSound.menuAction(), self.menuRegion)
-
         # Disable the sound UI if sound is not available
-        if not SoundManager().soundAvailable:
-            self.changeSound(disable=True)
-        else:
-            self.changeSound()
+        self.changeSound(disable=not SoundManager().soundAvailable)
 
         # Set up Transparency menu - fill in opacity values and make connections
         self.opacityGroup = QActionGroup(self.menubar)
@@ -262,8 +260,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.kosClipboardActiveAction.triggered.connect(self.changeKosCheckClipboard)
         self.zoomInButton.clicked.connect(self.zoomMapIn)
         self.zoomOutButton.clicked.connect(self.zoomMapOut)
-        self.statisticsButton.clicked.connect(self.changeStatisticsVisibility)
-        self.jumpbridgesButton.clicked.connect(self.changeJumpbridgesVisibility)
+        self.statisticsButton.clicked.connect(self.set_dotlan_statistics_visibility)
+        self.jumpbridgesButton.clicked.connect(self.set_dotlan_jumpbridge_visibility)
         self.chatLargeButton.clicked.connect(self.chatLarger)
         self.chatSmallButton.clicked.connect(self.chatSmaller)
         self.actionAbout.triggered.connect(self.show_about_dialog)
@@ -441,6 +439,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Load the jumpbridges
         with self.sw.timer("setJumpbridges"):
             self.setJumpbridges()
+        self.dotlan.setJumpbridgesVisibility(self.is_jumpbridge_visible())
+        self.dotlan.setStatisticsVisibility(self.is_statistic_visible())
         self.LOGGER.debug(self.sw.get_report())
         self.systems = self.dotlan.systems
         self.dotlan_systems.emit(self.systems)
@@ -587,58 +587,58 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.LOGGER.info(msg)
         self.trayIcon.showMessage("Newer Version", msg)
 
-    def changeChatVisibility(self, newValue=None):
-        if newValue is None:
-            newValue = self.showChatAction.isChecked()
-        self.showChatAction.setChecked(newValue)
-        self.chatbox.setVisible(newValue)
+    def changeChatVisibility(self, new_value=None):
+        if new_value is None:
+            new_value = self.showChatAction.isChecked()
+        self.showChatAction.setChecked(new_value)
+        self.chatbox.setVisible(new_value)
 
-    def changeKosCheckClipboard(self, newValue=None):
-        if newValue is None:
-            newValue = self.kosClipboardActiveAction.isChecked()
-        self.kosClipboardActiveAction.setChecked(newValue)
-        if newValue:
+    def changeKosCheckClipboard(self, new_value=None):
+        if new_value is None:
+            new_value = self.kosClipboardActiveAction.isChecked()
+        self.kosClipboardActiveAction.setChecked(new_value)
+        if new_value:
             self.startClipboardTimer()
         else:
             self.stopClipboardTimer()
 
-    def changeAutoScanIntel(self, newValue=None):
-        if newValue is None:
-            newValue = self.autoScanIntelAction.isChecked()
-        self.autoScanIntelAction.setChecked(newValue)
-        self.scanIntelForKosRequestsEnabled = newValue
+    def changeAutoScanIntel(self, new_value=None):
+        if new_value is None:
+            new_value = self.autoScanIntelAction.isChecked()
+        self.autoScanIntelAction.setChecked(new_value)
+        self.scanIntelForKosRequestsEnabled = new_value
 
-    def changeUseSpokenNotifications(self, newValue=None):
+    def changeUseSpokenNotifications(self, new_value=None):
         if SoundManager().platformSupportsSpeech():
-            if newValue is None:
-                newValue = self.useSpokenNotificationsAction.isChecked()
-            self.useSpokenNotificationsAction.setChecked(newValue)
-            SoundManager().setUseSpokenNotifications(newValue)
+            if new_value is None:
+                new_value = self.useSpokenNotificationsAction.isChecked()
+            self.useSpokenNotificationsAction.setChecked(new_value)
+            SoundManager().setUseSpokenNotifications(new_value)
         else:
             self.useSpokenNotificationsAction.setChecked(False)
             self.useSpokenNotificationsAction.setEnabled(False)
 
-    def changeOpacity(self, newValue=None):
+    def changeOpacity(self, new_value=None):
         try:
             action = self.opacityGroup.checkedAction()
-            newValue = action.opacity
-            if newValue is not None:
+            new_value = action.opacity
+            if new_value is not None:
                 for action in self.opacityGroup.actions():
-                    if action.opacity == newValue:
+                    if action.opacity == new_value:
                         action.setChecked(True)
                         break
             self.setWindowOpacity(action.opacity)
         except Exception as e:
             self.LOGGER.error("Error while selecting Opacity", e)
 
-    def changeSound(self, newValue=None, disable=False):
+    def changeSound(self, new_value=None, disable=False):
         if disable:
             self.activateSoundAction.setChecked(False)
             self.activateSoundAction.setEnabled(False)
             self.soundSetupAction.setEnabled(False)
             # self.soundButton.setEnabled(False)
             QMessageBox.warning(
-                None,
+                self,
                 "Sound disabled",
                 "The lib 'pyglet' which is used to play sounds cannot "
                 "be found, so the soundsystem is disabled.\nIf you want sound, "
@@ -648,49 +648,48 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             )
         else:
             self.soundSetupAction.setEnabled(True)
-            if newValue is None:
-                newValue = GeneralSettings().sound_active
-            self.activateSoundAction.setChecked(newValue)
-            self.soundSetupAction.setEnabled(newValue)
-            # SoundManager().enable_sound = newValue
-            GeneralSettings().sound_active = newValue
-            self.LOGGER.info("Sound activation changed to %r", newValue)
+            if new_value is None:
+                new_value = GeneralSettings().sound_active
+            self.activateSoundAction.setChecked(new_value)
+            self.soundSetupAction.setEnabled(new_value)
+            GeneralSettings().sound_active = new_value
+            self.LOGGER.info("Sound activation changed to %r", new_value)
 
-    def changeAlwaysOnTop(self, newValue=None):
-        if newValue is None:
-            newValue = self.alwaysOnTopAction.isChecked()
+    def changeAlwaysOnTop(self, new_value=None):
+        if new_value is None:
+            new_value = self.alwaysOnTopAction.isChecked()
         self.hide()
-        self.alwaysOnTopAction.setChecked(newValue)
-        if newValue:
+        self.alwaysOnTopAction.setChecked(new_value)
+        if new_value:
             self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         else:
             self.setWindowFlags(self.windowFlags() & (~QtCore.Qt.WindowStaysOnTopHint))
         self.show()
 
-    def changeFrameless(self, newValue=None):
-        if newValue is None:
-            newValue = not self.frameButton.isVisible()
+    def changeFrameless(self, new_value=None):
+        if new_value is None:
+            new_value = not self.frameButton.isVisible()
         self.hide()
-        if newValue:
+        if new_value:
             self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
             self.changeAlwaysOnTop(True)
         else:
             self.setWindowFlags(self.windowFlags() & (~QtCore.Qt.FramelessWindowHint))
-        self.menubar.setVisible(not newValue)
-        self.frameButton.setVisible(newValue)
-        self.framelessWindowAction.setChecked(newValue)
+        self.menubar.setVisible(not new_value)
+        self.frameButton.setVisible(new_value)
+        self.framelessWindowAction.setChecked(new_value)
 
         for cm in TrayContextMenu.instances:
-            cm.framelessCheck.setChecked(newValue)
+            cm.framelessCheck.setChecked(new_value)
         self.show()
 
-    def changeShowAvatars(self, newValue=None):
-        if newValue is None:
-            newValue = self.showChatAvatarsAction.isChecked()
-        self.showChatAvatarsAction.setChecked(newValue)
-        ChatEntryWidget.SHOW_AVATAR = newValue
+    def changeShowAvatars(self, new_value=None):
+        if new_value is None:
+            new_value = self.showChatAvatarsAction.isChecked()
+        self.showChatAvatarsAction.setChecked(new_value)
+        ChatEntryWidget.SHOW_AVATAR = new_value
         for entry in self.chatEntries:
-            entry.avatarLabel.setVisible(newValue)
+            entry.avatarLabel.setVisible(new_value)
 
     def changeChatFontSize(self, newSize):
         if newSize:
@@ -733,16 +732,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 action.setChecked(True)
         self.trayIcon.alarmDistance = int(distance)
 
-    def changeJumpbridgesVisibility(self):
-        newValue = self.dotlan.changeJumpbridgesVisibility()
-        self.jumpbridgesButton.setChecked(newValue)
+    def is_jumpbridge_visible(self):
+        return self.jumpbridgesButton.isChecked()
+
+    def set_dotlan_jumpbridge_visibility(self):
+        """the button is only enabled if we have valid Jump-Bridges.
+        """
+        self.dotlan.setJumpbridgesVisibility(self.is_jumpbridge_visible())
         self.updateMapView()
 
-    def changeStatisticsVisibility(self):
-        newValue = self.dotlan.changeStatisticsVisibility()
-        self.statisticsButton.setChecked(newValue)
+    def is_statistic_visible(self):
+        return self.statisticsButton.isChecked()
+
+    def set_dotlan_statistics_visibility(self):
+        self.dotlan.setStatisticsVisibilyt(self.is_statistic_visible())
         self.updateMapView()
-        if newValue:
+        if self.is_statistic_visible():
             self.statisticsThread.requestStatistics()
 
     def clipboardChanged(self, mode=0):
@@ -839,6 +844,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.mapView.page().runJavaScript(script)
 
     def updateMapView(self):
+        """force a Refresh of the Map in screen.
+        """
         scrollPosition = self.mapView.page().scrollPosition()
         zoom = self.mapView.page().zoomFactor()
         if self.initialMapPosition:
@@ -895,11 +902,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     # TODO: new settings
     def checkJumpbridges(self):
+        """en-/disable Jumpbridge-Button on interface.
+        """
         data = self.cache.fetch_jumpbridge_data()
         if data:
             self.jumpbridgesButton.setEnabled(True)
             self.jumpbridgesButton.setCheckable(True)
-            self.jumpbridgesButton.setChecked(False)
+            # self.jumpbridgesButton.setChecked(False)
         else:
             self.jumpbridgesButton.setEnabled(False)
             self.jumpbridgesButton.setCheckable(False)
@@ -910,27 +919,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         data = []
         try:
             if url_or_filepath:
-                if url_or_filepath.startswith("http"):
-                    try:
-                        resp = requests.get(url_or_filepath)
-                        for line in resp.iter_lines(decode_unicode=True):
-                            parts = line.strip().split()
-                            if len(parts) == 3:
-                                data.append(parts)
-                    except Exception as e:
-                        self.LOGGER.exception(
-                            "Error querying Jump-Bridge-Data at %s"
-                            % (url_or_filepath,),
-                            e,
-                        )
-                else:
-                    data = Import().readGarpaFile(url_or_filepath)
-                if len(data):  # valid File/URL
-                    self.cache.put(
-                        "jumpbridge_url", url_or_filepath, maxAge=Cache.FOREVER
-                    )
+                data = Import().garpa_data(url_or_filepath)
+                # if url_or_filepath.startswith("http"):
+                #     try:
+                #         resp = requests.get(url_or_filepath).text
+                #         data = Import().readGarpaFile(clipboard=resp)
+                #     except Exception as e:
+                #         self.LOGGER.exception(
+                #             "Error querying Jump-Bridge-Data at %s"
+                #             % (url_or_filepath,),
+                #             e,
+                #         )
+                # else:
+                #     data = Import().readGarpaFile(url_or_filepath)
+                # if len(data):  # valid File/URL
+                #     self.cache.put(
+                #         "jumpbridge_url", url_or_filepath, maxAge=Cache.FOREVER
+                #     )
             elif clipdata:
-                data = Import().readGarpaFile(clipboard=clipdata)
+                data = Import().garpa_data(clipdata)
+                # data = Import().readGarpaFile(clipboard=clipdata)
             else:
                 data = self.cache.fetch_jumpbridge_data()
             self.dotlan.setJumpbridges(data, self)
@@ -938,7 +946,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.cache.put_jumpbridge_data(data)
         except Exception as e:
             QMessageBox.warning(
-                None, "Loading Jump-Bridges failed!", "Error: %r" % (e,), QMessageBox.Ok
+                self, "Loading Jump-Bridges failed!", "Error: %r" % (e,), QMessageBox.Ok
             )
             self.cache.delete("jumpbridge_url")
             self.cache.delete_jumpbridge_data()
@@ -953,6 +961,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             RegionSettings().selected_region = regionName
             self.setupMap()
 
+    # TODO: here it would be good to have a list of Messages per Region
+    # so, when changing Region, the current list of Messages could be
+    # parsed and then added to the Map-Display
     def addMessageToIntelChat(self, message: Message):
         self.LOGGER.debug("Adding message to Intel: %r", message)
         scroll_to_bottom = False

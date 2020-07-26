@@ -26,6 +26,8 @@ from vi.states import State
 
 
 class System:
+    """represent a system within the region.
+    """
     def __init__(
         self, name, svg_element, map_soup, map_coordinates, transform, system_id
     ):
@@ -73,16 +75,32 @@ class System:
     def mapCoordinates(self):
         return self.map_coordinates
 
+    @property
+    def map_x(self):
+        return self.map_coordinates["center_x"]
+
+    @property
+    def map_y(self):
+        return self.map_coordinates["center_y"]
+
+    @property
+    def map_points(self) -> [float, float]:
+        return [self.map_coordinates["center_x"], self.map_coordinates["center_y"]]
+
     def add_message(self, message):
+        """received message.
+        """
         if not self.messages:
             self.messages = []
         self.messages.append(message)
 
     def del_message(self, message):
+        """purged message.
+        """
         if message in self.messages:
             self.messages.remove(message)
 
-    def getTransformOffsetPoint(self):
+    def getTransformOffsetPoint(self) -> [float, float]:
         if not self.cachedOffsetPoint:
             if self.transform:
                 # Convert data in the form 'transform(0,0)' to a list of two floats
@@ -93,21 +111,23 @@ class System:
         return self.cachedOffsetPoint
 
     def setJumpbridgeColor(self, color):
-        idName = u"JB_" + self.name + u"_jb_marker"
-        for element in self.map_soup.select(u"#" + idName):
+        """set a Jump-Bridge to this system with a given color.
+        """
+        id_name = u"JB_" + self.name + u"_jb_marker"
+        for element in self.map_soup.select(u"#" + id_name):
             element.decompose()
-        coords = self.map_coordinates
-        offsetPoint = self.getTransformOffsetPoint()
-        x = coords["x"] - 3 + offsetPoint[0]
-        y = coords["y"] + offsetPoint[1]
+        coordinates = self.map_coordinates
+        offset_point = self.getTransformOffsetPoint()
+        x = coordinates["x"] - 3 + offset_point[0]
+        y = coordinates["y"] + offset_point[1]
         style = "fill:{0};stroke:{0};stroke-width:2;fill-opacity:0.4"
         tag = self.map_soup.new_tag(
             "rect",
             x=x,
             y=y,
-            width=coords["width"] + 1.5,
-            height=coords["height"],
-            id=idName,
+            width=coordinates["width"] + 1.5,
+            height=coordinates["height"],
+            id=id_name,
             style=style.format(color),
             visibility="hidden",
         )
@@ -118,28 +138,32 @@ class System:
         jumps.insert(0, tag)
 
     def mark(self):
+        """show the system as marked.
+        """
         marker = self.map_soup.select("#select_marker")[0]
-        offsetPoint = self.getTransformOffsetPoint()
-        x = self.map_coordinates["center_x"] + offsetPoint[0]
-        y = self.map_coordinates["center_y"] + offsetPoint[1]
+        offset_point = self.getTransformOffsetPoint()
+        x = self.map_coordinates["center_x"] + offset_point[0]
+        y = self.map_coordinates["center_y"] + offset_point[1]
         marker["transform"] = "translate({x},{y})".format(x=x, y=y)
         marker["opacity"] = "1"
         marker["activated"] = time.time()
 
     def addLocatedCharacter(self, charname):
-        idName = self.getSoupId()
+        """add a known Character to this system.
+        """
+        id_name = self.getSoupId()
         wasLocated = bool(self._locatedCharacters)
         if charname not in self._locatedCharacters:
             self._locatedCharacters.append(charname)
         if not wasLocated:
-            coords = self.map_coordinates
+            coordinates = self.map_coordinates
             newTag = self.map_soup.new_tag(
                 "ellipse",
-                cx=coords["center_x"] - 2.5,
-                cy=coords["center_y"],
-                id=idName,
-                rx=coords["width"] / 2 + 4,
-                ry=coords["height"] / 2 + 4,
+                cx=coordinates["center_x"] - 2.5,
+                cy=coordinates["center_y"],
+                id=id_name,
+                rx=coordinates["width"] / 2 + 4,
+                ry=coordinates["height"] / 2 + 4,
                 style="fill:#8b008d",
                 transform=self.transform,
             )
@@ -153,33 +177,37 @@ class System:
             ):
                 rect["style"] = "fill: {0};".format(color)
 
-    def getLocatedCharacters(self):
+    def getLocatedCharacters(self) -> list:
+        """return a list of known Characters in this system.
+        """
         characters = []
         for char in self._locatedCharacters:
             characters.append(char)
         return characters
 
-    def getSoupId(self):
+    def getSoupId(self) -> str:
         name_id = str(self.name)
         return "loc_" + name_id.replace("-", "_").lower()
 
     def removeLocatedCharacter(self, charname):
-        idName = self.getSoupId()
-        # idName = self.name + u"_loc"
+        """character has moved on from this System.
+        """
+        id_name = self.getSoupId()
 
         if charname in self._locatedCharacters:
             self._locatedCharacters.remove(charname)
             if not self._locatedCharacters:
-                for element in self.map_soup.select("#" + idName):
+                for element in self.map_soup.select("#" + id_name):
                     element.decompose()
 
-    def addNeighbour(self, neighbourSystem):
-        """
-            Add a neigbour system to this system
+    def addNeighbour(self, neighbour_system):
+        """Add a neighbour system to this system
             neighbour_system: a system (not a system's name!)
         """
-        self._neighbours.add(neighbourSystem)
-        neighbourSystem._neighbours.add(self)
+        self._neighbours.add(neighbour_system)
+
+    def getNeighbourList(self) -> set:
+        return self._neighbours
 
     def getNeighbours(self, distance=1):
         """
@@ -193,26 +221,17 @@ class System:
             {sys3: {"distance"}: 0, sys2: {"distance"}: 1}
         """
         systems = {self: {"distance": 0}}
-        currentDistance = 0
-        while currentDistance < distance:
-            currentDistance += 1
-            newSystems = []
+        current_distance = 0
+        while current_distance < distance:
+            current_distance += 1
+            new_systems = []
             for system in systems.keys():
-                for neighbour in system._neighbours:
+                for neighbour in system.getNeighbourList():
                     if neighbour not in systems:
-                        newSystems.append(neighbour)
-            for newSystem in newSystems:
-                systems[newSystem] = {"distance": currentDistance}
+                        new_systems.append(neighbour)
+            for newSystem in new_systems:
+                systems[newSystem] = {"distance": current_distance}
         return systems
-
-    def removeNeighbour(self, system):
-        """
-            Removes the link between to neighboured systems
-        """
-        if system in self._neighbours:
-            self._neighbours.remove(system)
-        if self in system._neighbours:
-            system._neigbours.remove(self)
 
     def setStatistics(self, statistics):
         if statistics is None:
@@ -221,8 +240,8 @@ class System:
             text = "j-{jumps} f-{factionkills} s-{shipkills} p-{podkills}".format(
                 **statistics
             )
-        svgtext = self.map_soup.select("#stats_" + str(self.system_id))[0]
-        svgtext.string = text
+        svg_text = self.map_soup.select("#stats_" + str(self.system_id))[0]
+        svg_text.string = text
 
     def setStatus(self, new_status, alarm_time: float = time.time()):
         if not isinstance(alarm_time, float):
@@ -230,7 +249,6 @@ class System:
                 alarm_time = (
                     time.mktime(alarm_time.timetuple()) + alarm_time.microsecond / 1e6
                 )
-                # alarm_time = (alarm_time - datetime.datetime(1970, 1, 1)).total_seconds()
         if new_status in (State["ALARM"], State["CLEAR"], State["REQUEST"]):
             self.lastAlarmTime = alarm_time
             if new_status == State["ALARM"]:
@@ -255,8 +273,6 @@ class System:
         minutes = int(math.floor(diff / 60))
         seconds = int(diff - minutes * 60)
         ndiff = int(minutes * 60 + seconds)
-        # if self.status != states.UNKNOWN and (diff < 0 or ndiff > cjs.max_time(self.status)):  # anything older than max color-size
-        #     self.setStatus(states.UNKNOWN)
         if self.status != State["UNKNOWN"]:
             self.secondLine.string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
             self.timerload = (
