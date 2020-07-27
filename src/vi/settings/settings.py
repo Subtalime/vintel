@@ -119,12 +119,12 @@ class RegionSettings(_Settings):
         self.setting = v
 
     @property
-    def jump_bridge_data(self) -> str:
-        return str(self.setting["jump_bridge_data"])
+    def jump_bridge_data(self) -> list:
+        return self.setting["jump_bridge_data"]
 
     @jump_bridge_data.setter
-    def jump_bridge_data(self, value: str):
-        v = {"jump_bridge_data": str(value)}
+    def jump_bridge_data(self, value: list):
+        v = {"jump_bridge_data": value}
         self.setting = v
 
 

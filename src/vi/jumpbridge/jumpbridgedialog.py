@@ -18,7 +18,6 @@
 #
 
 import six
-import requests
 import logging
 
 from PyQt5 import QtWidgets
@@ -27,12 +26,12 @@ from PyQt5.QtCore import pyqtSignal
 from vi.resources import resourcePath
 import clipboard
 import vi.ui.JumpbridgeChooser
-from vi.jumpbridge.Import import Import
+from vi.jumpbridge.jumpbridge import Import
 from vi.settings.settings import RegionSettings
 
 
-class JumpbridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
-    set_jump_bridge_url = pyqtSignal(str, str)
+class JumpBridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
+    set_jump_bridge_url = pyqtSignal()
 
     def __init__(self, parent, url=None):
         super(self.__class__, self).__init__(parent)
@@ -50,9 +49,11 @@ class JumpbridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
 
     def _save_path(self):
         url = six.text_type(self.urlField.text())
-        if len(Import().garpa_data(url)):
+        data = Import().garpa_data(url)
+        if len(data):
             RegionSettings().jump_bridge_url = url
-            self.set_jump_bridge_url.emit(url, None)
+            RegionSettings().jump_bridge_data = data
+            self.set_jump_bridge_url.emit()
             self.accept()
         else:
             QtWidgets.QMessageBox.warning(
@@ -60,6 +61,7 @@ class JumpbridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
                 "Jumpbridgedata from File/URL",
                 "Invalid data found in File/URL",
             )
+            RegionSettings().jump_bridge_data = ""
 
     def accept(self) -> None:
         super(self.__class__, self).accept()
@@ -69,9 +71,11 @@ class JumpbridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
         try:
             data = clipboard.paste()
             if data:
-                if len(Import().garpa_data(data)) > 0:
+                imported = Import().garpa_data(data)
+                if len(imported):
                     RegionSettings().jump_bridge_data = data
-                    self.set_jump_bridge_url.emit(None, data)
+                    RegionSettings().jump_bridge_url = ""
+                    self.set_jump_bridge_url.emit()
                     self.accept()
                 else:
                     QtWidgets.QMessageBox.warning(
@@ -79,8 +83,10 @@ class JumpbridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
                         "Jumpbridgedata from Clipboard",
                         "Invalid data found in Clipboard",
                     )
+                    RegionSettings().jump_bridge_data = ""
         except Exception as e:
             self.LOGGER.error("Error while using Clipboard-Jumpdata: %r", e)
+            RegionSettings().jump_bridge_data = ""
 
 
 if __name__ == "__main__":
@@ -88,6 +94,6 @@ if __name__ == "__main__":
     from PyQt5.Qt import QApplication
 
     a = QApplication(sys.argv)
-    d = JumpbridgeDialog(None)
+    d = JumpBridgeDialog(None)
     d.show()
     sys.exit(a.exec_())

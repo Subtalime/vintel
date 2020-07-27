@@ -30,7 +30,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QProgressDialog
 from vi.cache import Cache
 from vi.dotlan.colorjavascript import ColorJavaScript
-from vi.dotlan.jumpbridge import Jumpbridge
+from vi.jumpbridge.jumpbridge import Jumpbridge
 from vi.dotlan.system import System
 from vi.dotlan.exception import DotlanException
 from vi.esi import EsiInterface
@@ -212,14 +212,14 @@ class MyMap:
             startMarker = self.soup.new_tag(
                 "marker",
                 viewBox="0 0 20 20",
-                id="arrowstart_{0}".format(jbColor),
+                id="arrowstart_{0}".format(jbColor.strip("#")),
                 markerUnits="strokeWidth",
                 markerWidth="20",
                 markerHeight="15",
                 refx="-15",
                 refy="5",
                 orient="auto",
-                style="stroke:#{0};fill:#{0}".format(jbColor),
+                style="stroke:{0};fill:{0}".format(jbColor),
             )
             startMarker.append(startPath)
             svg.insert(0, startMarker)
@@ -227,14 +227,14 @@ class MyMap:
             endmarker = self.soup.new_tag(
                 "marker",
                 viewBox="0 0 20 20",
-                id="arrowend_{0}".format(jbColor),
+                id="arrowend_{0}".format(jbColor.strip("#")),
                 markerUnits="strokeWidth",
                 markerWidth="20",
                 markerHeight="15",
                 refx="25",
                 refy="5",
                 orient="auto",
-                style="stroke:#{0};fill:#{0}".format(jbColor),
+                style="stroke:{0};fill:{0}".format(jbColor),
             )
             endmarker.append(endpath)
             svg.insert(0, endmarker)
@@ -393,12 +393,12 @@ class MyMap:
         except Exception as e:
             self.LOGGER.error(e)
 
-    def setJumpbridges(self, jumpbridge_data, parent=None):
+    def setJumpbridges(self, jumpbridge_data: list, parent=None):
         """
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
         """
-        if not jumpbridge_data or len(jumpbridge_data) <= 0:
+        if not jumpbridge_data or not isinstance(jumpbridge_data, list) or len(jumpbridge_data) <= 0:
             return
         jb_builder = Jumpbridge(self.systems, self.soup, jumpbridge_data)
         progress = QProgressDialog(
@@ -408,11 +408,9 @@ class MyMap:
         progress.setModal(True)
         progress.setAutoClose(True)
         progress.setValue(0)
-        jumps = 0
-        for data, loc in jb_builder.build():
-            jumps += 1
-            if not jumps % 4:
-                progress.setValue(jumps)
+        for index in jb_builder.build():
+            if not index % 4:
+                progress.setValue(index)
             if progress.wasCanceled():
                 jb_builder.clear()
                 break

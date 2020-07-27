@@ -70,6 +70,8 @@ class System:
         # set default to White
         for rect in self.svg_element.select("rect"):
             rect["style"] = "fill: #ffffff"
+        self.jb_name = u"JB_" + self.name + u"_jb_marker"
+
 
     @property
     def mapCoordinates(self):
@@ -110,12 +112,9 @@ class System:
                 self.cachedOffsetPoint = [0.0, 0.0]
         return self.cachedOffsetPoint
 
-    def setJumpbridgeColor(self, color):
-        """set a Jump-Bridge to this system with a given color.
+    def prepareJumpbridgeColor(self, color):
+        """prepare a Jump-Bridge to this system with a given color.
         """
-        id_name = u"JB_" + self.name + u"_jb_marker"
-        for element in self.map_soup.select(u"#" + id_name):
-            element.decompose()
         coordinates = self.map_coordinates
         offset_point = self.getTransformOffsetPoint()
         x = coordinates["x"] - 3 + offset_point[0]
@@ -127,13 +126,21 @@ class System:
             y=y,
             width=coordinates["width"] + 1.5,
             height=coordinates["height"],
-            id=id_name,
+            id=self.jb_name,
             style=style.format(color),
             visibility="hidden",
         )
         tag["class"] = [
             "jumpbridge",
         ]
+        return tag
+
+    def setJumpbridgeColor(self, color):
+        """set a Jump-Bridge to this system with a given color.
+        """
+        for element in self.map_soup.select(u"#" + self.jb_name):
+            element.decompose()
+        tag = self.prepareJumpbridgeColor(color)
         jumps = self.map_soup.select("#jumps")[0]
         jumps.insert(0, tag)
 

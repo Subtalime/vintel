@@ -25,7 +25,7 @@ from bs4 import BeautifulSoup
 from vi.esi import EsiInterface
 from vi.dotlan.system import System
 from vi.dotlan.exception import DotlanException
-from vi.dotlan.jumpbridge import Jumpbridge
+from vi.jumpbridge.jumpbridge import Jumpbridge
 from vi.cache.cache import Cache
 from vi.version import URL
 

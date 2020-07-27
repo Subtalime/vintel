@@ -50,8 +50,7 @@ from vi.dotlan.mymap import MyMap
 from vi.dotlan.regions import Regions, convert_region_name
 from vi.esi import EsiInterface
 from vi.esi.esihelper import EsiHelper
-from vi.jumpbridge.Import import Import
-from vi.jumpbridge.JumpbridgeDialog import JumpbridgeDialog
+from vi.jumpbridge.jumpbridgedialog import JumpBridgeDialog
 from vi.logger.logconfig import LogConfigurationThread
 from vi.logger.logwindow import LogWindow
 from vi.stopwatch.mystopwatch import ViStopwatch
@@ -437,8 +436,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.LOGGER.debug("Map File found, Region set to {}".format(regionName))
 
         # Load the jumpbridges
-        with self.sw.timer("setJumpbridges"):
-            self.setJumpbridges()
+        with self.sw.timer("update_jumpbridges"):
+            self.update_jumpbridges()
         self.dotlan.setJumpbridgesVisibility(self.is_jumpbridge_visible())
         self.dotlan.setStatisticsVisibility(self.is_statistic_visible())
         self.LOGGER.debug(self.sw.get_report())
@@ -896,15 +895,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.settings(4)
 
     def showJumpBridgeChooser(self):
-        chooser = JumpbridgeDialog(self)
-        chooser.set_jump_bridge_url.connect(self.setJumpbridges)
+        chooser = JumpBridgeDialog(self)
+        chooser.set_jump_bridge_url.connect(self.update_jumpbridges)
         chooser.exec_()
 
     # TODO: new settings
     def checkJumpbridges(self):
         """en-/disable Jumpbridge-Button on interface.
         """
-        data = self.cache.fetch_jumpbridge_data()
+        data = RegionSettings().jump_bridge_data
         if data:
             self.jumpbridgesButton.setEnabled(True)
             self.jumpbridgesButton.setCheckable(True)
@@ -915,41 +914,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.jumpbridgesButton.setChecked(False)
 
     # TODO: new settings
-    def setJumpbridges(self, url_or_filepath: str = None, clipdata: str = None):
-        data = []
-        try:
-            if url_or_filepath:
-                data = Import().garpa_data(url_or_filepath)
-                # if url_or_filepath.startswith("http"):
-                #     try:
-                #         resp = requests.get(url_or_filepath).text
-                #         data = Import().readGarpaFile(clipboard=resp)
-                #     except Exception as e:
-                #         self.LOGGER.exception(
-                #             "Error querying Jump-Bridge-Data at %s"
-                #             % (url_or_filepath,),
-                #             e,
-                #         )
-                # else:
-                #     data = Import().readGarpaFile(url_or_filepath)
-                # if len(data):  # valid File/URL
-                #     self.cache.put(
-                #         "jumpbridge_url", url_or_filepath, maxAge=Cache.FOREVER
-                #     )
-            elif clipdata:
-                data = Import().garpa_data(clipdata)
-                # data = Import().readGarpaFile(clipboard=clipdata)
-            else:
-                data = self.cache.fetch_jumpbridge_data()
-            self.dotlan.setJumpbridges(data, self)
-            if data and len(data):
-                self.cache.put_jumpbridge_data(data)
-        except Exception as e:
-            QMessageBox.warning(
-                self, "Loading Jump-Bridges failed!", "Error: %r" % (e,), QMessageBox.Ok
-            )
-            self.cache.delete("jumpbridge_url")
-            self.cache.delete_jumpbridge_data()
+    def update_jumpbridges(self):
+        data = RegionSettings().jump_bridge_data
+        self.dotlan.setJumpbridges(data, self)
         self.checkJumpbridges()
 
     # TODO: add functionality to still store other Region actions
