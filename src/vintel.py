@@ -43,6 +43,7 @@ from vi.resources import (
 )
 from vi.settings.settings import GeneralSettings
 from vi.version import AUTHOR, AUTHOR_EMAIL, PROGNAME, VERSION, SNAPSHOT
+from vi.stopwatch.mystopwatch import ViStopwatch
 
 
 class MyMainException(Exception):
@@ -118,10 +119,12 @@ class Application(QApplication):
         logging.getLogger().info("Writing logs to: %s", getVintelLogDir())
 
     def startup(self):
+        sw = ViStopwatch()
         try:
             pix = QPixmap(resourcePath("logo.png"))
             splash = QSplashScreen(pix)
             splash.show()
+            logging.getLogger().debug("Splash-Screen loaded and displayed")
         except Exception as e:
             raise MyMainException("Failed to load Splash", e)
         # # let's hope, this will speed up start-up
@@ -129,10 +132,13 @@ class Application(QApplication):
         # self.processEvents()
         self.trayIcon = TrayIcon(self)
         self.trayIcon.show()
-        self.mainWindow = MainWindow(
-            self.chatLogDirectory, self.trayIcon, self.backGroundColor
-        )
-        splash.finish(self.mainWindow)
+        with sw.timer("start_mainscreen"):
+            self.mainWindow = MainWindow(
+                self.chatLogDirectory, self.trayIcon, self.backGroundColor
+            )
+            splash.finish(self.mainWindow)
+        logging.getLogger().debug("Splash-Screen finished")
+        logging.getLogger().debug(sw.get_report())
         self.mainWindow.show()
         # self.mainWindow.raise_()
         # self.splash.finish(self.mainWindow)

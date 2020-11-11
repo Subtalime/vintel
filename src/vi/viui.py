@@ -533,11 +533,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 "changeUseSpokenNotifications",
                 self.useSpokenNotificationsAction.isChecked(),
             ),
-            (
-                None,
-                "changeKosCheckClipboard",
-                self.kosClipboardActiveAction.isChecked(),
-            ),
+            # (
+            #     None,
+            #     "changeKosCheckClipboard",
+            #     self.kosClipboardActiveAction.isChecked(),
+            # ),
             (None, "changeAutoScanIntel", self.scanIntelForKosRequestsEnabled),
         )
         self.cache.save_settings("settings", settings, 60 * 60 * 24 * 30)
@@ -890,6 +890,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.logWindow.isHidden():
             self.logWindow.showNormal()
             self.logWindow.activateWindow()
+        else:
+            self.logWindow.hide()
 
     def showChatroomChooser(self):
         self.settings(4)

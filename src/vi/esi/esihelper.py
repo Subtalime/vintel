@@ -21,7 +21,6 @@ import logging
 from vi.esi.esiinterface import EsiInterface
 from vi.cache.cache import Cache
 
-LOGGER = logging.getLogger(__name__)
 
 
 class EsiHelper:
@@ -31,29 +30,35 @@ class EsiHelper:
     def __init__(self):
         self.esi = EsiInterface()
         self.cache = Cache()
+        self.logger = logging.getLogger(__name__)
 
-    def get_avatarByName(self, characterName: str) -> bytes:
-        resp = self.esi.getCharacterAvatarByName(characterName)
+    def _get_avatar(self, uri):
+        avatar = bytes()
+        try:
+            response = requests.get(uri)
+            avatar = response.content
+        except ConnectionError:
+            pass
+        return avatar
+
+    def get_avatarByName(self, character_name: str) -> bytes:
+        resp = self.esi.getCharacterAvatarByName(character_name)
         if resp:
-            imageurl = resp["px64x64"]
-            avatar = requests.get(imageurl).content
-            return avatar
+            return self._get_avatar(resp["px64x64"])
         return bytes()
 
-    def get_avatarById(self, characterId: int) -> bytes:
-        resp = self.esi.getCharacterAvatar(characterId)
+    def get_avatarById(self, character_id: int) -> bytes:
+        resp = self.esi.getCharacterAvatar(character_id)
         if resp:
-            imageurl = resp["px64x64"]
-            avatar = requests.get(imageurl).content
-            return avatar
+            return self._get_avatar(resp["px64x64"])
         return bytes()
 
-    def checkPlayerName(self, characterName: str) -> dict:
-        resp = self.esi.getCharacterId(characterName, True)
+    def checkPlayerName(self, character_name: str) -> dict:
+        resp = self.esi.getCharacterId(character_name, True)
         if resp:
             for charid in resp["character"]:
                 character = self.esi.getCharacter(charid)
-                if character and character.get("name") == characterName:
+                if character and character.get("name") == character_name:
                     character["id"] = charid
                     return character
         return {}
@@ -111,5 +116,5 @@ class EsiHelper:
             ship = self.ShipsUpper[shipName.upper()]
             return ship["type_id"]
         except:
-            LOGGER.error("Unable to find Ship {}".format(shipName))
+            self.logger.error("Unable to find Ship {}".format(shipName))
         return 0

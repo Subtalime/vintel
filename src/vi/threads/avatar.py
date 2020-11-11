@@ -86,7 +86,7 @@ class AvatarThread(QThread):
                 if charname == "VINTEL":
                     with open(resourcePath("logo_small.png"), "rb") as f:
                         avatar = f.read()
-                if not avatar and not self.last_try:
+                if avatar is None and not self.last_try:
                     # TODO: Seems this causes issues of performance if bad internet connection...
                     #  try to do it with increasing time to skip Avatar-Load
                     #  or even do it within ESI to skip all calls!

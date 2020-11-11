@@ -47,7 +47,7 @@ class MapData:
     DOTLAN_BASE_URL = u"http://evemaps.dotlan.net/svg/{0}.svg"
 
     def __init__(self, region: str):
-        self.region = region
+        self.region = region.lower()
         self.svg = None
 
     def _get_svg_from_dotlan(self):
@@ -63,9 +63,9 @@ class MapData:
     def _from_dotlan(self):
         self.svg = self._get_svg_from_dotlan()
         Cache().put(
-            "map_" + self.region,
-            self.svg,
-            EsiInterface().secondsTillDowntime() + 60 * 60,
+            key="map_" + self.region,
+            value=self.svg,
+            maxAge=EsiInterface().secondsTillDowntime() + 3600,
         )
 
     def _fix_svg(self):
@@ -110,7 +110,7 @@ class MapData:
 class MyMap:
     def __init__(self, parent=None, region="Delve"):
         self.LOGGER = logging.getLogger(__name__)
-        self.LOGGER.debug("Initializing Map for {}".format(region))
+        self.LOGGER.debug("Initializing Map for \"{}\"".format(region))
         self.region = region
         self.parent = parent
         self.progress = None
@@ -121,7 +121,6 @@ class MyMap:
         self._jumpMapsVisible = False
         self._statisticsVisible = False
 
-        svg = MapData(self.region).load()
         if self.parent:
             if not self.progress:
                 self.progress = QtWidgets.QProgressDialog(
@@ -129,6 +128,7 @@ class MyMap:
                 )
                 self.progress.setModal(False)
 
+        svg = MapData(self.region).load()
         # Create soup from the svg
         self.soup = BeautifulSoup(svg, "html.parser")
         self.systems = self._extractSystemsFromSoup()
@@ -138,8 +138,8 @@ class MyMap:
         self._prepareSvg()
         self._connectNeighbours()
         self.marker = self.soup.select("#select_marker")[0]
-        self.LOGGER.debug("Initializing Map for {}: Done".format(region))
-        if self.parent:
+        self.LOGGER.debug("Initializing Map for \"{}\": Done".format(region))
+        if self.progress:
             # this closes...
             self.progress.setValue(1)
             self.progress = None

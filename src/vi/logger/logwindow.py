@@ -72,7 +72,7 @@ class LogTextFieldHandler(logging.Handler, QtCore.QObject):
             self.appendLogMessage.emit(msg)
 
 
-class LogWindow(QtWidgets.QWidget, logging.Handler):
+class LogWindow(QtWidgets.QWidget):
     log_handler = None
     log_level = logging.WARNING
     CACHE_VISIBLE = "log_window_visible"
@@ -80,8 +80,10 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
     CACHE_LEVEL = "log_window_level"
     icon_path = None
 
-    def __init__(self, parent=None, log_handler: QueueHandler = None):
+    def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
+        # logging.Handler.__init__(self)
+        # self.name = __name__
         self.logger = logging.getLogger(__name__)
         self.cache = Cache()
         try:
@@ -97,16 +99,25 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
         if bool(vis):
             self.show()
 
+    def showNormal(self) -> None:
+        super(LogWindow, self).showNormal()
+        self.logger.debug("LogWindow showNormal-Event")
+
+    def hide(self) -> None:
+        super(LogWindow, self).hide()
+        self.logger.debug("LogWindow hide-Event")
+
     def create_content(self):
+        # self.setLevel(self.cache.fetch(self.CACHE_LEVEL, default=self.log_level))
         self.log_level = self.cache.fetch(self.CACHE_LEVEL, default=self.log_level)
         self.log_handler = LogTextFieldHandler(self, self.log_level)
         vbox = QtWidgets.QVBoxLayout()
         vbox.addWidget(self.get_handler().log_record_text)
         self.setLayout(vbox)
-        self.set_handler()
+        self._set_handler()
         self.set_title_and_icon()
 
-    def set_handler(self):
+    def _set_handler(self):
         self.get_handler().setLevel(self.log_level)
         formatter = logging.Formatter(
             "%(asctime)s|%(name)s|%(levelname)s: %(message)s", datefmt="%H:%M:%S"
@@ -137,7 +148,7 @@ class LogWindow(QtWidgets.QWidget, logging.Handler):
         self.cache.put(self.CACHE_VISIBLE, self.isVisible())
         self.cache.put(self.CACHE_SIZE, self.saveGeometry())
         # close the Log-Handler
-        self.get_handler().close()
+        # self.get_handler().close()
         self.logger.debug("LogWindow closeEvent")
         event.accept()
 
