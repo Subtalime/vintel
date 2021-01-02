@@ -73,7 +73,8 @@ class JumpBridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
             if data:
                 imported = Import().garpa_data(data)
                 if len(imported):
-                    RegionSettings().jump_bridge_data = data
+                    RegionSettings().jump_bridge_data = imported
+                    # RegionSettings().jump_bridge_data = data
                     RegionSettings().jump_bridge_url = ""
                     self.set_jump_bridge_url.emit()
                     self.accept()

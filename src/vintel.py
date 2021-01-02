@@ -27,12 +27,11 @@ import traceback
 
 
 from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
-from PyQt5.QtGui import QGuiApplication, QPixmap
+from PyQt5.QtGui import QPixmap
 
 from vi.systemtray import TrayIcon
 from vi.viui import MainWindow
 from vi.cache.cache import Cache
-from vi.esi import EsiInterface
 from vi.logger.logconfig import LogConfiguration
 from vi.resources import (
     createResourceDirs,
@@ -54,10 +53,10 @@ class MyMainException(Exception):
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
+        LogConfiguration()
         self.LOGGER = logging.getLogger(__name__)
+        self.LOGGER.debug("Logger based on Config done.")
         self.backGroundColor = "#ffffff"
-        self.splash = None
-        self.vintelCache = None
         self.logLevel = None
         self.chatLogDirectory = None
         self.trayIcon = None
@@ -98,17 +97,15 @@ class Application(QApplication):
             raise MyMainException(msg, PermissionError)
 
         createResourceDirs(True)
-        LogConfiguration()
 
         Cache.PATH_TO_CACHE = getVintelDir()
         try:
-            self.vintelCache = Cache(force_version_check=True)
+            Cache(force_version_check=True)
         except Exception as e:
             raise MyMainException("Failed to load Cache", e)
 
         self.logLevel = GeneralSettings().log_level
         logging.getLogger().setLevel(self.logLevel)
-
         logging.getLogger().info(
             "------------------- %s %s starting up -------------------",
             PROGNAME,
@@ -124,7 +121,7 @@ class Application(QApplication):
             pix = QPixmap(resourcePath("logo.png"))
             splash = QSplashScreen(pix)
             splash.show()
-            logging.getLogger().debug("Splash-Screen loaded and displayed")
+            self.LOGGER.debug("Splash-Screen loaded and displayed")
         except Exception as e:
             raise MyMainException("Failed to load Splash", e)
         # # let's hope, this will speed up start-up
@@ -132,24 +129,28 @@ class Application(QApplication):
         # self.processEvents()
         self.trayIcon = TrayIcon(self)
         self.trayIcon.show()
+        self.LOGGER.debug("Tray-Icon showed")
         with sw.timer("start_mainscreen"):
-            self.mainWindow = MainWindow(
+            self.LOGGER.debug("creating Main-Window")
+            self.mainWindow = MainWindow()
+            self.mainWindow.initialize(
                 self.chatLogDirectory, self.trayIcon, self.backGroundColor
             )
+            self.LOGGER.debug("Splash End")
             splash.finish(self.mainWindow)
-        logging.getLogger().debug("Splash-Screen finished")
-        logging.getLogger().debug(sw.get_report())
+        self.LOGGER.debug("Splash-Screen finished")
+        self.LOGGER.debug(sw.get_report())
         self.mainWindow.show()
-        # self.mainWindow.raise_()
-        # self.splash.finish(self.mainWindow)
 
+    def __del__(self):
+        if self.trayIcon:
+            self.trayIcon.hide()
 
 __name__ = PROGNAME
 __author__ = AUTHOR + " (" + AUTHOR_EMAIL + ")"
 __version__ = VERSION
 
 
-# TODO: Get log file from logconfig!
 def __uploadLog():
     """upload Log-File for further analysis.
     :return: None
@@ -180,4 +181,4 @@ sys.excepthook = main_exception_hook
 app = Application(sys.argv)
 app.configure()
 app.startup()
-result = app.exec_()
+app.exec_()

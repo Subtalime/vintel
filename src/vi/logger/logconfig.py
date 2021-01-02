@@ -52,6 +52,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
     MAX_FILE_COUNT = 7
     LOG_FILE_PATH = None
 
+
     def construct_logfilepath(self, loader, node):
         value = loader.construct_scalar(node)
         return os.path.join(self.log_folder, value)
@@ -63,23 +64,24 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         # TODO: also see below TODO!
         path = os.path.split(config_file)
         if path[0] == "":
-            config_path = self.getLogFilePath(config_file)
+            config_path = self._getDefaultLogConfigFilePath(config_file)
         else:
             config_path = config_file
         self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:
+                    # if there is a variable in the configuration, replace it
                     yaml.add_constructor(u"!log_path", self.construct_logfilepath)
                     # Loader MUST be specified, otherwise constructor wont work!
                     config = yaml.load(f, Loader=yaml.Loader)
                     # try reading as dictionary
-                    # TODO: this eliminates ALL current and future Log-Handlers
-                    # TODO: so for the Log-Window we need to add a handler to the Config before loading into the logging class
-                    self.default(log_folder=self.log_folder)
                     logging.config.dictConfig(config)
                     # success
-                    LogConfiguration.LOG_FILE_PATH = config_path
+                    f = config['handlers'].get('file').get('filename')
+                    if f:
+                        LogConfiguration.LOG_FILE_PATH = f
+                    self.LOG_CONFIG = config_path
                 except ImportError:
                     try:
                         # next attempt INI-File format
@@ -100,7 +102,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
         else:
             self.default(log_folder=self.log_folder)
 
-    def getLogFilePath(self, config_file: str = LOG_CONFIG) -> str:
+    def _getDefaultLogConfigFilePath(self, config_file: str = LOG_CONFIG) -> str:
         return os.path.join(ROOT_DIR, config_file)
 
     def default(self, log_level=logging.INFO, log_folder="."):
@@ -124,10 +126,10 @@ class LogConfiguration(six.with_metaclass(Singleton)):
             mode="a",
             encoding="utf-8",
         )
+        self.LOG_FILE_PATH = logFilename
         fileHandler.setFormatter(formatter)
         # in the log file, ALWAYS debug
         fileHandler.setLevel(logging.DEBUG)
-        rootLogger.addHandler(fileHandler)
 
         queue_handlers = [fileHandler]
         # stdout
@@ -136,7 +138,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
             consoleHandler = logging.StreamHandler()
             consoleHandler.setFormatter(formatter)
             consoleHandler.setLevel(log_level)
-            rootLogger.addHandler(consoleHandler)
+            # rootLogger.addHandler(consoleHandler)
             queue_handlers.append(consoleHandler)
 
         logQueue = LogQueueHandler(queue_handlers)
@@ -160,22 +162,22 @@ class LogConfigurationThread(threading.Thread):
             except queue.Empty as e:
                 pass
             # LOG_FILEPATH is real... but still catch, in case it has been moved/deleted
-            if LogConfiguration.LOG_FILE_PATH:
+            if LogConfiguration.LOG_CONFIG:
                 if not self.file_stat:
                     try:
-                        self.file_stat = os.stat(LogConfiguration.LOG_FILE_PATH)
-                    except:
+                        self.file_stat = os.stat(LogConfiguration.LOG_CONFIG)
+                    except FileNotFoundError:
                         pass
                 if self.file_stat:
-                    newstat = os.stat(LogConfiguration.LOG_FILE_PATH)
-                    if newstat != self.file_stat:
-                        self.file_stat = newstat
+                    new_stat = os.stat(LogConfiguration.LOG_CONFIG)
+                    if new_stat != self.file_stat:
+                        self.file_stat = new_stat
                         try:
                             self.LOGGER.debug(
                                 'Configuration-Change in "%s"',
-                                LogConfiguration.LOG_FILE_PATH,
+                                LogConfiguration.LOG_CONFIG,
                             )
-                            LogConfiguration(LogConfiguration.LOG_FILE_PATH)
+                            LogConfiguration(LogConfiguration.LOG_CONFIG)
                             # Make sure our LogWindowHandler is still alive!
                             if LOG_WINDOW_HANDLER_NAME not in logging._handlerList:
                                 if self._logWindow:
@@ -192,18 +194,6 @@ class LogConfigurationThread(threading.Thread):
 
 if __name__ == "__main__":
 
-    # yaml.add_constructor("!test", construct_logfilepath)
-    try:
-        print(
-            yaml.load(
-                u"""
-        foo: !test tester
-        """,
-                Loader=yaml.Loader,
-            )
-        )
-    except:
-        raise
 
     LOGGER = logging.getLogger()
     LogConfiguration(config_file="./logging.yaml", log_folder=".")

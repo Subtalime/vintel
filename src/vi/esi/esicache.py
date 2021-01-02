@@ -28,7 +28,7 @@ from ast import literal_eval
 you can add external databaseupdates to database updates.
 they should be a tuple like (query, condition)
 query	  = the query to run on the database connection
-condition = if TRUE the query qull be executed
+condition = if TRUE the query will be executed
 """
 databaseUpdates = []
 
@@ -82,20 +82,21 @@ class EsiCache(BaseCache):
     SQLITE_WRITE_LOCK = threading.Lock()
     # default 3 days for ESI values
     MAX_AGE = 60 * 60 * 24 * 3
+    FILENAME = "esi_cache.sqlite3"
 
     def __init__(self, enable_cache: bool = True):
-        self.__cache_enabled = enable_cache
-        if not self.__cache_enabled:
+        self._cache_enabled = enable_cache
+        if not self.cacheEnabled:
             return
         if self.BASE_DIR:
-            self.dbPath = os.path.join(self.BASE_DIR, "esi_cache.sqlite3")
+            self.dbPath = os.path.join(self.BASE_DIR, self.FILENAME)
         else:
             base_path = os.path.abspath(".")
             if getattr(sys, "frozen", False):
                 base_path = sys._MEIPASS
-            self.dbPath = os.path.join(base_path, "esi_cache.sqlite3")
+            self.dbPath = os.path.join(base_path, self.FILENAME)
         if not getattr(sys, "frozen", False):
-            self.dbPath = self.dbPath.replace(".", "_deb.")
+            self.dbPath = "_deb.".join(self.dbPath.rsplit(".", 1))
         try:
             self.con = sqlite3.connect(self.dbPath, check_same_thread=False)
             with EsiCache.SQLITE_WRITE_LOCK:
@@ -104,8 +105,12 @@ class EsiCache(BaseCache):
         except Exception as e:
             raise FileNotFoundError('Unable to access DB at "%s"' % self.dbPath, e)
 
+    @property
+    def cacheEnabled(self) -> bool:
+        return self._cache_enabled
+
     def checkVersion(self):
-        if not self.__cache_enabled:
+        if not self.cacheEnabled:
             return
         version = 0
         try:
@@ -131,7 +136,7 @@ class EsiCache(BaseCache):
              key = the key for the value
              outdated = returns the value also if it is outdated
          """
-        if not self.__cache_enabled:
+        if not self.cacheEnabled:
             return default
         try:
             query = "SELECT key, data, modified, maxage FROM cache WHERE key = ?"
@@ -163,7 +168,7 @@ class EsiCache(BaseCache):
         self.set(key, value, max_age)
 
     def set(self, key, value, max_age=None):
-        if not self.__cache_enabled:
+        if not self.cacheEnabled:
             return
         # some of the Esi-Data don't have  __getattr__ (which pickle requires)
         try:
@@ -187,7 +192,7 @@ class EsiCache(BaseCache):
         self.invalidate(key)
 
     def invalidate(self, key):
-        if not self.__cache_enabled:
+        if not self.cacheEnabled:
             return
         with EsiCache.SQLITE_WRITE_LOCK:
             try:
@@ -198,7 +203,7 @@ class EsiCache(BaseCache):
                 raise e
 
     def invalidateAll(self):
-        if not self.__cache_enabled:
+        if not self.cacheEnabled:
             return
         with EsiCache.SQLITE_WRITE_LOCK:
             try:

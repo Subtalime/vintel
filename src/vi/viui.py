@@ -80,33 +80,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     character_parser = pyqtSignal(bool)
     ship_parser = pyqtSignal(bool)
 
-    def __init__(self, path_to_logs: str, tray_icon: TrayIcon, background_color: str):
-        super(self.__class__, self).__init__()
-        self.sw = ViStopwatch()
-        self.setupUi(self)
-        # set the Splitter-Location
-        self.splitter.setStretchFactor(8, 2)
-        self.logWindow = LogWindow()
-        # let's hope, this will speed up start-up
-        EsiInterface(cache_dir=getVintelDir())
-
+    def initialize(self, path_to_logs: str, tray_icon: TrayIcon, background_color: str):
         self.LOGGER = logging.getLogger(__name__)
-        # self.splitter.setSizes([1065, 839])
-        self.avatarFindThread = None
-        self.filewatcherThread = None
-        self.chatTidyThread = None
-        self.statisticsThread = None
-        self.versionCheckThread = None
-        self.mapUpdateThread = None
-        self.logConfigThread = None
-        self.selfNotify = False
-        self.chatThread = None
-        self.dotlan = None
-        self.systems = None
-        self.popup_notification = True
-        self.character_parser_enabled = True
-        self.ship_parser_enabled = True
-        self.clipboard_check_interval = None
+        self.stopWatch = ViStopwatch()
+        self.LOGGER.debug("LogWindow create...")
+        self.logWindow = LogWindow()
+        self.LOGGER.debug("LogWindow done")
+        # let's hope, this will speed up start-up
+        self.LOGGER.debug("EsiInterface create...")
+        EsiInterface(cache_dir=getVintelDir())
+        self.LOGGER.debug("EsiInterface done")
+        self.resize(1363, 880)
+        self.splitter.setSizes([1065, 239])
         self.backgroundColor = background_color
         self.cache = Cache()
         self.setWindowTitle(vi.version.DISPLAY)
@@ -128,17 +113,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
         self.changeAlarmDistance(GeneralSettings().alarm_distance)
-        self.initialMapPosition = None
-        self.initialZoom = None
-        self.lastStatisticsUpdate = 0
-        self.chatEntries = []
-
-        self.refreshContent = None
         self.frameButton.setVisible(False)
-        self.scanIntelForKosRequestsEnabled = False
-        self.mapPositionsDict = {}
 
-        self.content = None
         # Load toon names of this User
         self.knownPlayers = Characters()
         # here we are resetting our own menus, not the one from UI
@@ -178,6 +154,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.recallCachedSettings()
         self.setupThreads()
         self.setupMap(True)
+
+    def __init__(self):
+        super(self.__class__, self).__init__()
+        self.setupUi(self)
+        # set the Splitter-Location
+        self.splitter.setStretchFactor(8, 2)
+        self.avatarFindThread = None
+        self.filewatcherThread = None
+        self.chatTidyThread = None
+        self.statisticsThread = None
+        self.versionCheckThread = None
+        self.mapUpdateThread = None
+        self.logConfigThread = None
+        self.selfNotify = False
+        self.chatThread = None
+        self.dotlan = None
+        self.systems = None
+        self.popup_notification = True
+        self.character_parser_enabled = True
+        self.ship_parser_enabled = True
+        self.clipboard_check_interval = None
+        self.backgroundColor = None
+        self.LOGGER = None
+        self.stopWatch = None
+        self.logWindow = None
+        self.cache = None
+        self.content = None
+        self.initialMapPosition = None
+        self.initialZoom = None
+        self.lastStatisticsUpdate = 0
+        self.chatEntries = []
+        self.message_expiry = None
+        self.refreshContent = None
+        self.pathToLogs = None
+        self.clipboardTimer = None
+        self.oldClipboardContent = None
+        self.trayIcon = None
+        self.clipboard = None
+        self.taskbarIconWorking = None
+        self.taskbarIconQuiescent = None
+        self.map_update_interval = None
+        self.opacityGroup = None
+        self.scanIntelForKosRequestsEnabled = False
+        self.mapPositionsDict = {}
+        # Load toon names of this User
+        self.knownPlayers = None
+        # here we are resetting our own menus, not the one from UI
+        self.menuCharacters = None
+        self.menuRegion = None
 
     def splitter_location(self, pos, index):
         self.LOGGER.debug("Splitter Pos %d, Index %d, Geometry %r, State %r", pos, index, self.splitter.geometry(), self.splitter.saveState())
@@ -436,11 +461,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.LOGGER.debug("Map File found, Region set to {}".format(regionName))
 
         # Load the jumpbridges
-        with self.sw.timer("update_jumpbridges"):
+        with self.stopWatch.timer("update_jumpbridges"):
             self.update_jumpbridges()
         self.dotlan.setJumpbridgesVisibility(self.is_jumpbridge_visible())
         self.dotlan.setStatisticsVisibility(self.is_statistic_visible())
-        self.LOGGER.debug(self.sw.get_report())
+        self.LOGGER.debug(self.stopWatch.get_report())
         self.systems = self.dotlan.systems
         self.dotlan_systems.emit(self.systems)
         if self.chatThread:
@@ -737,6 +762,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def set_dotlan_jumpbridge_visibility(self):
         """the button is only enabled if we have valid Jump-Bridges.
         """
+        self.LOGGER.debug("JumpBridge-Button clicked: %s", self.is_jumpbridge_visible())
+        self.update_jumpbridges()
         self.dotlan.setJumpbridgesVisibility(self.is_jumpbridge_visible())
         self.updateMapView()
 

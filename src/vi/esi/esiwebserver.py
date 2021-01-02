@@ -26,8 +26,8 @@ from .esiconfig import EsiConfig
 
 LOGGER = logging.getLogger(__name__)
 
-keyfile = "key.pem"
-certfile = "cert.pem"
+# keyfile = "key.pem"
+# certfile = "cert.pem"
 
 
 class EsiWebServer(object):
@@ -37,17 +37,16 @@ class EsiWebServer(object):
         self.httpd = HTTPServer(
             (host_string.host(), host_string.port()), self.EsiHTTPRequestHandler
         )
-        if self.esiConfig.ESI_CALLBACK.startswith("https"):
-            try:
-                p = os.path.join(os.path.dirname(__file__), certfile)
-                self.httpd.socket = ssl.wrap_socket(
-                    self.httpd.socket,
-                    keyfile=os.path.join(os.path.dirname(__file__), keyfile),
-                    certfile=os.path.join(os.path.dirname(__file__), certfile),
-                    server_side=True,
-                )
-            except Exception as e:
-                LOGGER.exception(e)
+        # if self.esiConfig.ESI_CALLBACK.startswith("https"):
+        #     try:
+        #         self.httpd.socket = ssl.wrap_socket(
+        #             self.httpd.socket,
+        #             keyfile=os.path.join(os.path.dirname(__file__), keyfile),
+        #             certfile=os.path.join(os.path.dirname(__file__), certfile),
+        #             server_side=True,
+        #         )
+        #     except Exception as e:
+        #         LOGGER.exception(e)
         self.server_thread = threading.Thread(target=self.httpd.serve_forever)
         self.server_thread.daemon = True
 
@@ -55,7 +54,7 @@ class EsiWebServer(object):
         self.server_thread.start()
 
     def stop(self):
-        if self.server_thread.isAlive():
+        if self.server_thread.is_alive():
             self.httpd.shutdown()
         self.httpd.server_close()
 

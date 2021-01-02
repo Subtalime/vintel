@@ -249,7 +249,7 @@ class Import:
                 try:
                     with open(any_data_source.strip(), "rt") as file:
                         import_data = file.read().splitlines(keepends=False)
-                except FileNotFoundError:
+                except (FileNotFoundError, Exception):
                     import_data = any_data_source.splitlines(keepends=False)
                     pass
             if len(import_data):

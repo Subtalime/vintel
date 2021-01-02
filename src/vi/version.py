@@ -24,7 +24,7 @@ from threading import Thread
 from PyQt5.QtCore import pyqtSignal, QObject
 from packaging.version import parse
 
-VERSION = "1.2.7"
+VERSION = "1.2.8"
 SNAPSHOT = False  # set to false when releasing
 URL = "https://github.com/Subtalime/vintel"
 RELEASES = f"{URL}/releases"
