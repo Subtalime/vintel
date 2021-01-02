@@ -41,6 +41,7 @@ class LogDisplayHandler(QtWidgets.QTextEdit):
 
 class LogTextFieldHandler(logging.Handler, QtCore.QObject):
     appendLogMessage = QtCore.pyqtSignal(str)
+    log_record_text = None
 
     def __init__(
         self,
@@ -84,7 +85,7 @@ class LogWindow(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent)
         # logging.Handler.__init__(self)
         # self.name = __name__
-        self.logger = logging.getLogger(__name__)
+        self.LOGGER = logging.getLogger(__name__)
         self.cache = Cache()
         try:
             size = self.cache.fetch(self.CACHE_SIZE)
@@ -98,14 +99,6 @@ class LogWindow(QtWidgets.QWidget):
         vis = self.cache.fetch(self.CACHE_VISIBLE, default=False)
         if bool(vis):
             self.show()
-
-    def showNormal(self) -> None:
-        super(LogWindow, self).showNormal()
-        self.logger.debug("LogWindow showNormal-Event")
-
-    def hide(self) -> None:
-        super(LogWindow, self).hide()
-        self.logger.debug("LogWindow hide-Event")
 
     def create_content(self):
         # self.setLevel(self.cache.fetch(self.CACHE_LEVEL, default=self.log_level))
@@ -127,7 +120,7 @@ class LogWindow(QtWidgets.QWidget):
         logging.getLogger().addHandler(self.get_handler())
         # self.LOGGER.addHandler(self.get_handler())
 
-    def get_handler(self):
+    def get_handler(self) -> LogTextFieldHandler:
         return self.log_handler
 
     def set_title_and_icon(self):
@@ -149,7 +142,7 @@ class LogWindow(QtWidgets.QWidget):
         self.cache.put(self.CACHE_SIZE, self.saveGeometry())
         # close the Log-Handler
         # self.get_handler().close()
-        self.logger.debug("LogWindow closeEvent")
+        self.LOGGER.debug("LogWindow closeEvent")
         event.accept()
 
     # popup to set Log-Level
@@ -157,7 +150,7 @@ class LogWindow(QtWidgets.QWidget):
         context_menu = LogLevelPopup(self, self.log_level)
         setting = context_menu.exec_(self.mapToGlobal(event.pos()))
         if setting:
-            self.logger.debug(
+            self.LOGGER.debug(
                 "Log-Level changed to %d (%s)"
                 % (setting.log_level(), logging.getLevelName(setting.log_level()))
             )
@@ -165,3 +158,12 @@ class LogWindow(QtWidgets.QWidget):
             self.cache.put(self.CACHE_LEVEL, self.log_level)
             self.get_handler().setLevel(self.log_level)
             self.set_title_and_icon()
+
+    def showNormal(self) -> None:
+        super(LogWindow, self).showNormal()
+        self.LOGGER.debug("LogWindow showNormal-Event")
+
+    def hide(self) -> None:
+        super(LogWindow, self).hide()
+        self.LOGGER.debug("LogWindow hide-Event")
+

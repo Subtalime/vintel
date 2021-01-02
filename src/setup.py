@@ -40,6 +40,7 @@ if sys.platform == "win32":
 
 # clean up previous builds
 folders = ["dist", "build"]
+folders = ["dist", ]
 for folder in folders:
     if os.path.exists(folder):
         for file in os.listdir(folder):
@@ -63,9 +64,9 @@ executables = [
 ]
 
 move_files = (
-    ("mapdata", "mapdata"),
-    ("sound", "sound"),
-    ("docs", "docs"),
+    ("mapdata",),
+    ("sound", ),
+    ("docs", ),
     ("logo.png",),
     ("logo_small_green.png",),
     ("logo_small.png",),
@@ -103,10 +104,10 @@ install_requires = [
     "pyswagger",
     "PyYAML",
     "colour",
-    "stopwatch",
-    "zroya",
+    # "stopwatch",
+    # "zroya",
 ]
-packages = ["esipy", "pyswagger", "pyglet", "six", "clipboard"]
+packages = ["pyqt5", "esipy", "pyswagger", "pyglet", "six", "clipboard"]
 
 replace_paths = [
     (os.path.join(resourcePath(), "mapdata"), "mapdata"),
