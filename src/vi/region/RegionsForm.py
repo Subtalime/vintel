@@ -43,7 +43,7 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
                 if name is None or name == "":
                     region_names.pop()
 
-        for region in Regions().getNames():
+        for region in Regions().get_names():
             item = QListWidgetItem(region)
             self.listRegion.addItem(item)
         for region in region_names:

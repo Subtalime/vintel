@@ -30,13 +30,13 @@ def resourcePath(relativePath=None):
     """
     if getattr(sys, "frozen", False):
         # PyInstaller creates a temp folder and stores path in _MEIPASS
-        basePath = os.path.dirname(sys.executable)
+        base_path = os.path.dirname(sys.executable)
     else:
-        basePath = os.path.join(ROOT_DIR, "vi", "ui", "res")
-    if not relativePath:
-        return basePath
-    returnpath = os.path.join(basePath, relativePath)
-    return returnpath
+        base_path = os.path.join(ROOT_DIR, "vi", "ui", "res")
+    if relativePath:
+        base_path = os.path.join(base_path, relativePath)
+    LOGGER.debug(f"resourcePath is {base_path}")
+    return base_path
 
 
 def build_resource_path(resource_dir, relative_dir) -> str:

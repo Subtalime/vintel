@@ -143,20 +143,11 @@ class EsiCache(BaseCache):
             founds = self.con.execute(query, (_hash(key),)).fetchall()
             if founds is None or len(founds) == 0:
                 return default
-            elif (
-                founds[0][3]
-                and founds[0][2] + founds[0][3] < time.time()
-                and not outdated
-            ):
+            elif founds[0][3] and founds[0][2] + founds[0][3] < time.time() and not outdated:
                 return default
             value = founds[0][1]
             return pickle.loads(value)
-        except (ValueError, TypeError):
-            try:
-                return literal_eval(value)
-            except Exception:
-                return value
-        except SyntaxError:
+        except (ValueError, TypeError, SyntaxError):
             try:
                 return literal_eval(value)
             except Exception:
@@ -193,6 +184,10 @@ class EsiCache(BaseCache):
 
     def invalidate(self, key):
         if not self.cacheEnabled:
+            return
+        if type(key) is list:
+            for k in key:
+                self.invalidate(k)
             return
         with EsiCache.SQLITE_WRITE_LOCK:
             try:

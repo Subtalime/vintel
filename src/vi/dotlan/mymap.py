@@ -24,19 +24,21 @@ import re
 import sys
 import time
 
-from bs4.element import CData
+from bs4.element import CData, Tag, ResultSet
 from bs4 import BeautifulSoup
+
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QProgressDialog
 from vi.cache import Cache
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.jumpbridge.jumpbridge import Jumpbridge
-from vi.dotlan.system import System
+from vi.dotlan.system import MySystem
 from vi.dotlan.exception import DotlanException
 from vi.esi import EsiInterface
 from vi.stopwatch.mystopwatch import ViStopwatch
 from vi.resources import getVintelMap
 from vi.states import State
+from vi.dotlan.soups import SoupSystem, SoupUse, SoupRect
 import requests
 
 
@@ -65,7 +67,7 @@ class MapData:
         Cache().put(
             key="map_" + self.region,
             value=self.svg,
-            maxAge=EsiInterface().secondsTillDowntime() + 3600,
+            max_age=EsiInterface().secondsTillDowntime() + 3600,
         )
 
     def _fix_svg(self):
@@ -81,8 +83,11 @@ class MapData:
 
     def _from_file(self):
         file_path = getVintelMap(regionName=self.region)
-        with open(file_path, "r") as f:
-            self.svg = f.read()
+        try:
+            with open(file_path, "r") as f:
+                self.svg = f.read()
+        except:
+            raise
 
     def load(self):
         # try in sequence
@@ -91,7 +96,7 @@ class MapData:
         except:
             try:
                 self._from_file()
-            except:
+            except FileNotFoundError:
                 try:
                     self._from_dotlan()
                 except DotlanException as e:
@@ -99,7 +104,7 @@ class MapData:
                         "No Map in cache, nothing from dotlan. Must give up "
                         "because this happened:\n{0} {1}\n\nThis could be a "
                         "temporary problem (like dotlan is not reachable), or "
-                        "everythig went to hell. Sorry. This makes no sense "
+                        "everything went to hell. Sorry. This makes no sense "
                         "without the map.".format(type(e), e)
                     )
                     raise DotlanException(t)
@@ -108,6 +113,7 @@ class MapData:
 
 
 class MyMap:
+
     def __init__(self, parent=None, region="Delve"):
         self.LOGGER = logging.getLogger(__name__)
         self.LOGGER.debug("Initializing Map for \"{}\"".format(region))
@@ -117,7 +123,8 @@ class MyMap:
         self.sw = ViStopwatch()
         self.system_updates = 0
         self.soup = None
-        self.systems = None
+        self.systems = {}
+        self.jumpbridges_loaded = []
         self._jumpMapsVisible = False
         self._statisticsVisible = False
 
@@ -131,54 +138,44 @@ class MyMap:
         svg = MapData(self.region).load()
         # Create soup from the svg
         self.soup = BeautifulSoup(svg, "html.parser")
-        self.systems = self._extractSystemsFromSoup()
+        # self.soup.findNext('use', {'id': 'id_value'}).findAll('a')
+        self._extract_system_from_soup()
         self.systemsById = {}
         for system in self.systems.values():
             self.systemsById[system.system_id] = system
-        self._prepareSvg()
-        self._connectNeighbours()
-        self.marker = self.soup.select("#select_marker")[0]
+        with self.sw.timer("Prepare SVG"):
+            self._prepare_svg()
+            self._connect_neighbours()
+        self.LOGGER.debug(self.sw.get_report())
+        self.marker = self.soup.findAll("g", {"id": "select_marker"})[0]
+        # self.marker = self.soup.select("#select_marker")[0]
         self.LOGGER.debug("Initializing Map for \"{}\": Done".format(region))
         if self.progress:
             # this closes...
             self.progress.setValue(1)
             self.progress = None
 
-    def _extractSystemsFromSoup(self):
-        systems = {}
+    def _extract_system_from_soup(self):
         uses = {}
-        for use in self.soup.select("use"):
-            useId = use["xlink:href"][1:]
-            uses[useId] = use
-        symbols = self.soup.select("symbol")
-        for symbol in symbols:
-            symbolId = symbol["id"]
-            systemId = symbolId[3:]
-            try:
-                systemId = int(systemId)
-            except ValueError:
-                continue
-            for element in symbol.select(".sys"):
-                name = element.select("text")[0].text.strip().upper()
-                mapCoordinates = {}
-                for keyname in ("x", "y", "width", "height"):
-                    mapCoordinates[keyname] = float(uses[symbolId][keyname])
-                mapCoordinates["center_x"] = mapCoordinates["x"] + (
-                    mapCoordinates["width"] / 2
-                )
-                mapCoordinates["center_y"] = mapCoordinates["y"] + (
-                    mapCoordinates["height"] / 2
-                )
-                try:
-                    transform = uses[symbolId]["transform"]
-                except KeyError:
-                    transform = "translate(0,0)"
-                systems[name] = System(
-                    name, element, self.soup, mapCoordinates, transform, systemId
-                )
-        return systems
+        # there will always be the matching "use" for each "symbol"
+        with self.sw.timer("extract systems from soup"):
+            with self.sw.timer("Soup-Use"):
+                # for use in self.soup.select("use"):
+                for use in self.soup.findAll("use"):
+                    map_use = SoupRect(use)
+                    uses[map_use.id] = map_use
+            with self.sw.timer("Soup-System"):
+                # for symbol in self.soup.select("symbol"):
+                for symbol in self.soup.findAll("symbol"):
+                    map_symbol = SoupSystem(symbol)
+                    if map_symbol.valid:
+                        map_symbol.coordinates = uses[map_symbol.symbol_id]
+                        self.systems[map_symbol.name] = MySystem(map_symbol,
+                                                                 self.soup,
+                                                                 )
+        self.LOGGER.debug(self.sw.get_report())
 
-    def _prepareSvg(self):
+    def _prepare_svg(self):
         svg = self.soup.select("svg")[0]
         # Disable dotlan mouse functionality and make all jump lines black
         svg["onmousedown"] = "return false;"
@@ -208,8 +205,8 @@ class MyMap:
 
         # Create jumpbridge markers in a variety of colors
         for jbColor in Jumpbridge.JB_COLORS:
-            startPath = self.soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
-            startMarker = self.soup.new_tag(
+            start_path = self.soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
+            start_marker = self.soup.new_tag(
                 "marker",
                 viewBox="0 0 20 20",
                 id="arrowstart_{0}".format(jbColor.strip("#")),
@@ -221,8 +218,8 @@ class MyMap:
                 orient="auto",
                 style="stroke:{0};fill:{0}".format(jbColor),
             )
-            startMarker.append(startPath)
-            svg.insert(0, startMarker)
+            start_marker.append(start_path)
+            svg.insert(0, start_marker)
             endpath = self.soup.new_tag("path", d="M 0 0 L 10 5 L 0 10 z")
             endmarker = self.soup.new_tag(
                 "marker",
@@ -241,7 +238,7 @@ class MyMap:
         jumps = self.soup.select("#jumps")[0]
 
         # Set up the tags for system statistics
-        for systemId, system in self.systemsById.items():
+        for system_id, system in self.systemsById.items():
             coords = system.map_coordinates
             text = "stats n/a"
             style = (
@@ -254,16 +251,16 @@ class MyMap:
                 fill="blue",
                 style=style,
                 visibility="hidden",
-                transform=system.transform,
+                transform=f"transform({system.transform[0]},{system.transform[1]})",
             )
-            svgtext["id"] = "stats_" + str(systemId)
+            svgtext["id"] = f"stats_{system_id}"
             svgtext["class"] = [
                 "statistics",
             ]
             svgtext.string = text
             jumps.append(svgtext)
 
-    def _connectNeighbours(self):
+    def _connect_neighbours(self):
         """
             This will find all neighbours of the systems and connect them.
             It takes a look at all the jumps on the map and gets the system under
@@ -274,35 +271,37 @@ class MyMap:
                 continue
             parts = jump["id"].split("-")
             if parts[0] == "j":
-                startSystem = self.systemsById[int(parts[1])]
-                stopSystem = self.systemsById[int(parts[2])]
-                startSystem.addNeighbour(stopSystem)
-                stopSystem.addNeighbour(startSystem)
+                start_system = self.systemsById[int(parts[1])]
+                stop_system = self.systemsById[int(parts[2])]
+                start_system.add_neighbour(stop_system)
+                stop_system.add_neighbour(start_system)
 
-    def addSystemStatistics(self, statistics):
+    def add_system_statistics(self, statistics):
         self.LOGGER.info("addSystemStatistics start")
         if statistics is not None:
-            for systemId, system in self.systemsById.items():
-                if systemId in statistics:
-                    system.setStatistics(statistics[systemId])
+            for system_id, system in self.systemsById.items():
+                if system_id in statistics:
+                    system.set_statistics(statistics[system_id])
         else:
             for system in self.systemsById.values():
-                system.setStatistics(None)
+                system.set_statistics(None)
         self.LOGGER.info("addSystemStatistics complete")
 
-    def setStatisticsVisibility(self, visible: bool):
+    def set_statistics_visibility(self, visible: bool):
         value = "visible" if visible else "hidden"
         for line in self.soup.select(".statistics"):
             line["visibility"] = value
         self._statisticsVisible = visible
 
-    def setJumpbridgesVisibility(self, visible: bool):
+    def set_jump_bridges_visibility(self, visible: bool):
+        if len(self.jumpbridges_loaded) == 0:
+            return
         value = "visible" if visible else "hidden"
         for line in self.soup.select(".jumpbridge"):
             line["visibility"] = value
         self._jumpMapsVisible = visible
 
-    def addTimerJs(self):
+    def add_timer_javascript(self):
         realtime_js = ColorJavaScript().js_color_all()
         realtime_js += ColorJavaScript().show_timer()
         js = self.soup.find("script", attrs={"id": "timer", "type": "text/javascript"})
@@ -316,7 +315,8 @@ class MyMap:
     def time_report(self, extra_msg: str = None):
         self.LOGGER.debug(self.sw.get_report(extra_msg))
 
-    def timerload(self, timerload):
+    @staticmethod
+    def timerload(timerload):
         return (
             "showTimer({0}, '{1}', document.querySelector('#{2}'), "
             "document.querySelector('#{3}'), document.querySelector('#{4}'));".format(
@@ -329,7 +329,7 @@ class MyMap:
         # time this complete block
         with self.sw.timer("SVG"):
             with self.sw.timer("add Timer JS"):
-                self.addTimerJs()
+                self.add_timer_javascript()
             # Re-render all systems
             with self.sw.timer("System update"):
                 onload = []
@@ -337,13 +337,13 @@ class MyMap:
                 cjs = ColorJavaScript()
                 for system in self.systems.values():
                     if (
-                        len(system.timerload) and system.timerload[0] >= 60 * 60 * 2
+                            len(system.timerload) and system.timerload[0] >= 60 * 60 * 2
                     ):  # remove timers older than 2 hours
-                        system.setStatus(State["UNKNOWN"])
+                        system.set_status(State["UNKNOWN"])
                     # TODO: when changing System, rescan all Chats and update markers that way
                     if system.update(cjs):
                         count += 1
-                        if str(system.secondLine.string).startswith("-"):
+                        if str(system.second_line.string).startswith("-"):
                             self.LOGGER.error(system)
                     if len(system.timerload):  # remove timers older than 2 hours
                         onload.append(self.timerload(system.timerload))
@@ -376,29 +376,31 @@ class MyMap:
             if not getattr(sys, "frozen", False):
                 with self.sw.timer("Dump Map To disc"):
                     # pass
-                    self.debugWriteSoup(content)
+                    self.debug_write_soup(content)
         self.time_report("\tNumber of timers in SVG: %d" % self.system_updates)
         return content
 
-    def debugWriteSoup(self, svgData):
+    def debug_write_soup(self, svg_data):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
         from vi.resources import getVintelLogDir
 
         ts = datetime.datetime.fromtimestamp(time.time()).strftime("%H_%M_%S")
         try:
             with open(
-                os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+"
+                    os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+"
             ) as svgFile:
-                svgFile.write(svgData)
+                svgFile.write(svg_data)
         except Exception as e:
             self.LOGGER.error(e)
 
-    def setJumpbridges(self, jumpbridge_data: list, parent=None):
+    def set_jump_bridges(self, jumpbridge_data: list, parent=None):
         """
             Adding the jumpbridges to the map soup; format of data:
             tuples with 3 values (sys1, connection, sys2)
         """
         if not jumpbridge_data or not isinstance(jumpbridge_data, list) or len(jumpbridge_data) <= 0:
+            return
+        if self.jumpbridges_loaded == jumpbridge_data:
             return
         jb_builder = Jumpbridge(self.systems, self.soup, jumpbridge_data)
         progress = QProgressDialog(
@@ -408,6 +410,8 @@ class MyMap:
         progress.setModal(True)
         progress.setAutoClose(True)
         progress.setValue(0)
+        progress.show()
+        self.LOGGER.debug("Start building Jump-Bridges")
         for index in jb_builder.build():
             if not index % 4:
                 progress.setValue(index)
@@ -415,4 +419,40 @@ class MyMap:
                 jb_builder.clear()
                 break
         progress.setValue(len(jumpbridge_data))
+        self.jumpbridges_loaded = jumpbridge_data
+        self.LOGGER.debug("Finished building Jump-Bridges")
         del progress
+
+
+if __name__ == "__main__":
+    data = MyMap()
+    print(len(data.svg))
+    sw = ViStopwatch()
+    iter = 0
+    with sw.timer("Start"):
+        # for g in data.soup.findAll("g", {"id": "controls"}):
+        for g in data.soup.findAll("rect", {"class": "o"}):
+            print(f"{iter}: {g}")
+            g.decompose()
+            iter += 1
+    print(sw.get_report())
+
+    iter = 0
+    with sw.timer("System findAll"):
+        for g in data.soup.findAll("symbol"):
+            ele = g.findAll("a", {"class": "sys"})
+            print(f"{iter}: {ele}")
+            iter += 1
+    print(sw.get_report())
+
+    iter = 0
+    with sw.timer("System select"):
+        for g in data.soup.select("symbol"):
+            ele = g.select(".sys")
+            # print(f"{iter}: {ele}")
+            iter += 1
+    print(sw.get_report())
+
+    #get first system
+    sys = list(data.systems.items())[0]
+    print(sys[1].rect_rect)

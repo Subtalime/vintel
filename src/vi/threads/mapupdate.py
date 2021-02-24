@@ -23,6 +23,7 @@ from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, pyqtSignal
 from vi.resources import getVintelDir
 from vi.settings.settings import GeneralSettings
+from vi.stopwatch.mystopwatch import ViStopwatch
 
 
 class MapUpdateThread(QThread):
@@ -35,9 +36,10 @@ class MapUpdateThread(QThread):
         self.queue = queue.Queue()
         self._active = False
         self.paused = False
+        self.sw = ViStopwatch()
 
-    def addToQueue(self, content=None, zoomfactor=None, scrollposition=None):
-        self.queue.put((content, zoomfactor, scrollposition))
+    def add_to_queue(self, content=None, zoom_factor=None, scroll_position=None):
+        self.queue.put((content, zoom_factor, scroll_position))
 
     def start(self, priority: QThread.Priority = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Run-Starting MapUpdate Thread")
@@ -48,7 +50,7 @@ class MapUpdateThread(QThread):
         self.paused = pause_update
 
     def run(self):
-        def injectScrollPosition(svg_content: str, scroll: str) -> str:
+        def inject_scroll_position(svg_content: str, scroll: str) -> str:
             soup = BeautifulSoup(svg_content, "html.parser")
             js = soup.new_tag("script", attrs={"type": "text/javascript"})
             js.string = scroll
@@ -77,20 +79,22 @@ class MapUpdateThread(QThread):
                 continue
             if content:  # not based on Timeout
                 self.LOGGER.debug("Setting Map-Content start")
-                zoom_factor = zoom_factor if zoom_factor else 1.0
-                scroll_to = ""
-                if scroll_position:
-                    self.LOGGER.debug(
-                        "Current Scroll-Position {}".format(scroll_position)
-                    )
-                    scroll_to = str(
-                        "window.scrollTo({:.0f}, {:.0f});".format(
-                            scroll_position.x() / zoom_factor,
-                            scroll_position.y() / zoom_factor,
-                        )
-                    )
-                new_content = injectScrollPosition(content, scroll_to)
-                self.map_update.emit(new_content)
+                with self.sw.timer("set up Map-Content"):
+                    zoom_factor = zoom_factor if zoom_factor else 1.0
+                    if scroll_position:
+                        with self.sw.timer("inject Scroll-Position"):
+                            self.LOGGER.debug(
+                                "Current Scroll-Position {}".format(scroll_position)
+                            )
+                            scroll_to = str(
+                                "window.scrollTo({:.0f}, {:.0f});".format(
+                                    scroll_position.x() / zoom_factor,
+                                    scroll_position.y() / zoom_factor,
+                                )
+                            )
+                            content = inject_scroll_position(content, scroll_to)
+                    self.map_update.emit(content)
+                self.LOGGER.debug(self.sw.get_report())
                 self.LOGGER.debug("Setting Map-Content complete")
 
     def quit(self):
@@ -98,6 +102,5 @@ class MapUpdateThread(QThread):
             self.LOGGER.debug("Stopping MapUpdate Thread")
             self._active = False
             self.pause(False)
-            self.addToQueue()
+            self.add_to_queue()
             super().quit()
-

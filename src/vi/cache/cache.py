@@ -17,7 +17,7 @@
 #  along with this program.	 If not, see <http://www.gnu.org/licenses/>.  #
 ###########################################################################
 
-import ast
+# import ast
 import logging
 import os
 import pickle
@@ -57,8 +57,8 @@ class Cache(object):
     PATH_TO_CACHE = None
 
     # Ok, this is dirty. To make sure we check the database only
-    # one time/runtime we will change this classvariable after the
-    # check. Following inits of Cache will now, that we allready checked.
+    # one time/runtime we will change this class variable after the
+    # check. Following __init__ of Cache will know, that we already checked.
     VERSION_CHECKED = False
 
     # Cache-Instances in various threads: must handle concurrent writings
@@ -79,21 +79,16 @@ class Cache(object):
         :param force_version_check: upgrade the Database regardless of what version it represents
         :type force_version_check: bool
         """
-        if Cache.PATH_TO_CACHE and not os.path.dirname(path_to_sql_lite_file):
+        self.file_path = path_to_sql_lite_file
+        if Cache.PATH_TO_CACHE and not os.path.dirname(self.file_path):
             if os.path.basename(Cache.PATH_TO_CACHE).endswith("sqlite3"):
-                path_to_sql_lite_file = Cache.PATH_TO_CACHE
+                self.file_path = Cache.PATH_TO_CACHE
             else:
-                path_to_sql_lite_file = os.path.join(
-                    Cache.PATH_TO_CACHE, path_to_sql_lite_file
+                self.file_path = os.path.join(
+                    Cache.PATH_TO_CACHE, self.file_path
                 )
         if not getattr(sys, "frozen", False):  # we are running in DEBUG
-            last_dot = path_to_sql_lite_file.rfind(".")
-            path_to_sql_lite_file = (
-                path_to_sql_lite_file[:last_dot]
-                + "_deb."
-                + path_to_sql_lite_file[last_dot + 1 :]
-            )
-        self.file_path = path_to_sql_lite_file
+            self.file_path = "_deb.".join(self.file_path.rsplit(".", 1))
         self.version_check = force_version_check
         self.con = None
         self._connect()
@@ -128,7 +123,7 @@ class Cache(object):
                 raise CacheError(e)
         updateDatabase(version, self.con)
 
-    def put(self, key: str, value: object, maxAge=MAX_DEFAULT):
+    def put(self, key: str, value: object, max_age=MAX_DEFAULT):
         """
         Putting something in the cache maxAge is maximum age in seconds
         """
@@ -137,7 +132,7 @@ class Cache(object):
                 query = "DELETE FROM cache WHERE key = ?"
                 self.con.execute(query, (key,))
                 query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
-                self.con.execute(query, (key, pickle.dumps(value), time.time(), maxAge))
+                self.con.execute(query, (key, pickle.dumps(value), time.time(), max_age))
                 self.con.commit()
             except Exception as e:
                 self.LOGGER.error("Cache-Error put: %s -> %r" % (key, value,), e)
@@ -176,7 +171,7 @@ class Cache(object):
 
     def put_player_status(self, name: str, status: str):
         """
-        Putting a playername into the cache
+        Putting a player name into the cache
         """
         with Cache.SQLITE_WRITE_LOCK:
             try:
@@ -191,17 +186,17 @@ class Cache(object):
                 )
                 raise CacheWriteError(e)
 
-    def get_player_status(self, name: str):
-        """
-        Getting back infos about playername from Cache. Returns None if the name was
-        not found, else it returns the status
-        """
-        name = ast.dump(str(name))
-        selectquery = "SELECT charname, status FROM playernames WHERE charname = ?"
-        founds = self.con.execute(selectquery, (name,)).fetchall()
-        if len(founds) == 0:
-            return None
-        return founds[0][1]
+    # def get_player_status(self, name: str):
+    #     """
+    #     Getting back information about player name from Cache. Returns None if the name was
+    #     not found, else it returns the status
+    #     """
+    #     name = ast.dump(name)
+    #     select_query = "SELECT charname, status FROM playernames WHERE charname = ?"
+    #     founds = self.con.execute(select_query, (name,)).fetchall()
+    #     if len(founds) == 0:
+    #         return None
+    #     return founds[0][1]
 
     def put_avatar(self, name: str, data: object):
         """
@@ -229,8 +224,8 @@ class Cache(object):
         """
         data = None
         try:
-            selectQuery = "SELECT data FROM avatars WHERE charname = ?"
-            founds = self.con.execute(selectQuery, (name,)).fetchall()
+            select_query = "SELECT data FROM avatars WHERE charname = ?"
+            founds = self.con.execute(select_query, (name,)).fetchall()
             if len(founds) != 0:
                 # data is buffer, we convert it back to str
                 data = from_blob(founds[0][0])
@@ -255,40 +250,41 @@ class Cache(object):
     def put_jumpbridge_data(self, data: list):
         with Cache.SQLITE_WRITE_LOCK:
             try:
-                cacheKey = "jumpbridge_data"
+                cache_key = "jumpbridge_data"
                 query = "DELETE FROM cache WHERE key = ?"
-                self.con.execute(query, (cacheKey,))
+                self.con.execute(query, (cache_key,))
                 query = "INSERT INTO cache (key, data, modified, maxAge) VALUES (?, ?, ?, ?)"
                 self.con.execute(
-                    query, (cacheKey, pickle.dumps(data), time.time(), Cache.FOREVER)
+                    query, (cache_key, pickle.dumps(data), time.time(), Cache.FOREVER)
                 )
                 self.con.commit()
             except Exception as e:
-                self.LOGGER.error("Cache-Error putJumpbridg: %r", (data,), e)
+                self.LOGGER.error("Cache-Error put Jump-Bridge: %r", (data,), e)
                 raise CacheWriteError(e)
 
     def fetch_jumpbridge_data(self) -> list:
         data = None
+        cache_key = "jumpbridge_data"
+        query = "SELECT data FROM cache WHERE key = ?"
+        founds = 0
         try:
-            cacheKey = "jumpbridge_data"
-            query = "SELECT data FROM cache WHERE key = ?"
-            founds = self.con.execute(query, (cacheKey,)).fetchall()
+            founds = self.con.execute(query, (cache_key,)).fetchall()
             if len(founds) > 0:
                 data = pickle.loads(founds[0][0])
         except Exception as e:
-            self.LOGGER.error("Cache-Error fetch_jumpbridge_data: %r" % (founds,), e)
+            self.LOGGER.error("Cache-Error fetch Jump-Bridge: %r" % (founds,), e)
             raise CacheReadError(e)
         return data
 
     def delete_jumpbridge_data(self):
         try:
-            cacheKey = "jumpbridge_data"
+            cache_key = "jumpbridge_data"
             with Cache.SQLITE_WRITE_LOCK:
                 query = "DELETE FROM cache WHERE key = ?"
-                self.con.execute(query, (cacheKey,))
+                self.con.execute(query, (cache_key,))
                 self.con.commit()
         except Exception as e:
-            self.LOGGER.error("Cache-Error delete_jumpbridge_data", e)
+            self.LOGGER.error("Cache-Error delete Jump-Bridge", e)
             raise CacheWriteError(e)
 
     def save_settings(self, settings_identifier, object_setting, duration=FOREVER):

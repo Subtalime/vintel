@@ -18,9 +18,8 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt, QObject
 from PyQt5.QtWidgets import QApplication
-from PyQt5 import QtGui
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from vi.map.MapViewPage import MapViewPage
+from vi.map.MapWebEnginePage import MapWebEnginePage
 import logging
 
 
@@ -31,22 +30,14 @@ class PanningWebView(QWidget):
         super().__init__(parent)
         self.LOGGER = logging.getLogger(__name__)
 
-        self.pressed = False
-        self.mapView = MapViewPage()
+        self.mapView = MapWebEnginePage()
         self.view = QWebEngineView()
-        self.view.setPage(self.page())
+        self.view.setPage(self.mapView)
         self.vl = QVBoxLayout()
         self.vl.addWidget(self.view)
         self.setLayout(self.vl)
         self.oldContent = None
 
-        # self.installEventFilter(self)
-
-    def wheelEvent(self, a0: QtGui.QWheelEvent) -> None:
-        modifier = QApplication.keyboardModifiers()
-        if modifier == Qt.ControlModifier:
-            self.LOGGER.debug("Control-Delta %r" % a0.Delta())
-        a0.accept()
 
     def eventFilter(self, a0: QObject, a1: QEvent) -> bool:
         if a1.type() == QEvent.Wheel:

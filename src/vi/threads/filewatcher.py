@@ -57,12 +57,11 @@ class FileWatcherThread(QThread):
             # don't overload the disk scanning
             time.sleep(self.scanInterval)
             # here, periodically, we check if any files have been added to the folder
-            if self._active:
-                self._scan_paths()
-                for path in self.files_in_folder.keys():  # dict
-                    self.files_in_folder[path] = self._check_changes(
-                        list(self.files_in_folder[path].items())
-                    )
+            self._scan_paths()
+            for path in self.files_in_folder.keys():  # dict
+                self.files_in_folder[path] = self._check_changes(
+                    list(self.files_in_folder[path].items())
+                )
 
     def quit(self) -> None:
         if self._active:

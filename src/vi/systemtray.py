@@ -21,7 +21,7 @@ import time
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QMovie
 from PyQt5.QtWidgets import QAction, QActionGroup, QMenu, QSystemTrayIcon
 
 from vi.chat.chatmessage import Message
@@ -47,8 +47,12 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self.LOGGER = logging.getLogger(__name__)
         self.resource_path = resourcePath()
         self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small.png"))
-        self.icon = QIcon(resourcePath("logo_small.png"))
-        super().__init__(self.icon, app)
+        self.taskbarIconQuiescent = QIcon(resourcePath("logo_small.png"))
+        self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small_green.png"))
+        self.taskbarIconWorking = QIcon(resourcePath("logo_small_green.png"))
+        self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_animate.gif"))
+        self.taskbarIconAnimate = QMovie(resourcePath("logo_animate.gif"))
+        super().__init__(self.taskbarIconQuiescent, app)
         self.setToolTip("Your Vintel-Information-Service!")
         self.lastNotifications = {}
         self.showAlarm = GeneralSettings().popup_notification
@@ -59,22 +63,42 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self.context_menu = TrayContextMenu(self)
         self.setContextMenu(self.context_menu)
 
+    def update_icon(self):
+        icon = QIcon()
+        icon.addPixmap(self.taskbarIconAnimate.currentPixmap())
+        self.setIcon(icon)
+
+    def busy(self):
+        self.taskbarIconAnimate.frameChanged.connect(self.update_icon)
+        self.taskbarIconAnimate.start()
+
+    def idle(self):
+        pass
+        # self.taskbarIconAnimate.stop()
+        # self.setIcon(self.taskbarIconQuiescent)
+
     def viewMapSource(self):
+        self.LOGGER.debug("Emit View-Map-Source")
         self.view_map_source.emit()
 
     def refreshMap(self):
+        self.LOGGER.debug("Emit Refresh-Map")
         self.refresh_map.emit()
 
     def viewChatLogs(self):
+        self.LOGGER.debug("Emit View-Chatlogs")
         self.view_chatlogs.emit()
 
     def changeAlarmDistance(self):
+        self.LOGGER.debug("Emit Change-Alarm-Distance")
         self.alarm_distance.emit(self.alarmDistance)
 
     def changeFrameless(self):
+        self.LOGGER.debug("Emit Change-Frameless")
         self.change_frameless.emit()
 
     def f_quit(self):
+        self.LOGGER.debug("Emit Quit")
         self.quit_me.emit()
 
     def showMessage(
@@ -84,6 +108,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         icon: "QSystemTrayIcon.MessageIcon" = QSystemTrayIcon.Information,
         msecs: int = 10000,
     ) -> None:
+        self.LOGGER.debug(f"Emit Show-Message '{title}' '{msg}'")
         super().showMessage(title, msg, icon, msecs)
 
     def switchAlarm(self):
@@ -104,6 +129,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             cm.requestCheck.setChecked(newValue)
         self.soundActive = newValue
         GeneralSettings().sound_active = newValue
+        self.LOGGER.debug(f"Emit Switch-Sound {newValue}")
         self.sound_active.emit(newValue)
 
     def _get_sound(self, soundlist, status, distance) -> [str, int]:

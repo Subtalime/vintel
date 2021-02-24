@@ -24,11 +24,8 @@ import os
 import sys
 import time
 import traceback
-
-
 from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from PyQt5.QtGui import QPixmap
-
 from vi.systemtray import TrayIcon
 from vi.viui import MainWindow
 from vi.cache.cache import Cache
@@ -49,7 +46,6 @@ class MyMainException(Exception):
     pass
 
 
-# class Application(QGuiApplication):
 class Application(QApplication):
     def __init__(self, args):
         super(Application, self).__init__(args)
@@ -124,11 +120,9 @@ class Application(QApplication):
             self.LOGGER.debug("Splash-Screen loaded and displayed")
         except Exception as e:
             raise MyMainException("Failed to load Splash", e)
-        # # let's hope, this will speed up start-up
-        # EsiInterface(cache_dir=getVintelDir())
-        # self.processEvents()
         self.trayIcon = TrayIcon(self)
         self.trayIcon.show()
+        self.trayIcon.busy()
         self.LOGGER.debug("Tray-Icon showed")
         with sw.timer("start_mainscreen"):
             self.LOGGER.debug("creating Main-Window")
@@ -139,6 +133,7 @@ class Application(QApplication):
             self.LOGGER.debug("Splash End")
             splash.finish(self.mainWindow)
         self.LOGGER.debug("Splash-Screen finished")
+        self.trayIcon.idle()
         self.LOGGER.debug(sw.get_report())
         self.mainWindow.show()
 
@@ -146,12 +141,13 @@ class Application(QApplication):
         if self.trayIcon:
             self.trayIcon.hide()
 
+
 __name__ = PROGNAME
 __author__ = AUTHOR + " (" + AUTHOR_EMAIL + ")"
 __version__ = VERSION
 
 
-def __uploadLog():
+def _upload_logfile():
     """upload Log-File for further analysis.
     :return: None
     """
@@ -173,7 +169,7 @@ def main_exception_hook(exceptionType, exceptionValue, tracebackObject):
     logging.getLogger().critical("".join(traceback.format_tb(tracebackObject)))
     logging.getLogger().critical("{0}: {1}".format(exceptionType, exceptionValue))
     logging.getLogger().critical("-- ------------------- --")
-    __uploadLog()
+    _upload_logfile()
 
 
 sys.excepthook = main_exception_hook

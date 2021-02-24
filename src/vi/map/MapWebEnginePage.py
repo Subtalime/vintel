@@ -24,15 +24,14 @@ from PyQt5 import QtGui
 from queue import Queue
 import logging
 
-LOGGER = logging.getLogger(__name__)
 
-
-class MapViewPage(QWebEnginePage):
+class MapWebEnginePage(QWebEnginePage):
     link_clicked = pyqtSignal(QUrl)
     scroll_detected = pyqtSignal(QPointF)
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
+        self.LOGGER = logging.getLogger(__name__)
         self.load_complete = False
         self.javaQueue = Queue()
         self.scrollPositionChanged.connect(self.onScrollPos)
@@ -41,11 +40,6 @@ class MapViewPage(QWebEnginePage):
         self.currentHtml = None
         self.currentScrollPos = QPointF()
         self.repositioning = False
-
-    def wheelEvent(self, a0: QtGui.QWheelEvent) -> None:
-        modifier = QApplication.keyboardModifiers()
-        if modifier == Qt.ControlModifier:
-            LOGGER.debug("Control-Delta %r" % a0.Delta())
 
     def onLoadFinished(self):
         self.load_complete = True
@@ -70,18 +64,20 @@ class MapViewPage(QWebEnginePage):
         else:
             self.currentScrollPos = qPointF
         if self.load_complete:
-            # LOGGER.debug(
-            #     "onScrollPos detected {}, Load Complete: {}".format(
-            #         qPointF, self.load_complete
-            #     )
-            # )
+            self.LOGGER.debug(
+                "onScrollPos detected {}, Load Complete: {}".format(
+                    qPointF, self.load_complete
+                )
+            )
             self.scroll_detected.emit(qPointF)
         return True
 
     def runJavaScript(self, p_str, *__args):
+        # while page has not yet loaded, put everything on to a Queue
         if not self.load_complete:
             self.javaQueue.put_nowait((p_str, *__args))
             return
+        # page has loaded, now work through the queue
         if not self.javaQueue.empty():
             while not self.javaQueue.empty():
                 q = self.javaQueue.get_nowait()
@@ -89,11 +85,11 @@ class MapViewPage(QWebEnginePage):
         super().runJavaScript(p_str, *__args)
 
     def acceptNavigationRequest(
-        self, qUrl: QUrl, QWebEnginePage_NavigationType: int, abool: bool
+        self, q_url: QUrl, q_webenginepage_navigationtype: int, a_bool: bool
     ):
-        if QWebEnginePage_NavigationType == QWebEnginePage.NavigationTypeLinkClicked:
-            self.link_clicked.emit(qUrl)
+        if q_webenginepage_navigationtype == QWebEnginePage.NavigationTypeLinkClicked:
+            self.link_clicked.emit(q_url)
             return False
-        return super(MapViewPage, self).acceptNavigationRequest(
-            qUrl, QWebEnginePage_NavigationType, abool
+        return super(MapWebEnginePage, self).acceptNavigationRequest(
+            q_url, q_webenginepage_navigationtype, a_bool
         )

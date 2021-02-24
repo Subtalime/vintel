@@ -43,6 +43,9 @@ class StatisticsThread(QThread):
     def _request_statistics(self):
         self.queue.put(1)
 
+    def requestStatistics(self):
+        self._request_statistics()
+
     def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting Map-Statistic-Update-Thread")
         self._active = True

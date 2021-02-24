@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 from vi.cache.cache import Cache
 
 
-def convert_region_name(name: str) -> str:
+def convert_region_name(name: str):
     """Converts a (system)name to the format that dotland uses.
     """
     cap_word = string.capwords(name)
@@ -65,37 +65,13 @@ class Regions:
                 reg = region.split(".")
                 self.regions[reg[0]] = reg[1]
 
-    def getNames(self):
+    def get_names(self):
         return self.regions.keys()
 
-    def getUrlPart(self, region: str):
+    def get_url_part(self, region: str):
         if region in self.regions.keys():
             return str(self.regions[region]).replace("/map/", "")
         return None
 
     def __repr__(self):
         return ",".join("{}.{}".format(key, val) for key, val in self.regions.items())
-
-    def convertRegionName(self, name: str):
-        """Converts a (system)name to the format that dotland uses.
-        """
-        cap_word = string.capwords(name)
-        cap_word = cap_word.replace(" ", "_")
-        return cap_word
-        # converted = []
-        # nextUpper = False
-        # for index, char in enumerate(name):
-        #     if index == 0:
-        #         converted.append(char.upper())
-        #     else:
-        #         if char in (u" ", u"_"):
-        #             char = "_"
-        #             nextUpper = True
-        #         else:
-        #             if nextUpper:
-        #                 char = char.upper()
-        #             else:
-        #                 char = char.lower()
-        #             nextUpper = False
-        #         converted.append(char)
-        # return u"".join(converted)

@@ -128,11 +128,11 @@ class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
                 entry.updateAvatar(avatarData)
 
     def setSystemAlarm(self):
-        self.system.setStatus(State["ALARM"])
+        self.system.set_status(State["ALARM"])
         self.parent.updateMapView()
 
     def setSystemClear(self):
-        self.system.setStatus(State["CLEAR"])
+        self.system.set_status(State["CLEAR"])
         self.parent.updateMapView()
 
     def closeDialog(self):

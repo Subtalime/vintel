@@ -20,11 +20,11 @@ import asyncio
 import datetime
 import logging
 import os
+import ntpath
 import threading
 from queue import Queue
 from threading import Thread
 from typing import Dict
-
 import six
 from PyQt5.QtCore import QThread, pyqtSignal
 
@@ -192,10 +192,12 @@ class ChatMonitorThread(QThread):
             logfile, delete = self.queue.get()
             if self.active:
                 if logfile and logfile not in self.process_pool.keys() and not delete:
-                    roomname = os.path.basename(logfile)[:-20]
+                    # roomname = os.path.basename(logfile)[:-20]
+                    roomname = os.path.basename(logfile).split("_")[0]
                     if roomname not in self.room_names and roomname not in LOCAL_NAMES:
                         self.LOGGER.debug(
-                            'Not interested in "%s" since not in monitored rooms',
+                            'Not interested %s-Room ("%s") since not in monitored rooms',
+                            roomname,
                             logfile,
                         )
                         continue
@@ -256,6 +258,10 @@ class ChatThreadProcess(QThread):
     def message_age(self):
         return self.OLDEST_MESSAGE
 
+    @property
+    def log_name(self):
+        return ntpath.basename(self.log_file)
+
     def update_dotlan_systems(self, dotlan_systems: systems):
         self.dotlan_systems = dotlan_systems
         # required to rescan all files, so map gets redrawn with current data
@@ -310,7 +316,7 @@ class ChatThreadProcess(QThread):
 
     # get all the relevant information which ChatParser requires
     def _prepare_parser(self) -> bool:
-        self.LOGGER.debug("Analysing relevance of %s", self.log_file)
+        self.LOGGER.debug("Analysing relevance of %s", self.log_name)
         filename = os.path.basename(self.log_file)
         self.roomname = filename[:-20]
         if self.roomname in LOCAL_NAMES:
@@ -319,9 +325,9 @@ class ChatThreadProcess(QThread):
         # for local-chats we need more infos
         for line in lines:
             if "Listener:" in line:
-                self.charname = line[line.find(":") + 1 :].strip()
+                self.charname = line[line.find(":") + 1:].strip()
             elif "Session started:" in line:
-                session_str = line[line.find(":") + 1 :].strip()
+                session_str = line[line.find(":") + 1:].strip()
                 self.session_start = datetime.datetime.strptime(
                     session_str, "%Y.%m.%d %H:%M:%S"
                 ).replace(tzinfo=datetime.timezone.utc)
@@ -329,7 +335,7 @@ class ChatThreadProcess(QThread):
                 break
         if not self.charname or not self.session_start:
             self.LOGGER.warning(
-                'File did not contain relevant information: "%s"', self.log_file
+                'File did not contain relevant information: "%s"', self.log_name
             )
             return False
         # tell the world we're monitoring a new character
@@ -340,7 +346,7 @@ class ChatThreadProcess(QThread):
         # first 13 lines are Header information
         self.parsed_lines = 12
         # now head forward until you hit a timestamp, younger then max_age
-        for line in lines[self.parsed_lines :]:
+        for line in lines[self.parsed_lines:]:
             if len(str(line).strip(" ")):
                 utctime, username, text, timestamp = parse_line(line)
                 if (
@@ -365,9 +371,9 @@ class ChatThreadProcess(QThread):
 
     def _process_file(self):
         sw = ViStopwatch()
-        with sw.timer("Process-File for '{}'".format(self.log_file)):
+        with sw.timer("Process-File for '{}'".format(self.log_name)):
             lines = self._get_lines()
-            for line in lines[self.parsed_lines :]:
+            for line in lines[self.parsed_lines:]:
                 line = line.strip()
                 if len(line) > 2:
                     message = self.message_parser.process(line)

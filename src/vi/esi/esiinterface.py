@@ -73,6 +73,8 @@ class EsiInterface(metaclass=EsiInterfaceType):
     secretKey = None
     _esiLoading = False
     security = None
+    ESI_DEFAULT_TIMEOUT = 10000  # 10 seconds
+    ESI_MAX_DURATION = 1500      # 1.5 second
 
     # make it a Singleton
     class __OnceOnly:
@@ -149,9 +151,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
         # disable info-logging in PySwagger
         logging.getLogger("pyswagger.core").setLevel(logging.WARNING)
         # start off with disabling ESI for 10 seconds
-        self.esi_timeout = 10000  # 10 seconds
+        self.esi_timeout = self.ESI_DEFAULT_TIMEOUT  # 10 seconds
         # Calls to ESI shouldn't take longer than 1 second
-        self.esi_max_call_duration = 1000  # 1 second
+        self.esi_max_call_duration = self.ESI_MAX_DURATION
 
     def __getattr__(self, name):
         return getattr(self._instance, name)
@@ -205,9 +207,9 @@ class EsiInterface(metaclass=EsiInterfaceType):
             self.cache.put("esi_last_try", now, self.esi_timeout)
             return not force_disable
         if not call_start:
-            esi_allowed = self.cache.fetch("esi_allowed", default=True)
+            esi_allowed = self.cache.fetch("esi_allowed", outdated=False, default=True)
             if not esi_allowed:
-                last_try = self.cache.fetch("esi_last_try", default=None)
+                last_try = self.cache.fetch("esi_last_try", outdated=False, default=None)
                 if last_try:
                     if (now - last_try).total_seconds() * 1000 > self.esi_timeout:
                         self.esi_timeout += self.esi_timeout
@@ -226,6 +228,10 @@ class EsiInterface(metaclass=EsiInterfaceType):
             )
             return self._allowCallToEsi(force_disable=True)
         return True
+
+    def __del__(self):
+        # prevent an increase of the timeout once program restarts
+        self.cache.delete(["esi_last_try", "esi_allowed"])
 
     def _getResponse(self, operation, cache_expiry_secs, **kwargs):
         """

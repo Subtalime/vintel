@@ -66,12 +66,12 @@ class EsiHelper:
     def getSystemStatistics(self) -> dict:
         try:
             jumpData = {}
-            jump_result = self.esi.getJumps()
+            jump_result = self.esi.getJumps() or []
             for data in jump_result:
                 jumpData[int(data["system_id"])] = int(data["ship_jumps"])
 
             systemData = {}
-            kill_result = self.esi.getKills()
+            kill_result = self.esi.getKills() or []
             for data in kill_result:
                 systemData[int(data["system_id"])] = {
                     "ship": int(data["ship_kills"]),
