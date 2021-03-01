@@ -23,7 +23,7 @@ import logging
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtCore import pyqtSignal
-from vi.resources import resourcePath
+from vi.resources import get_resource_path
 import clipboard
 import vi.ui.JumpbridgeChooser
 from vi.jumpbridge.jumpbridge import Import
@@ -44,7 +44,7 @@ class JumpBridgeDialog(QDialog, vi.ui.JumpbridgeChooser.Ui_Dialog):
         url = RegionSettings().jump_bridge_url
         self.urlField.setText(url)
         # loading format explanation from textfile
-        with open(resourcePath("docs/jumpbridgeformat.txt")) as f:
+        with open(get_resource_path("docs/jumpbridgeformat.txt")) as f:
             self.formatInfoField.setPlainText(f.read())
 
     def _save_path(self):

@@ -21,7 +21,7 @@ import logging
 import queue
 from bs4 import BeautifulSoup
 from PyQt5.QtCore import QThread, pyqtSignal
-from vi.resources import getVintelDir
+from vi.resources import get_vintel_directory
 from vi.settings.settings import GeneralSettings
 from vi.stopwatch.mystopwatch import ViStopwatch
 
@@ -71,7 +71,7 @@ class MapUpdateThread(QThread):
                         self.LOGGER.critical(
                             "Something is stopping the program of progressing. (Map-Attempts > 10\n"
                             'If this continues to happen, delete the Cache-File in "%s"'
-                            % (getVintelDir(),)
+                            % (get_vintel_directory(),)
                         )
                         self.quit()
                         return

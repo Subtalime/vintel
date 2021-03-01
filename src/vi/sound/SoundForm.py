@@ -23,7 +23,7 @@ import os
 from vi.ui.SoundForm import Ui_Form
 from vi.settings.SettingsFormTemplate import SettingsFormTemplate
 from vi.settings.settings import SoundSettings
-from vi.resources import soundPath
+from vi.resources import get_sound_resource_path
 from vi.sound.soundmanager import SoundManager
 
 
@@ -161,7 +161,7 @@ class SoundForm(SettingsFormTemplate, Ui_Form):
         if self.current_row_index:
             sound_file = self.txtSound.text()
             if not os.path.exists(sound_file):
-                sound_file = os.path.join(soundPath(), os.path.basename(sound_file))
+                sound_file = os.path.join(get_sound_resource_path(), os.path.basename(sound_file))
             file = QFileDialog.getOpenFileName(
                 self, "Sound File", sound_file, "Sound Files (*.wav)"
             )

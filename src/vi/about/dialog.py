@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import QDialog
 from PyQt5.QtGui import QPixmap
 from vi.ui.Info import Ui_Dialog
 from vi.version import DISPLAY
-from vi.resources import resourcePath
+from vi.resources import get_resource_path
 
 
 class AboutDialog(QDialog, Ui_Dialog):
@@ -28,7 +28,7 @@ class AboutDialog(QDialog, Ui_Dialog):
         super().__init__(parent=parent)
         self.setupUi(self)
         self.versionLabel.setText(u"Version: {0}".format(DISPLAY))
-        self.logoLabel.setPixmap(QPixmap(resourcePath("logo.png")))
+        self.logoLabel.setPixmap(QPixmap(get_resource_path("logo.png")))
 
         self.closeButton.setDefault(True)
         self.closeButton.clicked.connect(self.accept)

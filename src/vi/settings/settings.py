@@ -20,7 +20,7 @@ import os
 import pickle
 
 from vi.cache import Cache
-from vi.resources import soundPath
+from vi.resources import get_sound_resource_path
 from vi.states import State
 
 
@@ -187,12 +187,12 @@ class SoundSettings(_Settings):
         for distance in range(0, 6):
             entry = [
                 "{} Jumps".format(distance),
-                os.path.join(soundPath(), "alert.wav"),
+                os.path.join(get_sound_resource_path(), "alert.wav"),
                 25,
             ]
             listing.append(entry)
-        listing.append(["KOS", os.path.join(soundPath(), "warning.wav"), 25])
-        listing.append(["Request", os.path.join(soundPath(), "request.wav"), 25])
+        listing.append(["KOS", os.path.join(get_sound_resource_path(), "warning.wav"), 25])
+        listing.append(["Request", os.path.join(get_sound_resource_path(), "request.wav"), 25])
         self.defaults = {
             "sound": listing,
         }

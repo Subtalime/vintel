@@ -34,7 +34,7 @@ import requests
 import six
 from six.moves import queue
 
-from vi.resources import soundPath
+from vi.resources import get_sound_resource_path
 
 # import pyglet.clock
 # import pyglet.resource
@@ -98,7 +98,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                 import glob
 
                 hits = glob.glob(
-                    os.path.join(soundPath(), os.path.basename(path)), recursive=True
+                    os.path.join(get_sound_resource_path(), os.path.basename(path)), recursive=True
                 )
                 if hits:
                     path = hits[0]
@@ -115,7 +115,7 @@ class SoundManager(six.with_metaclass(Singleton)):
             if self.useSpokenNotifications:
                 audioFile = None
             else:
-                audioFile = soundPath("{0}".format(self.SOUNDS[name]))
+                audioFile = get_sound_resource_path("{0}".format(self.SOUNDS[name]))
             if self.soundThread:
                 self.soundThread.queue.put(
                     (audioFile, volume, message, abbreviatedMessage)

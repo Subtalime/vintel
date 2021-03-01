@@ -16,12 +16,25 @@
 #
 #
 from vi.states import State
-from bs4 import NavigableString
+from bs4 import Tag
 import datetime
 import time
 
 
 class Message(object):
+    """The Message-Parser
+    stores the message, links, message poster, time
+    """
+    timestamp = None
+    message = None
+    user = None
+    status = None
+    # list of systems mentioned in the message
+    systems = []
+    # if you add the message to a widget, please add it to widgets
+    widgets = []
+    _navi_text = None
+
     def __init__(
         self,
         room: str,
@@ -30,7 +43,7 @@ class Message(object):
         user: str,
         plain_text: str = None,
         status: State = State["ALARM"],
-        rtext: NavigableString = None,
+        rtext: Tag = None,
         currsystems: list = None,
         upper_text: str = None,
         log_line: str = None,
@@ -39,53 +52,53 @@ class Message(object):
         self.room = room  # chatroom the message was posted
         self.message = message  # the messages text
         self.timestamp = timestamp  # time stamp of the massage
-        self.timestamp_float = (
-            time.mktime(timestamp.timetuple()) + timestamp.microsecond / 1e6
-        )
         self.user = user  # user who posted the message
         self.status = status  # status related to the message
-        self.rtext = rtext
+        if rtext:
+            self.navigable_string = rtext
         self.systems = (
             currsystems if currsystems is not None else []
         )  # list of systems mentioned in the message
-        self.upper_text = (
+        self._upper_text = (
             upper_text if upper_text else message.upper()
         )  # the text in UPPER CASE
-        self.plain_text = (
+        self._plain_text = (
             plain_text if plain_text else message
         )  # plain text of the message, as posted
         self.log_line = log_line
         self.utc_time = utc
-        # if you add the message to a widget, please add it to widgets
-        self.widgets = []
 
     @property
-    def plainText(self):
-        return self.plain_text
+    def timestamp_float(self) -> float:
+        return time.mktime(self.timestamp.timetuple()) + self.timestamp.microsecond / 1e6
 
     @property
-    def upperText(self):
-        return self.upper_text
+    def plain_text(self):
+        return self._plain_text
 
     @property
-    def navigable_string(self) -> NavigableString:
-        return self.rtext
+    def upper_text(self):
+        return self._upper_text
+
+    @property
+    def navigable_string(self) -> Tag:
+        return self._navi_text
 
     @navigable_string.setter
-    def navigable_string(self, value: NavigableString):
-        if not isinstance(value, NavigableString):
-            raise ValueError("Must be of type NavigableString")
-        self.rtext = value
+    def navigable_string(self, value: Tag):
+        if not isinstance(value, Tag):
+            raise ValueError("Must be of type Tag")
+        self._navi_text = value
 
     def __key(self):
-        return (self.room, self.plainText, self.timestamp, self.user)
+        return self.room, self.plain_text, self.timestamp, self.user
 
     def __eq__(x, y):
         return x.__key() == y.__key()
 
     def __repr__(self):
         return "{} {}/'{}' {}: {}".format(
-            self.timestamp, self.room, self.user, self.status.value, self.plainText
+            self.timestamp, self.room, self.user, self.status.value, self.plain_text
         )
 
     def __hash__(self):

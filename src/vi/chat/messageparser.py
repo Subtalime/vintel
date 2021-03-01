@@ -20,13 +20,14 @@ import logging
 import re
 
 import six
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
+
 
 from vi.chat.chatmessage import Message
 from vi.esi.esihelper import EsiHelper
 from vi.settings.settings import GeneralSettings
 from vi.states import State
-
+from vi.stopwatch.mystopwatch import ViStopwatch
 
 class MessageParserException(Exception):
     pass
@@ -35,7 +36,7 @@ class MessageParserException(Exception):
 def bs_text_replace(navigable_string: NavigableString, new_text: str) -> None:
     new_elements = []
     for newPart in (
-        BeautifulSoup("<t>{}</t>".format(new_text), "html.parser")
+        BeautifulSoup(f"<t>{new_text}</t>", "html.parser")
         .select("t")[0]
         .contents
     ):
@@ -75,6 +76,7 @@ def parse_line(line: str) -> tuple:
 class MessageParser:
     CHARS_TO_IGNORE = ("*", "?", ",", "!", ".", "(", ")", "+", ":")
     WORDS_TO_IGNORE = ("IN", "IS", "AS", "AND")
+    sw = ViStopwatch()
 
     def __init__(
         self,
@@ -104,50 +106,58 @@ class MessageParser:
         if self.local_room or not message.navigable_string:
             return False
         count = 0
-        while self._parse_systems(dotlan_systems, message):
-            count += 1
-            if count > 5:
-                self.LOGGER.warning(
-                    "parseSystems excessive runs on %r" % (message.rtext,)
-                )
-                break
+        with self.sw.timer("Parsing System in message"):
+            while self._parse_systems(dotlan_systems, message):
+                count += 1
+                if count > 5:
+                    self.LOGGER.warning(
+                        "parseSystems excessive runs on %r" % (message.navigable_string,)
+                    )
+                    break
+        self.LOGGER.debug(self.sw.get_report(f"{count} system runs"))
         return count > 0
 
     def process_ships(self, message: Message) -> bool:
         if not message.navigable_string:
             return False
         count = 0
-        while self._parse_ships(message):
-            count += 1
-            if count > 5:
-                self.LOGGER.warning(
-                    "process_ships excessive runs on %r" % (message.rtext,)
-                )
-                break
+        with self.sw.timer("Parsing Ships in message"):
+            while self._parse_ships(message):
+                count += 1
+                if count > 5:
+                    self.LOGGER.warning(
+                        "process_ships excessive runs on %r" % (message.navigable_string,)
+                    )
+                    break
+        self.LOGGER.debug(self.sw.get_report(f"{count} ship runs"))
         return count > 0
 
     def process_urls(self, message: Message) -> bool:
         if not message.navigable_string:
             return False
         count = 0
-        while self._parse_urls(message):
-            count += 1
-            if count > 5:
-                self.LOGGER.warning("parseUrls excessive runs on %r" % (message.rtext,))
-                break
+        with self.sw.timer("Parsing URLs in message"):
+            while self._parse_urls(message):
+                count += 1
+                if count > 5:
+                    self.LOGGER.warning("parseUrls excessive runs on %r" % (message.navigable_string,))
+                    break
+        self.LOGGER.debug(self.sw.get_report(f"{count} URL runs"))
         return count > 0
 
     def process_charnames(self, message: Message) -> bool:
         if not message.navigable_string:
             return False
         count = 0
-        while self._parse_charnames(message):
-            count += 1
-            if count > 5:
-                self.LOGGER.warning(
-                    "process_charnames excessive runs on %r" % (message.rtext,)
-                )
-                break
+        with self.sw.timer("Parsing Characters in message"):
+            while self._parse_charnames(message):
+                count += 1
+                if count > 5:
+                    self.LOGGER.warning(
+                        "process_charnames excessive runs on %r" % (message.navigable_string,)
+                    )
+                    break
+        self.LOGGER.debug(self.sw.get_report(f"{count} character runs"))
         return count > 0
 
     def process(self, line) -> object:
@@ -233,7 +243,7 @@ class MessageParser:
 
         parsed_status = self.get_status(navi_text)
         status = parsed_status if parsed_status is not None else State["ALARM"]
-        message = Message(
+        return Message(
             self.room_name,
             text,
             timestamp,
@@ -246,7 +256,6 @@ class MessageParser:
             utc=utctime,
         )
 
-        return message
 
     def _parse_systems(self, dotlan_systems: dict, message: Message) -> bool:
         """check for any System-Names or Gates mentioned in the Chat-Entry.
@@ -268,13 +277,14 @@ class MessageParser:
                 new_text.format(f_system, f_word, GeneralSettings().color_system),
             )
 
-        texts = [
-            t
-            for t in message.navigable_string.contents
-            if isinstance(t, NavigableString)
-            and t is not None
-            and message.navigable_string.contents
-        ]
+        # texts = [
+        #     t
+        #     for t in message.navigable_string.contents
+        #     if isinstance(t, NavigableString)
+        #     and t is not None
+        #     and message.navigable_string.contents
+        # ]
+        texts = [t for t in message.navigable_string.contents if isinstance(t, NavigableString) and len(t) > 2 ]
         for wtIdx, text in enumerate(texts):
             work_text = text
             work_text = self.chars_to_ignore.sub("", work_text)
@@ -294,6 +304,8 @@ class MessageParser:
                                 # Could be '___ GATE TO somewhere' so check this one.
                                 bailout = False
                         if bailout:
+                            self.LOGGER.debug("Ignoring possible System-Highlight for '%s', because followed by 'GATE'",
+                                              word)
                             # '_____ GATE' mentioned in message, which is not what we're
                             # interested in, so go to checking next word.
                             continue
@@ -362,34 +374,26 @@ class MessageParser:
     def _parse_ships(self, message: Message) -> bool:
         """
         check the Chat-Entry to see if any ships are mentioned. If so, tag them with "ship_name"
-        :param rtext: Tag
+        :param message: Message
         :return: bool if content has changed
         """
 
         def format_ship_name(
-            f_text: str, f_realShipName: str, f_word: str, f_tooltip: str
+            f_text: str, f_real_ship_name: str, f_word: str, f_tooltip: str
         ) -> str:
             new_text = u"""<a style="color:{3};font-weight:bold" title="{2}" href="ship_name/{0}">{1}</a>"""
             return f_text.replace(
                 f_word,
                 new_text.format(
-                    f_realShipName, f_word, f_tooltip, GeneralSettings().color_ship
+                    f_real_ship_name, f_word, f_tooltip, GeneralSettings().color_ship
                 ),
             )
 
-        # navigable_string = message.navigable_string
-
-        texts = [
-            t
-            for t in message.navigable_string.contents
-            if isinstance(t, NavigableString)
-            and t is not None
-            and message.navigable_string.contents
-        ]
+        texts = [t for t in message.navigable_string.contents if isinstance(t, NavigableString) and len(t) > 2 ]
         for text in texts:
-            if len(text.strip(" ")) == 0:
+            if len(str(text).strip(" ")) == 0:
                 continue
-            parse_text_parts = text.strip(" ").split(" ")
+            parse_text_parts = str(text).strip(" ").split(" ")
             for parse_part in parse_text_parts:
                 upper_text = parse_part.upper()
                 # escape all cahracters
@@ -438,7 +442,7 @@ class MessageParser:
         :return:
         """
 
-        def find_urls(s):
+        def find_urls(s: str) -> list:
             # yes, this is faster than regex and less complex to read
             f_urls = []
             prefixes = ("http://", "https://")
@@ -454,7 +458,7 @@ class MessageParser:
                         start += 1
             return f_urls
 
-        def format_url(f_text, f_url):
+        def format_url(f_text, f_url) -> str:
             new_text = (
                 u"""<a style="color:{1};font-weight:bold" href="link/{0}">{0}</a>"""
             )
@@ -463,15 +467,9 @@ class MessageParser:
             )
 
         # navigable_string = message.navigable_string
-        texts = [
-            t
-            for t in message.navigable_string.contents
-            if isinstance(t, NavigableString)
-            and t is not None
-            and message.navigable_string.contents
-        ]
+        texts = [t for t in message.navigable_string.contents if isinstance(t, NavigableString) and len(t) > 2]
         for text in texts:
-            urls = find_urls(text)
+            urls = find_urls(str(text))
             for url in urls:
                 bs_text_replace(text, format_url(text, url))
                 return True
@@ -479,13 +477,14 @@ class MessageParser:
     def _parse_charnames(self, message: Message) -> bool:
         """
         check the Chat-Entry for any Character-Names and mark them with "show_enemy"
-        :param navigable_string:
+        :param message: Message
         :return:
         """
         MAX_WORDS_FOR_CHARACTERNAME = 3
 
         # simple list of words
         def build_matrix(text_line: str, separator=" ") -> list:
+            self.LOGGER.debug("build_matrix: %s", text_line)
             text_line = self.chars_to_ignore.sub("", text_line)
             text_line = self.words_to_ignore.sub("", text_line)
             return text_line.strip().split(separator)
@@ -533,21 +532,16 @@ class MessageParser:
 
         def format_charname(use_text: str, charname: str, esi_character: dict):
             format_text = u"""<a style="color:{2};font-weight:bold" href="show_enemy/{1}">{0}</a>"""
-            return re.sub(r" +", r" ", use_text).replace(
+            return re.sub(r' +', r' ', use_text).replace(
                 charname,
                 format_text.format(
                     charname, esi_character["id"], GeneralSettings().color_character
                 ),
             )
 
-        texts = [
-            t
-            for t in message.navigable_string.contents
-            if isinstance(t, NavigableString)
-            and t is not None
-            and message.navigable_string.contents
-        ]
+        texts = [t for t in message.navigable_string.contents if isinstance(t, NavigableString) and len(t) > 3]
         found_names = []
+        self.LOGGER.debug("Analysing texts: %r", texts)
         for text in texts:  # iterate through each
             matrix = build_list(build_matrix(text))
             while True:
@@ -562,17 +556,17 @@ class MessageParser:
                 bs_text_replace(text, new_text)
         return len(found_names) > 0
 
-    def get_status(self, navigable_string: NavigableString) -> State:
+    def get_status(self, navigable_string: Tag) -> State:
         """
         parse the Chat-Line to see if there are any System-Statuses triggered
         """
-        texts = [
-            t
-            for t in navigable_string
-            if isinstance(t, NavigableString) and navigable_string is not None
+        texts = [ str(navigable_string.string)
+            # t
+            # for t in navigable_string
+            # if isinstance(t, Tag) and navigable_string is not None
         ]
         for text in texts:
-            upper_text = text.strip().upper()
+            upper_text = str(text.strip().upper())
             original_text = upper_text
             upper_text = self.chars_to_ignore.sub("", upper_text)
             # for char in self.CHARS_TO_IGNORE:

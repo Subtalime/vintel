@@ -25,7 +25,7 @@ from PyQt5.QtGui import QIcon, QMovie
 from PyQt5.QtWidgets import QAction, QActionGroup, QMenu, QSystemTrayIcon
 
 from vi.chat.chatmessage import Message
-from vi.resources import resourcePath
+from vi.resources import get_resource_path
 from vi.settings.settings import SoundSettings, GeneralSettings
 from vi.sound.soundmanager import SoundManager
 from vi.states import State
@@ -45,13 +45,13 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def __init__(self, app):
         self.LOGGER = logging.getLogger(__name__)
-        self.resource_path = resourcePath()
-        self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small.png"))
-        self.taskbarIconQuiescent = QIcon(resourcePath("logo_small.png"))
-        self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_small_green.png"))
-        self.taskbarIconWorking = QIcon(resourcePath("logo_small_green.png"))
-        self.LOGGER.debug("TrayIcon looking for %s", resourcePath("logo_animate.gif"))
-        self.taskbarIconAnimate = QMovie(resourcePath("logo_animate.gif"))
+        self.resource_path = get_resource_path()
+        self.LOGGER.debug("TrayIcon looking for %s", get_resource_path("logo_small.png"))
+        self.taskbarIconQuiescent = QIcon(get_resource_path("logo_small.png"))
+        self.LOGGER.debug("TrayIcon looking for %s", get_resource_path("logo_small_green.png"))
+        self.taskbarIconWorking = QIcon(get_resource_path("logo_small_green.png"))
+        self.LOGGER.debug("TrayIcon looking for %s", get_resource_path("logo_animate.gif"))
+        self.taskbarIconAnimate = QMovie(get_resource_path("logo_animate.gif"))
         super().__init__(self.taskbarIconQuiescent, app)
         self.setToolTip("Your Vintel-Information-Service!")
         self.lastNotifications = {}
@@ -63,19 +63,18 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self.context_menu = TrayContextMenu(self)
         self.setContextMenu(self.context_menu)
 
-    def update_icon(self):
-        icon = QIcon()
-        icon.addPixmap(self.taskbarIconAnimate.currentPixmap())
-        self.setIcon(icon)
+    def _update_icon(self):
+        pmap = QIcon(self.taskbarIconAnimate.currentPixmap())
+        if pmap:
+            self.setIcon(pmap)
 
     def busy(self):
-        self.taskbarIconAnimate.frameChanged.connect(self.update_icon)
+        self.taskbarIconAnimate.frameChanged.connect(self._update_icon)
         self.taskbarIconAnimate.start()
 
     def idle(self):
-        pass
-        # self.taskbarIconAnimate.stop()
-        # self.setIcon(self.taskbarIconQuiescent)
+        self.taskbarIconAnimate.stop()
+        self.setIcon(self.taskbarIconQuiescent)
 
     def viewMapSource(self):
         self.LOGGER.debug("Emit View-Map-Source")
@@ -180,7 +179,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
             speech_text = u"{0} alarmed in {1}, {2} jumps from {3}".format(
                 system, room, distance, char
             )
-            text = (u"%s\n" % message.plainText) + speech_text
+            text = (u"%s\n" % message.plain_text) + speech_text
             if sound_file:
                 SoundManager().playSoundFile(sound_file, volume, text, speech_text)
             else:

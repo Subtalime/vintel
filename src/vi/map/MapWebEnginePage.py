@@ -17,12 +17,17 @@
 #
 #
 
-from PyQt5.QtWebEngineWidgets import QWebEnginePage
+from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineContextMenuData
 from PyQt5.QtCore import pyqtSignal, QPointF, QUrl, Qt, QObject
 from PyQt5.QtWidgets import QApplication
 from PyQt5 import QtGui
 from queue import Queue
 import logging
+
+
+class MapWebEngineContextMenu(QWebEngineContextMenuData):
+    def __init__(self):
+        super(MapWebEngineContextMenu, self).__init__()
 
 
 class MapWebEnginePage(QWebEnginePage):
@@ -40,6 +45,8 @@ class MapWebEnginePage(QWebEnginePage):
         self.currentHtml = None
         self.currentScrollPos = QPointF()
         self.repositioning = False
+        self.createStandardContextMenu()
+
 
     def onLoadFinished(self):
         self.load_complete = True

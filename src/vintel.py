@@ -32,10 +32,10 @@ from vi.cache.cache import Cache
 from vi.logger.logconfig import LogConfiguration
 from vi.resources import (
     createResourceDirs,
-    getEveChatlogDir,
-    getVintelDir,
-    getVintelLogDir,
-    resourcePath,
+    get_eve_chatlog_directory,
+    get_vintel_directory,
+    get_vintel_log_directory,
+    get_resource_path,
 )
 from vi.settings.settings import GeneralSettings
 from vi.version import AUTHOR, AUTHOR_EMAIL, PROGNAME, VERSION, SNAPSHOT
@@ -71,7 +71,7 @@ class Application(QApplication):
 
     def configure(self):
         # Set up paths
-        self.chatLogDirectory = getEveChatlogDir(
+        self.chatLogDirectory = get_eve_chatlog_directory(
             passedDir=sys.argv[1] if len(sys.argv) > 1 else None
         )
         if not os.path.exists(self.chatLogDirectory):
@@ -94,7 +94,7 @@ class Application(QApplication):
 
         createResourceDirs(True)
 
-        Cache.PATH_TO_CACHE = getVintelDir()
+        Cache.PATH_TO_CACHE = get_vintel_directory()
         try:
             Cache(force_version_check=True)
         except Exception as e:
@@ -107,14 +107,14 @@ class Application(QApplication):
             PROGNAME,
             VERSION,
         )
-        logging.getLogger().info("Looking for chat logs at: %s", getEveChatlogDir())
+        logging.getLogger().info("Looking for chat logs at: %s", get_eve_chatlog_directory())
         logging.getLogger().info("Cache maintained here: %s", Cache.PATH_TO_CACHE)
-        logging.getLogger().info("Writing logs to: %s", getVintelLogDir())
+        logging.getLogger().info("Writing logs to: %s", get_vintel_log_directory())
 
     def startup(self):
         sw = ViStopwatch()
         try:
-            pix = QPixmap(resourcePath("logo.png"))
+            pix = QPixmap(get_resource_path("logo.png"))
             splash = QSplashScreen(pix)
             splash.show()
             self.LOGGER.debug("Splash-Screen loaded and displayed")

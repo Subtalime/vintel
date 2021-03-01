@@ -25,7 +25,7 @@ from vi.cache.cache import Cache
 from vi.chat.chatentrywidget import ChatEntryWidget
 from vi.esi.esihelper import EsiHelper
 from vi.stopwatch.mystopwatch import ViStopwatch as Stopwatch
-from vi.resources import resourcePath
+from vi.resources import get_resource_path
 
 
 class AvatarThread(QThread):
@@ -84,7 +84,7 @@ class AvatarThread(QThread):
                 charname = chat_entry.message.user
                 avatar = None
                 if charname == "VINTEL":
-                    with open(resourcePath("logo_small.png"), "rb") as f:
+                    with open(get_resource_path("logo_small.png"), "rb") as f:
                         avatar = f.read()
                 if avatar is None and not self.last_try:
                     # TODO: Seems this causes issues of performance if bad internet connection...

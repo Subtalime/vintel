@@ -36,7 +36,7 @@ from vi.dotlan.system import MySystem
 from vi.dotlan.exception import DotlanException
 from vi.esi import EsiInterface
 from vi.stopwatch.mystopwatch import ViStopwatch
-from vi.resources import getVintelMap
+from vi.resources import get_vintel_map_file_path
 from vi.states import State
 from vi.dotlan.soups import SoupSystem, SoupUse, SoupRect
 import requests
@@ -82,7 +82,7 @@ class MapData:
             raise
 
     def _from_file(self):
-        file_path = getVintelMap(regionName=self.region)
+        file_path = get_vintel_map_file_path(region_name=self.region)
         try:
             with open(file_path, "r") as f:
                 self.svg = f.read()
@@ -176,11 +176,14 @@ class MyMap:
         self.LOGGER.debug(self.sw.get_report())
 
     def _prepare_svg(self):
-        svg = self.soup.select("svg")[0]
+        svg = self.soup.findAll("svg")[0]
         # Disable dotlan mouse functionality and make all jump lines black
         svg["onmousedown"] = "return false;"
         for line in self.soup.select("line"):
             line["class"] = "j"
+
+        # make room for the Statistics on the bottom systems
+        svg["height"] = int(svg["height"]) + 10
 
         # Current system marker ellipse
         group = self.soup.new_tag(
@@ -327,7 +330,7 @@ class MyMap:
     @property
     def svg(self):
         # time this complete block
-        with self.sw.timer("SVG"):
+        with self.sw.timer("Building SVG from memory"):
             with self.sw.timer("add Timer JS"):
                 self.add_timer_javascript()
             # Re-render all systems
@@ -377,17 +380,17 @@ class MyMap:
                 with self.sw.timer("Dump Map To disc"):
                     # pass
                     self.debug_write_soup(content)
-        self.time_report("\tNumber of timers in SVG: %d" % self.system_updates)
+        self.time_report(f"\tNumber of timers in SVG: {self.system_updates}")
         return content
 
     def debug_write_soup(self, svg_data):
         # svgData = BeautifulSoup(self.svg, 'html.parser').prettify("utf-8")
-        from vi.resources import getVintelLogDir
+        from vi.resources import get_vintel_log_directory
 
         ts = datetime.datetime.fromtimestamp(time.time()).strftime("%H_%M_%S")
         try:
             with open(
-                    os.path.join(getVintelLogDir(), "zoutput_{}.svg".format(ts)), "w+"
+                    os.path.join(get_vintel_log_directory(), "zoutput_{}.svg".format(ts)), "w+"
             ) as svgFile:
                 svgFile.write(svg_data)
         except Exception as e:

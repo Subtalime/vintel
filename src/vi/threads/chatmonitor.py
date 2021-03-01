@@ -41,7 +41,7 @@ __all_known_messages: Dict[str, datetime.datetime] = {}
 
 
 def chat_search_key(message: Message):
-    return "%s%s%s" % (message.plainText, message.user, message.room)
+    return "%s%s%s" % (message.plain_text, message.user, message.room)
 
 
 def chat_thread_all_messages_contains(message: Message) -> bool:
@@ -119,20 +119,20 @@ class ChatMonitorThread(QThread):
     player_added_signal = pyqtSignal(list)
     message_added_signal = pyqtSignal(Message)
     message_updated_signal = pyqtSignal(Message)
+    queue = Queue()
+    active = True
+    dotlan_systems = []
+    process_pool = {}
+    known_players = []
+    LOGGER = logging.getLogger(__name__)
 
     def __init__(
         self, dotlan_systems: systems = None, known_players: list = None,
     ):
         super().__init__()
-        self.LOGGER = logging.getLogger(__name__)
         self.LOGGER.debug("Creating ChatThread")
-        self.queue = Queue()
-        self.active = True
-        self.dotlan_systems = {}
         if dotlan_systems:
             self.dotlan_systems = dotlan_systems
-        self.process_pool = {}
-        self.known_players = []
         if known_players:
             self.known_players = known_players
 
@@ -192,13 +192,11 @@ class ChatMonitorThread(QThread):
             logfile, delete = self.queue.get()
             if self.active:
                 if logfile and logfile not in self.process_pool.keys() and not delete:
-                    # roomname = os.path.basename(logfile)[:-20]
                     roomname = os.path.basename(logfile).split("_")[0]
                     if roomname not in self.room_names and roomname not in LOCAL_NAMES:
                         self.LOGGER.debug(
-                            'Not interested %s-Room ("%s") since not in monitored rooms',
+                            'Ignoring %s-Room, since not in monitored rooms',
                             roomname,
-                            logfile,
                         )
                         continue
                     self._create_child_process(logfile)
@@ -269,7 +267,7 @@ class ChatThreadProcess(QThread):
 
     def _refine_message(self, message: Message):
         sw = ViStopwatch()
-        with sw.timer("'{}'".format(message.plainText)):
+        with sw.timer("'{}'".format(message.plain_text)):
             if self.ship_scanner:
                 with sw.timer("Ship-Scanner"):
                     self.message_parser.process_ships(message)
@@ -293,10 +291,10 @@ class ChatThreadProcess(QThread):
                         break
                     if count > max_search:
                         self.LOGGER.warning(
-                            "parseOldMessages excessive runs on %r", message.rtext
+                            "parseOldMessages excessive runs on %r", message.navigable_string
                         )
                         break
-            message.message = six.text_type(message.rtext)
+            message.message = six.text_type(message.navigable_string)
             # multiple clients?
             self.knownMessages.append(message)
             with sw.timer("mark Systems"):
@@ -456,7 +454,7 @@ class ChatThreadProcess(QThread):
 if __name__ == "__main__":
     from PyQt5.Qt import QApplication
     from vi.threads.filewatcher import FileWatcherThread
-    from vi.resources import getEveChatlogDir, getVintelDir
+    from vi.resources import get_eve_chatlog_directory, get_vintel_directory
     from vi.dotlan.mymap import MyMap
     from vi.esi import EsiInterface
     import sys
@@ -465,7 +463,7 @@ if __name__ == "__main__":
 
     rooms = "testbov"
     # rooms = ("delve.imperium", "querious.imperium", "testbov")
-    path_to_logs = getEveChatlogDir()
+    path_to_logs = get_eve_chatlog_directory()
     app = QApplication(sys.argv)
 
     def logfile_changed(path):
@@ -473,7 +471,7 @@ if __name__ == "__main__":
 
     # t = ChatThread(rooms, dotlan_systems=(), ship_parser_change, char_parser_change)
 
-    EsiInterface(cache_dir=getVintelDir())
+    EsiInterface(cache_dir=get_vintel_directory())
     dotlan = MyMap(region="Delve")
 
     t = ChatMonitorThread(dotlan_systems=dotlan.systems)

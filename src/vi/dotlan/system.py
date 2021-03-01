@@ -339,6 +339,9 @@ class System:
 
 class MySystem(System):
     def __init__(self, soup_system: SoupSystem, soup: BeautifulSoup):
+        self._system = soup_system
+        self._soup = soup
+        self.coordinates = self._system.rect
         super().__init__(
             soup_system.name,
             soup_system.system,
@@ -347,14 +350,22 @@ class MySystem(System):
             soup_system.transform,
             soup_system.system_id,
         )
-        self._system = soup_system
-        self._soup = soup
-        self.coordinates = self._system.rect
+
+    @property
+    def map_soup(self) -> BeautifulSoup:
+        return self._soup
+
+    @map_soup.setter
+    def map_soup(self, value: BeautifulSoup):
+        self._soup = value
+
+    @property
+    def id(self) -> int:
+        return self._system.system_id
 
     def add_located_character(self, charname):
         """add a known Character to this system.
         """
-        id_name = self.get_soup_id()
         was_located = bool(self._locatedCharacters)
         if charname not in self._locatedCharacters:
             self._locatedCharacters.append(charname)
@@ -367,57 +378,22 @@ class MySystem(System):
                 ry=self._system.rect.h / 2 + 4,
                 id=self.label,
                 style="fill:#8b008d",
-                transform=f"transform(0, 0)",
+                transform="transform(0, 0)",
             )
-            # jumps = self.map_soup.select("#jumps")[0]
             jumps = self._soup.findAll("g", {"id": "jumps"})[0]
             jumps.insert(0, new_tag)
 
-    def update(self, cjs: ColorJavaScript) -> bool:
-        updated = False
-        # calc the new timer for injecting into JS
-        diff = max(0, math.floor(time.time() - self.last_alarm_time))
-        # diff = time.time() - self.lastAlarmTime
-        minutes = int(math.floor(diff / 60))
-        seconds = int(diff - minutes * 60)
-        ndiff = int(minutes * 60 + seconds)
-        if self.status != State["UNKNOWN"]:
-            self._system.line_two.string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
-            self.timerload = (
-                ndiff,
-                self.status.value,
-                self._system.line_two["id"],
-                self.rectId,
-                self.rectIdIce,
-            )
-            color, text_color = cjs.color_at(ndiff, self.status)
-            updated = True
-            for rect in self._system.rectangles:
-                rect["style"] = "fill: " + color
-            self._system.line_two["style"] = "fill: " + text_color
-        else:
-            self._system.line_two.string = "??"
-            self.timerload = ()
-        return updated
-
-    def get_transform_offset_point(self) -> [float, float]:
-        return [0., 0.]
-
-    def prepare_jumpbridge_color(self, color):
+    def prepare_jumpbridge_color(self, color) -> Tag:
         """prepare a Jump-Bridge to this system with a given color.
         """
-        offset_point = self.get_transform_offset_point()
-        x = self.coordinates.x - 3 + offset_point[0]
-        y = self.coordinates.y + offset_point[1]
-        style = "fill:{0};stroke:{0};stroke-width:2;fill-opacity:0.4"
         tag = self.map_soup.new_tag(
             "rect",
-            x=x,
-            y=y,
+            x=self.coordinates.x - 3,
+            y=self.coordinates.y,
             width=self.coordinates.w + 1.5,
             height=self.coordinates.h,
             id=self.jb_name,
-            style=style.format(color),
+            style=f"fill:{color};stroke:{color};stroke-width:2;fill-opacity:0.4",
             visibility="hidden",
         )
         tag["class"] = [
@@ -456,3 +432,71 @@ class MySystem(System):
         """
         if message in self.messages:
             self.messages.remove(message)
+
+    @property
+    def second_line(self) -> Tag:
+        return self._system.line_two
+
+    @second_line.setter
+    def second_line(self, value: Tag):
+        self._system.line_two = value
+
+    def set_status(self, new_status, alarm_time: float = time.time()):
+        if not isinstance(alarm_time, float):
+            if isinstance(alarm_time, datetime.datetime):
+                alarm_time = (
+                    time.mktime(alarm_time.timetuple()) + alarm_time.microsecond / 1e6
+                )
+        if new_status in (State["ALARM"], State["CLEAR"], State["REQUEST"]):
+            self.last_alarm_time = alarm_time
+            if new_status == State["ALARM"]:
+                self.second_line["alarmtime"] = self.last_alarm_time
+            elif new_status == State["CLEAR"]:
+                self.second_line["alarmtime"] = self.last_alarm_time
+                self.second_line.string = State["CLEAR"].value
+            elif new_status == State["REQUEST"]:
+                self.second_line.string = "status"
+        elif new_status == State["UNKNOWN"]:
+            self.second_line.string = "?"
+        # if new_status not in (states.NOT_CHANGE, states.REQUEST):  # unknown not affect system status
+        if new_status not in (State["NOT_CHANGE"],):  # unknown, does not affect system status
+            self.status = new_status
+            self.second_line["state"] = State["NOT_CHANGE"].value
+
+    def update(self, cjs: ColorJavaScript) -> bool:
+        updated = False
+        # calc the new timer for injecting into JS
+        diff = max(0, math.floor(time.time() - self.last_alarm_time))
+        # diff = time.time() - self.lastAlarmTime
+        minutes = int(math.floor(diff / 60))
+        seconds = int(diff - minutes * 60)
+        ndiff = int(minutes * 60 + seconds)
+        if self.status != State["UNKNOWN"]:
+            self.second_line.string = "{m:02d}:{s:02d}".format(m=minutes, s=seconds)
+            self.timerload = (
+                ndiff,
+                self.status.value,
+                self.second_line["id"],
+                self.rectId,
+                self.rectIdIce,
+            )
+            color, text_color = cjs.color_at(ndiff, self.status)
+            updated = True
+            for rect in self.svg_element.findAll("rect"):
+                rect["style"] = "fill: " + color
+            self.second_line["style"] = "fill: " + text_color
+        else:
+            self.second_line.string = "??"
+            self.timerload = ()
+        return updated
+
+    def set_statistics(self, statistics):
+        if statistics is None:
+            text = "stats n/a"
+        else:
+            text = "j-{jumps} f-{factionkills} s-{shipkills} p-{podkills}".format(
+                **statistics
+            )
+        svg_text = self.map_soup.findAll("text", {"id": f"stats_{self.id}"})[0]
+        svg_text.string = text
+

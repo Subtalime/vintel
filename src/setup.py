@@ -22,7 +22,7 @@ import sys
 import shutil
 import zipfile
 from vi.version import VERSION, DISPLAY, AUTHOR, AUTHOR_EMAIL, URL, PROGNAME
-from vi.resources import resourcePath
+from vi.resources import get_resource_path
 
 base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 release_dir = "releases"
@@ -89,7 +89,7 @@ for pack in move_files:
         dest = pack[0]
     else:
         dest = pack[1]
-    include_files.append((os.path.join(resourcePath(), src), dest))
+    include_files.append((os.path.join(get_resource_path(), src), dest))
 
 install_requires = [
     "requests",
@@ -110,9 +110,9 @@ install_requires = [
 packages = ["pyqt5", "esipy", "pyswagger", "pyglet", "six", "clipboard"]
 
 replace_paths = [
-    (os.path.join(resourcePath(), "mapdata"), "mapdata"),
-    (os.path.join(resourcePath(), "sound"), "sound"),
-    (os.path.join(resourcePath(), "docs"), "docs"),
+    (os.path.join(get_resource_path(), "mapdata"), "mapdata"),
+    (os.path.join(get_resource_path(), "sound"), "sound"),
+    (os.path.join(get_resource_path(), "docs"), "docs"),
     ("src/vi/ui/res", "."),  # README.md
 ]
 

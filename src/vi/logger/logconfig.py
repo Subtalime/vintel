@@ -26,7 +26,7 @@ from logging.config import dictConfig
 from logging.handlers import RotatingFileHandler
 from vi.logger.logwindow import LogDisplayHandler, LOG_WINDOW_HANDLER_NAME
 from vi.logger.logqueue import LogQueueHandler
-from vi.resources import getVintelLogDir, resourcePath
+from vi.resources import get_vintel_log_directory, get_resource_path
 from vi.singleton import Singleton
 from vi.version import ROOT_DIR
 
@@ -67,7 +67,7 @@ class LogConfiguration(six.with_metaclass(Singleton)):
             config_path = self._getDefaultLogConfigFilePath(config_file)
         else:
             config_path = config_file
-        self.log_folder = log_folder if log_folder is not None else getVintelLogDir()
+        self.log_folder = log_folder if log_folder is not None else get_vintel_log_directory()
         if os.path.exists(config_path):
             with open(config_path, "rt") as f:
                 try:

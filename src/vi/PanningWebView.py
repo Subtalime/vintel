@@ -19,8 +19,10 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt, QObject
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from PyQt5.QtGui import QContextMenuEvent
 from vi.map.MapWebEnginePage import MapWebEnginePage
 import logging
+from vi.viewer import ViewerDialog
 
 
 class PanningWebView(QWidget):
@@ -38,6 +40,16 @@ class PanningWebView(QWidget):
         self.setLayout(self.vl)
         self.oldContent = None
 
+    @property
+    def content(self) -> str:
+        return self.oldContent
+
+    def contextMenuEvent(self, a0: QContextMenuEvent) -> None:
+        menu = self.mapView.createStandardContextMenu()
+        action = self.mapView.ViewSource()
+        if action:
+            view = ViewerDialog(self, content=self.content)
+            view.exec_()
 
     def eventFilter(self, a0: QObject, a1: QEvent) -> bool:
         if a1.type() == QEvent.Wheel:

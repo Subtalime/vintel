@@ -23,7 +23,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QMessageBox, QListWidgetItem
 
 from vi.dotlan.regions import Regions
-from vi.resources import getVintelMap, resourcePath
+from vi.resources import get_vintel_map_file_path, get_resource_path
 from vi.settings.settings import RegionSettings
 from vi.settings.SettingsFormTemplate import SettingsFormTemplate
 from vi.ui.RegionsForm import Ui_Form
@@ -65,11 +65,11 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
             for region in regions:
                 if not region.endswith(".svg"):
                     success = False
-                if not isfile(getVintelMap(region)):
+                if not isfile(get_vintel_map_file_path(region)):
                     success = False
             if not success:
                 files = []
-                for file in os.listdir(getVintelMap()):
+                for file in os.listdir(get_vintel_map_file_path()):
                     if file.endswith(".svg"):
                         files.append(file)
                         QMessageBox.critical(
@@ -77,7 +77,7 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
                             "Region selection",
                             'Regions must end with ".svg" '
                             'and exist in "{dirpath}\nExisting files '
-                            'are:{files}"'.format(dirpath=getVintelMap(), files=files),
+                            'are:{files}"'.format(dirpath=get_vintel_map_file_path(), files=files),
                         )
                 self.txtRegions.setFocus()
         if success:
@@ -87,16 +87,16 @@ class RegionsForm(SettingsFormTemplate, Ui_Form):
     def region_help_clicked(self):
         # open a Help-Dialog
         try:
-            with open(resourcePath("docs/regionselect.txt")) as f:
+            with open(get_resource_path("docs/regionselect.txt")) as f:
                 content = f.read()
-                content = content.replace("<mapdir>", getVintelMap())
+                content = content.replace("<mapdir>", get_vintel_map_file_path())
                 QMessageBox.information(None, "Region-Help", content)
         except FileNotFoundError:
             QMessageBox.warning(
                 self,
                 "Help-File",
                 "Unable to find Help-File \n{}".format(
-                    resourcePath("docs/regionselect.txt")
+                    get_resource_path("docs/regionselect.txt")
                 ),
             )
 

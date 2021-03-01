@@ -54,7 +54,7 @@ from vi.logger.logconfig import LogConfigurationThread
 from vi.logger.logwindow import LogWindow
 from vi.stopwatch.mystopwatch import ViStopwatch
 from vi.region.RegionMenu import RegionMenu
-from vi.resources import resourcePath, getVintelDir
+from vi.resources import get_resource_path, get_vintel_directory
 from vi.settings.settings import GeneralSettings, RegionSettings
 from vi.settings.SettingsDialog import SettingsDialog
 from vi.sound.soundmanager import SoundManager
@@ -65,6 +65,7 @@ from vi.threads.chatmonitor import ChatMonitorThread
 from vi.threads.filewatcher import FileWatcherThread
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.version import NotifyNewVersionThread
+from vi.viewer import ViewerDialog
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -87,7 +88,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.LOGGER.debug("LogWindow done")
         # let's hope, this will speed up start-up
         self.LOGGER.debug("EsiInterface create...")
-        EsiInterface(cache_dir=getVintelDir())
+        EsiInterface(cache_dir=get_vintel_directory())
         self.LOGGER.debug("EsiInterface done")
         self.resize(1363, 880)
         self.splitter.setSizes([1065, 239])
@@ -96,10 +97,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setWindowTitle(vi.version.DISPLAY)
         self.message_expiry = GeneralSettings().message_expiry
         self.set_main_window_color(GeneralSettings().background_color)
-        self.clipboardCheckInterval()
+        self.set_clipboard_check_interval()
         self.map_update_interval = GeneralSettings().map_update_interval
         self.set_constants()
-        self.setWindowIcon(QtGui.QIcon(resourcePath("logo_small.png")))
+        self.setWindowIcon(QtGui.QIcon(get_resource_path("logo_small.png")))
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.pathToLogs = path_to_logs
         self.clipboardTimer = QtCore.QTimer(self)
@@ -108,7 +109,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.trayIcon.activated.connect(self.system_tray_activated)
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
-        self.changeAlarmDistance(GeneralSettings().alarm_distance)
+        self.set_alarm_distance(GeneralSettings().alarm_distance)
         self.frameButton.setVisible(False)
 
         # Load toon names of this User
@@ -148,8 +149,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.wireUpUIConnections()
         self.recallCachedSettings()
-        self.setupThreads()
-        self.setupMap(True)
+        self.setup_threads()
+        self.setup_map(True)
 
     def __init__(self):
         super(self.__class__, self).__init__()
@@ -298,15 +299,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.useSpokenNotificationsAction.triggered.connect(
             self.changeUseSpokenNotifications
         )
-        self.trayIcon.alarm_distance.connect(self.changeAlarmDistance)
+        self.trayIcon.alarm_distance.connect(self.set_alarm_distance)
         self.framelessWindowAction.triggered.connect(self.change_frameless)
         self.trayIcon.change_frameless.connect(self.change_frameless)
         self.trayIcon.view_chatlogs.connect(self.viewChatlogs)
         self.trayIcon.refresh_map.connect(self.updateMapView)
+        self.trayIcon.view_map_source.connect(self.view_map_source)
         self.frameButton.clicked.connect(self.change_frameless)
         self.actionQuit.triggered.connect(self.close)
         self.trayIcon.quit_me.connect(self.close)
-        self.menuRegion.triggered[QAction].connect(self.processRegionSelectMenu)
+        self.menuRegion.triggered[QAction].connect(self.process_region_select_menu)
         self.mapView.page().scroll_detected.connect(self.map_position_changed)
         self.actionSettings.triggered.connect(self.settings)
         self.actionSettings.setEnabled(True)
@@ -319,11 +321,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def region_menu_update(self):
         self.menuRegion.addItems()
 
+    def view_map_source(self):
+        viewer = ViewerDialog(self, self.mapView.content)
+        viewer.exec_()
+
     def viewChatlogs(self):
         logs = ""
         for log in self.chatThread.process_pool.keys():
             logs += "{}\r\n".format(log)
-        QMessageBox.information(None, "Monitored logs", "%s" % logs, QMessageBox.Ok)
+        QMessageBox.information(None, "List of monitored log files", "%s" % logs, QMessageBox.Ok)
 
     def settings(self, tabIndex: int = 0) -> bool:
 
@@ -336,26 +342,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_main_window_color(GeneralSettings().background_color)
             # self.enableCharacterParser(GeneralSettings().character_parser)
             # self.enableShipParser(GeneralSettings().ship_parser)
-            self.enablePopupNotification(GeneralSettings().popup_notification)
-            self.clipboardCheckInterval(GeneralSettings().clipboard_check_interval)
-            self.messageExpiry(GeneralSettings().message_expiry)
-            self.enableSelfNotify(GeneralSettings().self_notify)
-            self.changeAlarmDistance(GeneralSettings().alarm_distance)
+            self.set_popup_notification(GeneralSettings().popup_notification)
+            self.set_clipboard_check_interval(GeneralSettings().clipboard_check_interval)
+            self.set_message_expiry_duration(GeneralSettings().message_expiry)
+            self.set_self_notification(GeneralSettings().self_notify)
+            self.set_alarm_distance(GeneralSettings().alarm_distance)
             self.region_menu_update()
             return True
         return False
 
-    def enableSelfNotify(self, enable: bool = None) -> bool:
+    def set_self_notification(self, enable: bool = None) -> bool:
         if enable is not None:
             self.selfNotify = enable
         return self.selfNotify
 
-    def enablePopupNotification(self, enable: bool = None) -> bool:
+    def set_popup_notification(self, enable: bool = None) -> bool:
         if enable is not None:
             self.popup_notification = enable
         return self.popup_notification
 
-    def clipboardCheckInterval(self, value: int = None):
+    def set_clipboard_check_interval(self, value: int = None):
         if value:
             self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
         if self.clipboard_check_interval is None:
@@ -364,10 +370,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return self.clipboard_check_interval
 
     # Menu-Selection of Regions
-    def processRegionSelectMenu(self, qAction: "QAction"):
+    def process_region_select_menu(self, qAction: "QAction"):
         if qAction.objectName() == "region_select":
             self.LOGGER.debug("Opened Region-Selector Dialog")
-            self.showRegionChooser()
+            self.show_region_dialog()
         elif qAction.objectName() == "jumpbridge_select":
             self.LOGGER.debug("Opened JumpBridge dialog")
             self.jump_bridge_dialog()
@@ -375,17 +381,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if RegionSettings().selected_region != qAction.text():
                 RegionSettings().selected_region = qAction.text()
                 self.LOGGER.debug("Set Region to {}".format(qAction.text()))
-                self.setupMap()
+                self.setup_map()
 
     # Dialog to select Regions to monitor
-    def showRegionChooser(self):
+    def show_region_dialog(self):
         self.settings(3)
 
-    def updatePlayers(self, player_list: list):
+    def update_players(self, player_list: list):
         self.knownPlayers.add_names(player_list)
         self.updateCharacterMenu()
 
-    def setupThreads(self):
+    def setup_threads(self):
         self.LOGGER.debug("Creating threads")
 
         self.logConfigThread = LogConfigurationThread(self.logWindow)
@@ -416,7 +422,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chatThread.message_updated_signal.connect(
             self.update_message_details_on_chat_entry
         )
-        self.chatThread.player_added_signal.connect(self.updatePlayers)
+        self.chatThread.player_added_signal.connect(self.update_players)
         self.chatThread.start()
 
         self.filewatcherThread = FileWatcherThread(self.pathToLogs)
@@ -438,7 +444,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # TODO: store each system configured in Regions
     # TODO: therefore if we switch Region, we can update with previously found data
     # TODO: when clicking on System in Chat, scroll to the position within the Map
-    def setupMap(self, initialize=False):
+    def setup_map(self, initialize=False):
         if self.mapUpdateThread:
             self.mapUpdateThread.pause(True)
         self.LOGGER.debug("Finding map file")
@@ -729,7 +735,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         newSize = ChatEntryWidget.TEXT_SIZE + 1
         self.changeChatFontSize(newSize)
 
-    def messageExpiry(self, seconds: int = None) -> int:
+    def set_message_expiry_duration(self, seconds: int = None) -> int:
         if seconds:
             self.message_expiry = int(seconds)
         self.chatbox.setTitle(
@@ -749,7 +755,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #         self.ship_parser.emit(enable)
     #     return self.ship_parser_enabled
     #
-    def changeAlarmDistance(self, distance: int):
+    def set_alarm_distance(self, distance: int):
         self.alarmDistance = int(distance)
         for action in self.trayIcon.context_menu.distanceGroup.actions():
             if action.alarmDistance == distance:
@@ -940,7 +946,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             region_name = six.text_type(menu_action.property("regionName"))
             region_name = Regions().convert_region_name(region_name)
             RegionSettings().selected_region = region_name
-            self.setupMap()
+            self.setup_map()
 
     # TODO: here it would be good to have a list of Messages per Region
     # so, when changing Region, the current list of Messages could be

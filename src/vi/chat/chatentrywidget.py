@@ -29,12 +29,14 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 import vi.ui.ChatEntry
-from vi.resources import resourcePath
+from vi.resources import get_resource_path
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
+    """This is the actual Widget which displays the Chat-Message logged, complete with Links
+    """
     TEXT_SIZE = 11
     SHOW_AVATAR = True
     mark_system = pyqtSignal(str)
@@ -47,7 +49,7 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         # QWidget.__init__(self)
         super(ChatEntryWidget, self).__init__()
         self.setupUi(self)
-        self.QuestionMarkPixMap = QPixmap(resourcePath("qmark.png")).scaledToHeight(32)
+        self.QuestionMarkPixMap = QPixmap(get_resource_path("qmark.png")).scaledToHeight(32)
         self.avatarLabel.setPixmap(self.QuestionMarkPixMap)
         self.message = message
         self.updateText()
@@ -85,11 +87,13 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
 
     def updateText(self):
         time = datetime.datetime.strftime(self.message.timestamp, "%H:%M:%S")
+        display_text = "".join(str(item) for item in self.message.navigable_string.contents)
         text = u"<small>{time} - <b>{user}</b> - <i>{room}</i></small><br>{text}".format(
             user=self.message.user,
             room=self.message.room,
             time=time,
-            text=self.message.message,
+            text=display_text,
+            # text=self.message.message,
         )
         self.textLabel.setText(text)
         # self.updateTooltip(self.message.message)

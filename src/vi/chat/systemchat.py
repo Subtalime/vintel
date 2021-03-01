@@ -45,7 +45,6 @@ import vi.ui.SystemChat
 
 class SystemChat(QtWidgets.QDialog, vi.ui.SystemChat.Ui_Dialog):
     """Dialog to show the chat associated with the selected system
-
     """
     SYSTEM = 0
     location_set = pyqtSignal(str, str)
