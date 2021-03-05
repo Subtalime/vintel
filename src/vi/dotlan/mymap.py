@@ -27,11 +27,12 @@ import time
 from bs4.element import CData, Tag, ResultSet
 from bs4 import BeautifulSoup
 
+
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QProgressDialog
 from vi.cache import Cache
 from vi.dotlan.colorjavascript import ColorJavaScript
-from vi.jumpbridge.jumpbridge import Jumpbridge
+from vi.jumpbridge.jumpbridge import JumpBridge, Bridge
 from vi.dotlan.system import MySystem
 from vi.dotlan.exception import DotlanException
 from vi.esi import EsiInterface
@@ -40,6 +41,22 @@ from vi.resources import get_vintel_map_file_path
 from vi.states import State
 from vi.dotlan.soups import SoupSystem, SoupUse, SoupRect
 import requests
+
+
+class MapDataException(Exception):
+    pass
+
+
+class MapNotInCacheException(MapDataException):
+    pass
+
+
+class MapFileNotFoundException(MapDataException):
+    pass
+
+
+class MapNotFoundOnDotlanException(MapDataException):
+    pass
 
 
 class MapData:
@@ -57,13 +74,18 @@ class MapData:
         try:
             content = requests.get(url).text
             if content.startswith("region not found"):
-                raise DotlanException(content)
+                raise MapNotFoundOnDotlanException(f"Region '{self.region}' could not "
+                                                   f"be found on Dotlan ({self.DOTLAN_BASE_URL})")
         except Exception as e:
             raise DotlanException(e)
         return content
 
     def _from_dotlan(self):
-        self.svg = self._get_svg_from_dotlan()
+        try:
+            self.svg = self._get_svg_from_dotlan()
+        except Exception:
+            raise
+
         Cache().put(
             key="map_" + self.region,
             value=self.svg,
@@ -79,24 +101,26 @@ class MapData:
     def _from_cache(self):
         self.svg = Cache().fetch("map_" + self.region)
         if not self.svg:
-            raise
+            raise MapNotInCacheException(f"Region '{self.region}' not found in Cache under 'map_{self.region}'")
 
     def _from_file(self):
         file_path = get_vintel_map_file_path(region_name=self.region)
         try:
             with open(file_path, "r") as f:
                 self.svg = f.read()
-        except:
+        except FileNotFoundError:
+            raise MapFileNotFoundException(f"File '{file_path}' does not exist")
+        except Exception:
             raise
 
     def load(self):
         # try in sequence
         try:
             self._from_cache()
-        except:
+        except MapDataException:
             try:
                 self._from_file()
-            except FileNotFoundError:
+            except MapDataException:
                 try:
                     self._from_dotlan()
                 except DotlanException as e:
@@ -111,23 +135,30 @@ class MapData:
         self._fix_svg()
         return self.svg
 
-
 class MyMap:
+    region = None
+    parent = None
+    progress = None
+    sw = ViStopwatch()
+    system_updates = 0
+    soup = None
+    systems = {}
+    jumpbridges_loaded = []
+    _jumpMapsVisible = False
+    _statisticsVisible = False
 
     def __init__(self, parent=None, region="Delve"):
         self.LOGGER = logging.getLogger(__name__)
-        self.LOGGER.debug("Initializing Map for \"{}\"".format(region))
-        self.region = region
         self.parent = parent
-        self.progress = None
-        self.sw = ViStopwatch()
-        self.system_updates = 0
-        self.soup = None
-        self.systems = {}
-        self.jumpbridges_loaded = []
-        self._jumpMapsVisible = False
-        self._statisticsVisible = False
+        self.region = region
 
+    def load_region(self, region: str = None):
+        if not region and not self.region:
+            self.LOGGER.error("Trying to load a map with no Region passed")
+            return
+        if region:
+            self.region = region
+        self.LOGGER.debug("Loading map for Region: '%s'", self.region)
         if self.parent:
             if not self.progress:
                 self.progress = QtWidgets.QProgressDialog(
@@ -149,7 +180,7 @@ class MyMap:
         self.LOGGER.debug(self.sw.get_report())
         self.marker = self.soup.findAll("g", {"id": "select_marker"})[0]
         # self.marker = self.soup.select("#select_marker")[0]
-        self.LOGGER.debug("Initializing Map for \"{}\": Done".format(region))
+        self.LOGGER.debug("Map loading for Region '%s': Done", region)
         if self.progress:
             # this closes...
             self.progress.setValue(1)
@@ -175,42 +206,14 @@ class MyMap:
                                                                  )
         self.LOGGER.debug(self.sw.get_report())
 
-    def _prepare_svg(self):
-        svg = self.soup.findAll("svg")[0]
-        # Disable dotlan mouse functionality and make all jump lines black
-        svg["onmousedown"] = "return false;"
-        for line in self.soup.select("line"):
-            line["class"] = "j"
-
-        # make room for the Statistics on the bottom systems
-        svg["height"] = int(svg["height"]) + 10
-
-        # Current system marker ellipse
-        group = self.soup.new_tag(
-            "g",
-            id="select_marker",
-            opacity="0",
-            activated="0",
-            transform="translate(0, 0)",
-        )
-        ellipse = self.soup.new_tag(
-            "ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF"
-        )
-        group.append(ellipse)
-
-        # The giant cross-hairs
-        for coord in ((0, -10000), (-10000, 0), (10000, 0), (0, 10000)):
-            line = self.soup.new_tag(
-                "line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF"
-            )
-            group.append(line)
-        svg.insert(0, group)
-
-        # Create jumpbridge markers in a variety of colors
-        for jbColor in Jumpbridge.JB_COLORS:
-            start_path = self.soup.new_tag("path", d="M 10 0 L 10 10 L 0 5 z")
-            start_marker = self.soup.new_tag(
+    @staticmethod
+    def _jump_bridge_markers() -> Tag:
+        bs = BeautifulSoup()
+        jump_group = bs.new_tag("g", {"id": "jump_bridge_markers"})
+        for jbColor in JumpBridge.JB_COLORS:
+            start_marker = bs.new_tag(
                 "marker",
+                # viewBox="0 0 10 10",
                 viewBox="0 0 20 20",
                 id="arrowstart_{0}".format(jbColor.strip("#")),
                 markerUnits="strokeWidth",
@@ -221,10 +224,9 @@ class MyMap:
                 orient="auto",
                 style="stroke:{0};fill:{0}".format(jbColor),
             )
-            start_marker.append(start_path)
-            svg.insert(0, start_marker)
-            endpath = self.soup.new_tag("path", d="M 0 0 L 10 5 L 0 10 z")
-            endmarker = self.soup.new_tag(
+            start_marker.append(bs.new_tag("path", d="M 10 0 L 10 10 L 0 5 z"))
+            jump_group.append(start_marker)
+            endmarker = bs.new_tag(
                 "marker",
                 viewBox="0 0 20 20",
                 id="arrowend_{0}".format(jbColor.strip("#")),
@@ -236,9 +238,53 @@ class MyMap:
                 orient="auto",
                 style="stroke:{0};fill:{0}".format(jbColor),
             )
-            endmarker.append(endpath)
-            svg.insert(0, endmarker)
-        jumps = self.soup.select("#jumps")[0]
+            endmarker.append(bs.new_tag("path", d="M 0 0 L 10 5 L 0 10 z"))
+            jump_group.append(endmarker)
+        return jump_group
+
+    def _prepare_svg(self):
+        try:
+            svg = self.soup.findAll("svg")[0]
+        except Exception:
+            raise MapDataException("SVG Tag not found in soup")
+        # Disable dotlan mouse functionality and make all jump lines black
+        svg["onmousedown"] = "return false;"
+        # make room for the Statistics on the bottom systems
+        svg["height"] = int(svg["height"]) + 10
+
+        # update the line color in the connection lines
+        jumps = self.soup.findAll("g", {"id": "jumps"})
+        if jumps:
+            for line in jumps[0].findAll("line"): # self.soup.select("line"):
+                line["class"] = "j"
+
+        # Create some new data for the SVG
+        # Current system marker ellipse
+        group = self.soup.new_tag(
+            "g",
+            id="select_marker",
+            opacity="0",
+            activated="0",
+            transform="translate(0, 0)",
+        )
+        # group.append(self.soup.new_tag(
+        #     "ellipse", cx="0", cy="0", rx="56", ry="28", style="fill:#462CFF"
+        # ))
+
+        # The giant cross-hairs
+        for coord in ((0, -10000), (-10000, 0), (10000, 0), (0, 10000)):
+            line = self.soup.new_tag(
+                "line", x1=coord[0], y1=coord[1], x2="0", y2="0", style="stroke:#462CFF"
+            )
+            group.append(line)
+        svg.insert(0, group)
+
+        # Create jumpbridge markers in a variety of colors
+        svg.insert(0, self._jump_bridge_markers())
+        try:
+            jumps = self.soup.findAll("g", {"id": "jumps"})[0]
+        except KeyError:
+            raise MapDataException("Could not find #jump tag")
 
         # Set up the tags for system statistics
         for system_id, system in self.systemsById.items():
@@ -269,13 +315,14 @@ class MyMap:
             It takes a look at all the jumps on the map and gets the system under
             which the line ends
         """
-        for jump in self.soup.select("#jumps")[0].select(".j"):
-            if "jumpbridge" in jump["class"]:
+        for jump in self.soup.findAll("g", {"id": "jumps"})[0].findAll("line", {"class": "j"}):
+            try:
+                (ident, start, end) = jump["id"].split("-")
+            except ValueError:
                 continue
-            parts = jump["id"].split("-")
-            if parts[0] == "j":
-                start_system = self.systemsById[int(parts[1])]
-                stop_system = self.systemsById[int(parts[2])]
+            if ident == "j":
+                start_system = self.systemsById[int(start)]
+                stop_system = self.systemsById[int(end)]
                 start_system.add_neighbour(stop_system)
                 stop_system.add_neighbour(start_system)
 
@@ -292,7 +339,8 @@ class MyMap:
 
     def set_statistics_visibility(self, visible: bool):
         value = "visible" if visible else "hidden"
-        for line in self.soup.select(".statistics"):
+        # for line in self.soup.select(".statistics"):
+        for line in self.soup.findAll("text", {"class": "statistics"}):
             line["visibility"] = value
         self._statisticsVisible = visible
 
@@ -300,7 +348,8 @@ class MyMap:
         if len(self.jumpbridges_loaded) == 0:
             return
         value = "visible" if visible else "hidden"
-        for line in self.soup.select(".jumpbridge"):
+        # for line in self.soup.select(".jumpbridge"):
+        for line in self.soup.findAll(Bridge.soup_name, {"class": Bridge.class_name}):
             line["visibility"] = value
         self._jumpMapsVisible = visible
 
@@ -405,7 +454,7 @@ class MyMap:
             return
         if self.jumpbridges_loaded == jumpbridge_data:
             return
-        jb_builder = Jumpbridge(self.systems, self.soup, jumpbridge_data)
+        jb_builder = JumpBridge(self.systems, self.soup, jumpbridge_data)
         progress = QProgressDialog(
             "Creating Jump-Bridge mappings...", "Abort", 0, len(jumpbridge_data), parent
         )
@@ -427,35 +476,42 @@ class MyMap:
         del progress
 
 
+class MyNewMap(MyMap):
+    def __init__(self, parent=None, region="Delve"):
+        super(MyNewMap, self).__init__(parent, region)
+
+
 if __name__ == "__main__":
-    data = MyMap()
+    data = MyNewMap()
+    data.load_region()
     print(len(data.svg))
     sw = ViStopwatch()
     iter = 0
-    with sw.timer("Start"):
+    with sw.timer("findAll 'rect' of Class 'o' and Delete them"):
         # for g in data.soup.findAll("g", {"id": "controls"}):
         for g in data.soup.findAll("rect", {"class": "o"}):
-            print(f"{iter}: {g}")
+            # print(f"{iter}: {g}")
             g.decompose()
             iter += 1
-    print(sw.get_report())
+    print(sw.get_report(f"Iterations: {iter}"))
 
     iter = 0
-    with sw.timer("System findAll"):
+    with sw.timer("findAll 'a' of Class 'sys' in 'symbol'"):
         for g in data.soup.findAll("symbol"):
             ele = g.findAll("a", {"class": "sys"})
-            print(f"{iter}: {ele}")
+            # print(f"{iter}: {ele}")
             iter += 1
-    print(sw.get_report())
+    print(sw.get_report(f"Iterations: {iter}"))
 
     iter = 0
-    with sw.timer("System select"):
+    with sw.timer("select Class '.sys'"):
         for g in data.soup.select("symbol"):
             ele = g.select(".sys")
             # print(f"{iter}: {ele}")
             iter += 1
-    print(sw.get_report())
+    print(sw.get_report(f"Iterations: {iter}"))
 
     #get first system
     sys = list(data.systems.items())[0]
-    print(sys[1].rect_rect)
+    print(sys[1])
+

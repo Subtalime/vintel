@@ -253,6 +253,10 @@ class ChatThreadProcess(QThread):
         return GeneralSettings().character_parser
 
     @property
+    def url_scanner(self):
+        return GeneralSettings().url_parser
+
+    @property
     def message_age(self):
         return self.OLDEST_MESSAGE
 
@@ -271,8 +275,9 @@ class ChatThreadProcess(QThread):
             if self.ship_scanner:
                 with sw.timer("Ship-Scanner"):
                     self.message_parser.process_ships(message)
-            with sw.timer("Search URLs"):
-                self.message_parser.process_urls(message)
+            if self.url_scanner:
+                with sw.timer("Search URLs"):
+                    self.message_parser.process_urls(message)
             if self.character_scanner:
                 with sw.timer("Scan character names"):
                     self.message_parser.process_charnames(message)

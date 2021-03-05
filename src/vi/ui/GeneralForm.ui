@@ -25,19 +25,92 @@
         <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout_9">
-        <item row="0" column="1">
-         <widget class="QLabel" name="label_18">
+        <item row="4" column="3">
+         <widget class="QPushButton" name="pbColorSystem">
           <property name="text">
-           <string>Scan for Character-Names:</string>
+           <string>Color...</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="2">
+        <item row="5" column="1">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Highlight CHARACTER:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="3">
+         <widget class="QPushButton" name="pbColorCharacter">
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Highlight SHIP:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="3">
+         <widget class="QPushButton" name="pbColorUrl">
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="3">
          <widget class="QSpinBox" name="spinMessageExpiry">
           <property name="font">
            <font>
             <pointsize>12</pointsize>
            </font>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QCheckBox" name="checkShipNames">
+          <property name="toolTip">
+           <string>analyse Chat-Messages for Ship-Names and provide a link to zKillboard</string>
+          </property>
+          <property name="text">
+           <string>enable</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLabel" name="label_20">
+          <property name="text">
+           <string>Message expiry (Minutes):</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="3">
+         <widget class="QPushButton" name="pbColorShip">
+          <property name="text">
+           <string>Color...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Highlight URL:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Scan for URLs</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_18">
+          <property name="text">
+           <string>Scan for Character-Names:</string>
           </property>
          </widget>
         </item>
@@ -48,7 +121,14 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="2">
+        <item row="4" column="1">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Highlight SYSTEM:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
          <widget class="QCheckBox" name="checkScanCharacter">
           <property name="toolTip">
            <string>scan messages for Character-Names and provide a link to zKillboard</string>
@@ -58,76 +138,10 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="2">
-         <widget class="QCheckBox" name="checkShipNames">
-          <property name="toolTip">
-           <string>analyse Chat-Messages for Ship-Names and provide a link to zKillboard</string>
-          </property>
+        <item row="2" column="3">
+         <widget class="QCheckBox" name="checkURL">
           <property name="text">
            <string>enable</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLabel" name="label_20">
-          <property name="text">
-           <string>Message expiry (Minutes):</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="2">
-         <widget class="QPushButton" name="pbColorSystem">
-          <property name="text">
-           <string>Color...</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>Highlight SYSTEM:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>Highlight CHARACTER:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QLabel" name="label_4">
-          <property name="text">
-           <string>Highlight SHIP:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="2">
-         <widget class="QPushButton" name="pbColorCharacter">
-          <property name="text">
-           <string>Color...</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="2">
-         <widget class="QPushButton" name="pbColorShip">
-          <property name="text">
-           <string>Color...</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1">
-         <widget class="QLabel" name="label_5">
-          <property name="text">
-           <string>Highlight URL:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="2">
-         <widget class="QPushButton" name="pbColorUrl">
-          <property name="text">
-           <string>Color...</string>
           </property>
          </widget>
         </item>

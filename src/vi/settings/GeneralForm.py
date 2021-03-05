@@ -40,12 +40,14 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.spinMessageExpiry.setMinimum(5)
         self.spinMessageExpiry.setMaximum(60)
         self.spinMessageExpiry.singleStep()
-        self.spinMessageExpiry.setValue(self.settings.message_expiry / 60)
+        self.spinMessageExpiry.setValue(int(self.settings.message_expiry / 60))
         self.spinMessageExpiry.valueChanged.connect(self.change_detected)
         self.checkShipNames.setChecked(self.settings.ship_parser)
         self.checkShipNames.stateChanged.connect(self.change_detected)
         self.checkScanCharacter.setChecked(self.settings.character_parser)
         self.checkScanCharacter.stateChanged.connect(self.change_detected)
+        self.checkURL.setChecked(self.settings.url_parser)
+        self.checkURL.stateChanged.connect(self.change_detected)
         self.checkNotifyOwn.setChecked(self.settings.self_notify)
         self.checkNotifyOwn.stateChanged.connect(self.change_detected)
         self.checkPopupNotification.setChecked(self.settings.popup_notification)
@@ -108,8 +110,9 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
             != self.settings.popup_notification
             or self.checkScanCharacter.isChecked() != self.settings.character_parser
             or self.checkShipNames.isChecked() != self.settings.ship_parser
+            or self.checkURL.isChecked() != self.settings.url_parser
             or int(self.spinMessageExpiry.value())
-            != int(self.settings.message_expiry) / 60
+            != int(self.settings.message_expiry / 60)
             or self.cmbLogLevel.currentText()
             != logging.getLevelName(self.settings.log_level)
             or self.colors["B"] != self.settings.background_color
@@ -127,6 +130,7 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         self.settings.popup_notification = self.checkPopupNotification.isChecked()
         self.settings.character_parser = self.checkScanCharacter.isChecked()
         self.settings.ship_parser = self.checkShipNames.isChecked()
+        self.settings.url_parser = self.checkURL.isChecked()
         self.settings.message_expiry = self.spinMessageExpiry.value() * 60
         if self.settings.log_level != logging.getLevelName(
             self.cmbLogLevel.currentText()

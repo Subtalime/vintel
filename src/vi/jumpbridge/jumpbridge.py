@@ -14,8 +14,8 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 #
-from bs4 import BeautifulSoup
-from math import sqrt
+from bs4 import BeautifulSoup, Tag
+from math import sqrt, atan2, degrees
 import requests
 import re
 import logging
@@ -27,12 +27,20 @@ class Bridge:
     """a bridge between two systems.
     This is based on how it is stored in the String-List
     """
-    def __init__(self, current_systems: System,
-                 bridge_data: list,
+    soup_name  = "path"
+    class_name = "jumpbridge"
+    line_width = 2
+
+    def __init__(self,
+                 bridge_start: System,
+                 bridge_end: System,
+                 direction: str,
+                 # current_systems: System,
+                 # bridge_data: list,
                  color_data: str,
                  timer: ViStopwatch = ViStopwatch(),
                  index: int = 0,
-                 soup: BeautifulSoup = BeautifulSoup()):
+                 ):
         """
 
         :param current_systems: the currently loaded Systems (Region Soup)
@@ -41,30 +49,24 @@ class Bridge:
         :param timer: optional Stop-Watch
         :param index: optional internal counter
         """
-        self.bridge = bridge_data
+        # self.bridge = bridge_data
+        self.start = bridge_start
+        self.end = bridge_end
         self.color = color_data
-        self.sys1 = self.bridge[0]
-        self.connection = self.bridge[1]
-        self.sys2 = self.bridge[2]
-        self.systems = current_systems
-        # self.line = None
+        self.connection = direction
         self.sw = timer
         self.index = index
-        self.soup = soup
 
-    def create_soup(self) -> BeautifulSoup.text:
-        # make sure the Jump-Bridge is in the current Region
-        if self.sys1 not in self.systems or self.sys2 not in self.systems:
-            return None
-        system_one = self.systems[self.sys1]
-        system_two = self.systems[self.sys2]
-        with self.sw.timer(f"jb col {self.index} {self.sys1}<>{self.sys2}"):
-            # this deletes the JB from Soup and re-inserts... takes time (60ms per system)
-            system_one.set_jumpbridge_color(self.color)
-            system_two.set_jumpbridge_color(self.color)
+    def create_soup(self) -> Tag:
 
         def arc_link(point_1, point_2, radius) -> str:
-            # calculate an Arc between the two systems
+            # d = degrees(atan2(point_1[0] - point_2[0], point_1[1] - point_2[1]))
+            # if d > 90 and d < 270:
+            #     point_1[1] += 15
+            #     point_2[1] -= 15
+            # else:
+            #     point_1[1] -= 15
+            #     point_2[1] += 15
             cx = (point_1[0] + point_2[0]) / 2
             cy = (point_1[1] + point_2[1]) / 2
             dx = (point_2[0] - point_1[0]) / 2
@@ -72,7 +74,7 @@ class Bridge:
             dd = sqrt(dx * dx + dy * dy)
             ex = cx + dy/dd * radius
             ey = cy - dx/dd * radius
-            return "M{x1:.2f} {y1:.2f}Q{ex:.2f} {ey:.2f} {x2:.2f} {y2:.2f}".format(
+            return "M {x1:.2f} {y1:.2f} Q {ex:.2f} {ey:.2f} {x2:.2f} {y2:.2f}".format(
                 x1=point_1[0],
                 y1=point_1[1],
                 ex=ex,
@@ -82,21 +84,27 @@ class Bridge:
             )
 
         with self.sw.timer(f"arc"):
-            system_one = [sum(x) for x in zip(system_one.map_points, system_one.get_transform_offset_point())]
-            system_two = [sum(x) for x in zip(system_two.map_points, system_two.get_transform_offset_point())]
+            system_one = [sum(x) for x in zip(self.start.map_points, self.start.get_transform_offset_point())]
+            system_two = [sum(x) for x in zip(self.end.map_points, self.end.get_transform_offset_point())]
             with self.sw.timer(f"arc-link"):
-                arc_str = arc_link(system_one, system_two, 40)
+                arc_str = arc_link(system_one, system_two, 60)
             with self.sw.timer(f"new-tag"):
-                path_tag = self.soup.new_tag(
-                    "path",
+                at = atan2(system_one[0] - system_two[0], system_one[1] - system_two[1])
+                deg = degrees(at)
+                path_tag = BeautifulSoup().new_tag(
+                    self.soup_name,
                     d=arc_str,
                     visibility="hidden",
                     style=f"stroke:{self.color}",
                     fill="none",
+                    atan=f"{at}",
+                    degree=f"{deg}",
+                    bridge_from=f"{self.start.name} {system_one}",
+                    bridge_to=f"{self.end.name} {system_two}",
                 )
-            path_tag["stroke-width"] = 2
+            path_tag["stroke-width"] = self.line_width
             path_tag["class"] = [
-                "jumpbridge",
+                self.class_name,
             ]
             if "<" in self.connection:
                 path_tag["marker-start"] = "url(#arrowstart_{0})".format(self.color.strip("#"))
@@ -105,7 +113,7 @@ class Bridge:
         return path_tag
 
 
-class Jumpbridge:
+class JumpBridge:
     JB_COLORS = (
         "#800000",
         "#808000",
@@ -138,7 +146,7 @@ class Jumpbridge:
             tuples with 3 values (sys1, connection, sys2)
         """
         self.soup = soup
-        self.jump_locations = self.soup.select("#jumps")[0]
+        self.jump_locations = self.soup.findAll("g", {"id": "jumps"})[0]
         self.jump_bridge_data = jumpbridge_data
         self.systems = systems
         self.sw = ViStopwatch()
@@ -146,7 +154,7 @@ class Jumpbridge:
 
     def clear(self):
         # destroy any previous bridges that may exist
-        for bridge in self.soup.select(".jumpbridge"):
+        for bridge in self.soup.findAll(Bridge.soup_name, {"class": Bridge.class_name}):
             bridge.decompose()
 
     def build(self):
@@ -161,17 +169,24 @@ class Jumpbridge:
                 self.clear()
             bridges = []
             with self.sw.timer("calculate"):
-                for index, bridge_data in enumerate(self.jump_bridge_data):
-                    if color_count > len(self.JB_COLORS) - 1:
+                # for index, bridge_data in enumerate(self.jump_bridge_data):
+                for index, (start, direction, end) in enumerate(self.jump_bridge_data):
+                    try:
+                        sys_start = self.systems[start.upper()]
+                        sys_end = self.systems[end.upper()]
+                    except KeyError:
+                        continue
+                    if color_count >= len(self.JB_COLORS):
                         color_count = 0
                     jb_color = self.JB_COLORS[color_count]
                     color_count += 1
-                    location = Bridge(self.systems,
-                                      bridge_data,
+                    location = Bridge(sys_start,
+                                      sys_end,
+                                      direction,
                                       jb_color,
                                       timer=self.sw,
                                       index=index,
-                                      soup=self.soup).create_soup()
+                                      ).create_soup()
                     if location:
                         yield index
                         bridges.append(location)

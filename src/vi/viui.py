@@ -65,7 +65,7 @@ from vi.threads.chatmonitor import ChatMonitorThread
 from vi.threads.filewatcher import FileWatcherThread
 from vi.ui.MainWindow import Ui_MainWindow
 from vi.version import NotifyNewVersionThread
-from vi.viewer import ViewerDialog
+from vi.viewer import ViewerForm
 
 # Timer intervals
 MESSAGE_EXPIRY_SECS = 20 * 60
@@ -322,8 +322,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.menuRegion.addItems()
 
     def view_map_source(self):
-        viewer = ViewerDialog(self, self.mapView.content)
-        viewer.exec_()
+        def get_content():
+            return self.mapView.content
+        viewer = ViewerForm(self, title=self.dotlan.region)
+        viewer.set_content_function(get_content)
+        viewer.show()
 
     def viewChatlogs(self):
         logs = ""
@@ -452,15 +455,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not regionName:
             regionName = "Delve"
         regionName = convert_region_name(regionName)
+        if initialize:
+            self.dotlan = MyMap(self)
         try:
-            self.dotlan = MyMap(parent=self, region=regionName)
+            self.dotlan.load_region(regionName)
         except DotlanException as e:
             self.LOGGER.error(e)
             QMessageBox.critical(None, "Error getting map", six.text_type(e))
             # Workaround for invalid Cache-Content
             if regionName != "Delve":
                 regionName = RegionSettings().selected_region = "Delve"
-                self.dotlan = MyMap(parent=self, region=regionName)
+                self.dotlan.load_region(region=regionName)
             else:
                 sys.exit(1)
         self.LOGGER.debug("Map File found, Region set to {}".format(regionName))

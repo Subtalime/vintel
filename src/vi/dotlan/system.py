@@ -56,10 +56,10 @@ class System:
         self.svg_element = svg_element
         self.map_soup = map_soup
         self.rect = svg_element.select("rect")[0]
-        self.firstLine = svg_element.select("text")[0]
+        self._first_line = svg_element.select("text")[0]
         self._second_line = svg_element.select("text")[1]
-        self.set_status(self.status)
         self._map_coordinates = map_coordinates
+        self.set_status(self.status)
         self.system_id = system_id
         self.transform = transform
         self.statistics = {
@@ -79,11 +79,19 @@ class System:
             self.rectIce["id"] = "icerect{}".format(self.name_label)
         self.rectIdIce = self.rectIce["id"]
         if not self.second_line.has_attr("id"):
-            self.second_line["id"] = "watch{}".format(self.name_label)
+            # self.second_line["id"] = "watch{}".format(self.name_label)
+            self._second_line["id"] = "txt{}".format(self.system_id)
+        self._second_line["class"] = "st so"
+        self._first_line["class"] = "ss"
+
         # set default to White
         for rect in self.svg_element.select("rect"):
             rect["style"] = "fill: #ffffff"
         self.jb_name = u"JB_" + self.name + u"_jb_marker"
+
+    @property
+    def first_line(self) -> Tag:
+        return self._first_line
 
     @property
     def second_line(self) -> Tag:
@@ -149,15 +157,6 @@ class System:
         ]
         return tag
 
-    def set_jumpbridge_color(self, color):
-        """set a Jump-Bridge to this system with a given color.
-        """
-        for element in self.map_soup.findAll("rect", {"id": self.jb_name}):
-            element.decompose()
-        tag = self.prepare_jumpbridge_color(color)
-        jumps = self.map_soup.findAll("g", {"id": "jumps"})[0]
-        jumps.insert(0, tag)
-
     def mark(self):
         """show the system as marked.
         """
@@ -192,9 +191,11 @@ class System:
                 style="fill:#8b008d",
                 transform=f"transform({self.transform[0]},{self.transform[1]})",
             )
-            # jumps = self.map_soup.select("#jumps")[0]
-            jumps = self.map_soup.findAll("g", {"id": "jumps"})[0]
-            jumps.insert(0, new_tag)
+            try:
+                jumps = self.map_soup.findAll("g", {"id": "jumps"})[0]
+                jumps.insert(0, new_tag)
+            except ValueError:
+                pass
 
     def setBackgroundColor(self, color):
         for rect in self.svg_element("rect"):

@@ -230,6 +230,7 @@ class GeneralSettings(_Settings):
             "color_character": "purple",
             "color_ship": "green",
             "color_url": "#28a5ed",
+            "url_parser": True,
         }
 
     @property
@@ -311,6 +312,15 @@ class GeneralSettings(_Settings):
     @ship_parser.setter
     def ship_parser(self, value: bool):
         v = {"ship_parser": bool(value)}
+        self.setting = v
+
+    @property
+    def url_parser(self) -> bool:
+        return bool(self.setting["url_parser"])
+
+    @url_parser.setter
+    def url_parser(self, value: bool):
+        v = {"url_parser": bool(value)}
         self.setting = v
 
     @property
