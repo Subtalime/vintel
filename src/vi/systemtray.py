@@ -34,7 +34,7 @@ from vi.states import State
 class TrayIcon(QtWidgets.QSystemTrayIcon):
     # Min seconds between two notifications
     MIN_WAIT_NOTIFICATION = 15
-    alarm_distance = pyqtSignal(int)
+    # alarm_distance = pyqtSignal(int)
     change_frameless = pyqtSignal()
     quit_me = pyqtSignal()
     view_chatlogs = pyqtSignal()
@@ -90,7 +90,8 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
     def changeAlarmDistance(self):
         self.LOGGER.debug("Emit Change-Alarm-Distance")
-        self.alarm_distance.emit(self.alarmDistance)
+        GeneralSettings().alarm_distance = self.alarmDistance
+        # self.alarm_distance.emit(self.alarmDistance)
 
     def changeFrameless(self):
         self.LOGGER.debug("Emit Change-Frameless")
@@ -104,7 +105,7 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
         self,
         title: str,
         msg: str,
-        icon: "QSystemTrayIcon.MessageIcon" = QSystemTrayIcon.Information,
+        icon: QSystemTrayIcon.MessageIcon = QSystemTrayIcon.Information,
         msecs: int = 10000,
     ) -> None:
         self.LOGGER.debug(f"Emit Show-Message '{title}' '{msg}'")

@@ -40,7 +40,8 @@ import vi.version
 from vi.about.dialog import AboutDialog
 from vi.cache.cache import Cache
 from vi.character.CharacterMenu import CharacterMenu, Characters
-from vi.chat.chatentrywidget import ChatEntryWidget
+from vi.chat.chatentrywidget import ChatEntryWidget, ChatEntryWidgetDeleted
+from vi.chat.chatlistwidget import ChatListWidget
 from vi.chat.chatmessage import Message
 from vi.chat.systemchat import SystemChat
 from vi.color.helpers import contrast_color, string_to_color
@@ -68,9 +69,7 @@ from vi.version import NotifyNewVersionThread
 from vi.viewer import ViewerForm
 
 # Timer intervals
-MESSAGE_EXPIRY_SECS = 20 * 60
 MAP_UPDATE_INTERVAL_MSECS = 4 * 1000
-CLIPBOARD_CHECK_INTERVAL_MSECS = 4 * 1000
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -95,9 +94,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.backgroundColor = background_color
         self.cache = Cache()
         self.setWindowTitle(vi.version.DISPLAY)
-        self.message_expiry = GeneralSettings().message_expiry
         self.set_main_window_color(GeneralSettings().background_color)
-        self.set_clipboard_check_interval()
         self.map_update_interval = GeneralSettings().map_update_interval
         self.set_constants()
         self.setWindowIcon(QtGui.QIcon(get_resource_path("logo_small.png")))
@@ -109,9 +106,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.trayIcon.activated.connect(self.system_tray_activated)
         self.clipboard = QtWidgets.QApplication.clipboard()
         self.clipboard.clear(mode=self.clipboard.Clipboard)
-        self.set_alarm_distance(GeneralSettings().alarm_distance)
-        self.frameButton.setVisible(False)
-
+        self.set_alarm_distance()
+        self.update_message_expiry_duration()
         # Load toon names of this User
         self.knownPlayers = Characters()
         # here we are resetting our own menus, not the one from UI
@@ -164,14 +160,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.versionCheckThread = None
         self.mapUpdateThread = None
         self.logConfigThread = None
-        self.selfNotify = False
         self.chatThread = None
         self.dotlan = None
         self.systems = None
-        self.popup_notification = True
-        self.character_parser_enabled = True
-        self.ship_parser_enabled = True
-        self.clipboard_check_interval = None
         self.backgroundColor = None
         self.LOGGER = None
         self.stopWatch = None
@@ -180,9 +171,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.content = None
         self.initialMapPosition = None
         self.initialZoom = None
-        self.lastStatisticsUpdate = 0
         self.chatEntries = []
-        self.message_expiry = None
         self.refreshContent = None
         self.pathToLogs = None
         self.clipboardTimer = None
@@ -232,10 +221,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.map_update_interval:
             self.map_update_interval = MAP_UPDATE_INTERVAL_MSECS
             GeneralSettings().map_update_interval = self.map_update_interval
-        self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
-        if not self.clipboard_check_interval:
-            self.clipboard_check_interval = CLIPBOARD_CHECK_INTERVAL_MSECS
-            GeneralSettings.clipboard_check_interval = self.clipboard_check_interval
 
     def updateCharacterMenu(self):
         try:
@@ -299,13 +284,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.useSpokenNotificationsAction.triggered.connect(
             self.changeUseSpokenNotifications
         )
-        self.trayIcon.alarm_distance.connect(self.set_alarm_distance)
+        # self.trayIcon.alarm_distance.connect(self.alarm_distance)
         self.framelessWindowAction.triggered.connect(self.change_frameless)
         self.trayIcon.change_frameless.connect(self.change_frameless)
         self.trayIcon.view_chatlogs.connect(self.viewChatlogs)
         self.trayIcon.refresh_map.connect(self.updateMapView)
         self.trayIcon.view_map_source.connect(self.view_map_source)
-        self.frameButton.clicked.connect(self.change_frameless)
         self.actionQuit.triggered.connect(self.close)
         self.trayIcon.quit_me.connect(self.close)
         self.menuRegion.triggered[QAction].connect(self.process_region_select_menu)
@@ -325,7 +309,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         def get_content():
             return self.mapView.content
         viewer = ViewerForm(self, title=self.dotlan.region)
-        viewer.set_content_function(get_content)
+        viewer.set_content_loader_function(get_content)
         viewer.show()
 
     def viewChatlogs(self):
@@ -343,34 +327,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if setting.exec_():
             if self.backgroundColor != GeneralSettings().background_color:
                 self.set_main_window_color(GeneralSettings().background_color)
-            # self.enableCharacterParser(GeneralSettings().character_parser)
-            # self.enableShipParser(GeneralSettings().ship_parser)
-            self.set_popup_notification(GeneralSettings().popup_notification)
-            self.set_clipboard_check_interval(GeneralSettings().clipboard_check_interval)
-            self.set_message_expiry_duration(GeneralSettings().message_expiry)
-            self.set_self_notification(GeneralSettings().self_notify)
-            self.set_alarm_distance(GeneralSettings().alarm_distance)
+            self.update_message_expiry_duration()
+            self.set_alarm_distance()
             self.region_menu_update()
             return True
         return False
 
-    def set_self_notification(self, enable: bool = None) -> bool:
-        if enable is not None:
-            self.selfNotify = enable
-        return self.selfNotify
+    @property
+    def self_notify(self) -> bool:
+        return GeneralSettings().self_notify
 
-    def set_popup_notification(self, enable: bool = None) -> bool:
-        if enable is not None:
-            self.popup_notification = enable
-        return self.popup_notification
+    @property
+    def popup_notification(self) -> bool:
+        return GeneralSettings().popup_notification
 
-    def set_clipboard_check_interval(self, value: int = None):
-        if value:
-            self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
-        if self.clipboard_check_interval is None:
-            self.clipboard_check_interval = GeneralSettings().clipboard_check_interval
-
-        return self.clipboard_check_interval
+    @property
+    def clipboard_check_interval(self) -> int:
+        return GeneralSettings().clipboard_check_interval
 
     # Menu-Selection of Regions
     def process_region_select_menu(self, qAction: "QAction"):
@@ -626,7 +599,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if new_value is None:
             new_value = self.showChatAction.isChecked()
         self.showChatAction.setChecked(new_value)
-        self.chatbox.setVisible(new_value)
+        self.chatGroupBox.setVisible(new_value)
 
     def changeKosCheckClipboard(self, new_value=None):
         if new_value is None:
@@ -702,8 +675,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.show()
 
     def change_frameless(self, new_value=None):
-        if new_value is None:
-            new_value = not self.frameButton.isVisible()
         self.hide()
         if new_value:
             self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
@@ -711,7 +682,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.setWindowFlags(int(self.windowFlags()) & (~QtCore.Qt.FramelessWindowHint))
         self.menubar.setVisible(not new_value)
-        self.frameButton.setVisible(new_value)
         self.framelessWindowAction.setChecked(new_value)
 
         for cm in TrayContextMenu.instances:
@@ -728,25 +698,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def changeChatFontSize(self, newSize):
         if newSize:
-            for entry in self.chatEntries:
-                entry.changeFontSize(newSize)
-            ChatEntryWidget.TEXT_SIZE = newSize
+            self.chatListWidget.update_font_size(newSize)
 
     def chatSmaller(self):
         newSize = ChatEntryWidget.TEXT_SIZE - 1
+        GeneralSettings().chat_entry_font_size = newSize
         self.changeChatFontSize(newSize)
 
     def chatLarger(self):
         newSize = ChatEntryWidget.TEXT_SIZE + 1
+        GeneralSettings().chat_entry_font_size = newSize
         self.changeChatFontSize(newSize)
 
-    def set_message_expiry_duration(self, seconds: int = None) -> int:
-        if seconds:
-            self.message_expiry = int(seconds)
-        self.chatbox.setTitle(
-            "All intel (past {} minutes)".format(int(self.message_expiry) / 60)
+    @property
+    def message_expiry(self) -> int:
+        return GeneralSettings().message_expiry
+
+    def update_message_expiry_duration(self):
+        self.chatGroupBox.setTitle(
+            "All intel (past {} minutes)".format(int(self.message_expiry / 60))
         )
-        return self.message_expiry
 
     # def enableCharacterParser(self, enable: bool = None) -> bool:
     #     if enable is not None:
@@ -760,12 +731,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     #         self.ship_parser.emit(enable)
     #     return self.ship_parser_enabled
     #
-    def set_alarm_distance(self, distance: int):
-        self.alarmDistance = int(distance)
+    @property
+    def alarm_distance(self) -> int:
+        return GeneralSettings().alarm_distance
+
+    def set_alarm_distance(self):
         for action in self.trayIcon.context_menu.distanceGroup.actions():
-            if action.alarmDistance == distance:
+            if action.alarmDistance == self.alarm_distance:
                 action.setChecked(True)
-        self.trayIcon.alarmDistance = int(distance)
+        self.trayIcon.alarmDistance = self.alarm_distance
 
     def is_jumpbridge_visible(self):
         return self.jumpbridgesButton.isChecked()
@@ -956,23 +930,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     # TODO: here it would be good to have a list of Messages per Region
     # so, when changing Region, the current list of Messages could be
     # parsed and then added to the Map-Display
+    # TODO: we also need to remove the widget from the message.widget list!
     def add_message_to_intel_chat(self, message: Message):
         self.LOGGER.debug("Adding message to Intel: %r", message)
-        scroll_to_bottom = False
-        if (
-            self.chatListWidget.verticalScrollBar().value()
-            == self.chatListWidget.verticalScrollBar().maximum()
-        ):
-            scroll_to_bottom = True
-        # create widget
-        chatEntryWidget = ChatEntryWidget(message)
-        message.widgets.append(chatEntryWidget)
-        listWidgetItem = QtWidgets.QListWidgetItem(self.chatListWidget)
-        listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
-        # add widget to list
-        self.chatListWidget.addItem(listWidgetItem)
-        self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)
-        self.chatEntries.append(chatEntryWidget)
+        chatEntryWidget = self.chatListWidget.add_message(message)
+
+        # scroll_to_bottom = False
+        # if (
+        #     self.chatListWidget.verticalScrollBar().value()
+        #     == self.chatListWidget.verticalScrollBar().maximum()
+        # ):
+        #     scroll_to_bottom = True
+        # # create widget
+        # chatEntryWidget = ChatEntryWidget(message)
+        # message.widgets.append(chatEntryWidget)
+        # listWidgetItem = QtWidgets.QListWidgetItem(self.chatListWidget)
+        # listWidgetItem.setSizeHint(chatEntryWidget.sizeHint())
+        # # add widget to list
+        # self.chatListWidget.addItem(listWidgetItem)
+        # self.chatListWidget.setItemWidget(listWidgetItem, chatEntryWidget)
+        # self.chatEntries.append(chatEntryWidget)
         # allow for Link-Clicks in widget
         chatEntryWidget.mark_system.connect(self.markSystemOnMap)
         chatEntryWidget.ship_detail.connect(self.open_zkillboard_ship)
@@ -981,11 +958,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.avatarFindThread.add_chat_entry(chatEntryWidget)
         # let anyone else know that we added a widget
         self.chat_message_added.emit(chatEntryWidget)
-        if scroll_to_bottom:
-            self.chatListWidget.scrollToBottom()
+        # if scroll_to_bottom:
+        #     self.chatListWidget.scrollToBottom()
 
     @staticmethod
     def open_zkillboard_player(self, playerId):
+
         if playerId:
             zKill = "https://zkillboard.com/character/{}".format(playerId)
             webbrowser.open(zKill)
@@ -999,28 +977,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             webbrowser.open(zKill)
 
     def prune_message_list(self):
-        eve_now = time.mktime(EsiInterface().currentEveTime().timetuple())
-        start = self.chatListWidget.count()
-        for row in range(start):
-            item = self.chatListWidget.item(0)
-            widget = self.chatListWidget.itemWidget(item)
-            message = self.chatListWidget.itemWidget(item).message
-            diff = eve_now - time.mktime(message.utc_time.timetuple())
-            try:
-                if int(diff) > int(self.message_expiry):
-                    self.chatEntries.remove(widget)
-                    self.chatListWidget.takeItem(0)
-            except Exception as e:
-                self.LOGGER.error(
-                    "Age is {diff} and expiry is {exp}: %r".format(
-                        diff=diff, exp=self.message_expiry
-                    ),
-                    e,
-                )
-        cleared = start - self.chatListWidget.count()
-        if cleared:
-            self.chatListWidget.scrollToBottom()
-            self.LOGGER.debug("Cleared {} chat-messages".format(cleared))
+        self.chatListWidget.prune_messages()
+        # eve_now = time.mktime(EsiInterface().currentEveTime().timetuple())
+        # start = self.chatListWidget.count()
+        # for row in range(start):
+        #     item = self.chatListWidget.item(0)
+        #     widget = self.chatListWidget.itemWidget(item)
+        #     message = self.chatListWidget.itemWidget(item).message
+        #     diff = eve_now - time.mktime(message.utc_time.timetuple())
+        #     try:
+        #         if int(diff) > int(self.message_expiry):
+        #             # remove the widget from the list in the message
+        #             message.widgets.remove(widget)
+        #             self.chatEntries.remove(widget)
+        #             self.chatListWidget.takeItem(0)
+        #     except Exception as e:
+        #         self.LOGGER.error(
+        #             "Age is {diff} and expiry is {exp}: %r".format(
+        #                 diff=diff, exp=self.message_expiry
+        #             ),
+        #             e,
+        #         )
+        # cleared = start - self.chatListWidget.count()
+        # if cleared:
+        #     self.chatListWidget.scrollToBottom()
+        #     self.LOGGER.debug("Cleared {} chat-messages".format(cleared))
 
     # def showKosResult(self, state, text, requestType, hasKos):
     #     if not self.scanIntelForKosRequestsEnabled:
@@ -1073,7 +1054,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def update_message_details_on_chat_entry(self, message: Message):
         for widget in message.widgets:
-            widget.updateText()
+            if widget:
+                try:
+                    widget.updateText()
+                except ChatEntryWidgetDeleted:
+                    self.LOGGER.error("Widget in message.widgets does not exist")
+                    message.widgets.remove(widget)
 
     def check_player_locations(self):
         if len(self.knownPlayers) == 0:
@@ -1131,10 +1117,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     # notify User if we don't have locations for active Players
                     self.check_player_locations()
                     if message.status in (State["REQUEST"], State["ALARM"]) and (
-                        message.user not in activePlayers or self.selfNotify
+                        message.user not in activePlayers or self.self_notify
                     ):
                         alarmDistance = (
-                            self.alarmDistance
+                            self.alarm_distance
                             if message.status == State["ALARM"]
                             else 0
                         )

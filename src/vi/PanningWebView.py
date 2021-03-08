@@ -16,8 +16,7 @@
 #
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtCore import pyqtSignal, QUrl, QEvent, Qt, QObject
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import pyqtSignal, QUrl
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from vi.map.MapWebEnginePage import MapWebEnginePage
 import logging

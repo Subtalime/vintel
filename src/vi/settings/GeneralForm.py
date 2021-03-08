@@ -37,8 +37,8 @@ class GeneralForm(SettingsFormTemplate, Ui_Form):
         }
         self.btnColor.clicked.connect(self.bkg_color)
         # populate the settings
-        self.spinMessageExpiry.setMinimum(5)
-        self.spinMessageExpiry.setMaximum(60)
+        self.spinMessageExpiry.setMinimum(1)
+        self.spinMessageExpiry.setMaximum(180)
         self.spinMessageExpiry.singleStep()
         self.spinMessageExpiry.setValue(int(self.settings.message_expiry / 60))
         self.spinMessageExpiry.valueChanged.connect(self.change_detected)

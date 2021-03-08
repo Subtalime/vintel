@@ -17,7 +17,7 @@
 #
 import logging
 import os
-import pickle
+import sys
 
 from vi.cache import Cache
 from vi.resources import get_sound_resource_path
@@ -231,6 +231,7 @@ class GeneralSettings(_Settings):
             "color_ship": "green",
             "color_url": "#28a5ed",
             "url_parser": True,
+            "chat_entry_font_size": 8 if sys.platform.startswith("win32") or sys.platform.startswith("cygwin") else 6,
         }
 
     @property
@@ -249,6 +250,15 @@ class GeneralSettings(_Settings):
     @color_ship.setter
     def color_ship(self, value: str):
         v = {"color_ship": str(value)}
+        self.setting = v
+
+    @property
+    def chat_entry_font_size(self):
+        return int(self.setting["chat_entry_font_size"])
+
+    @chat_entry_font_size.setter
+    def chat_entry_font_size(self, value: int):
+        v = {"chat_entry_font_size": int(value)}
         self.setting = v
 
     @property

@@ -24,7 +24,7 @@ from vi.color import ColorForm
 from vi.region import RegionsForm
 from vi.settings import GeneralForm
 from vi.sound import SoundForm
-from vi.ui.NewSettings import Ui_Dialog as New_Ui_Dialog
+from vi.ui.SettingsForm import Ui_Dialog as New_Ui_Dialog
 
 
 class SettingsDialog(QDialog, New_Ui_Dialog):

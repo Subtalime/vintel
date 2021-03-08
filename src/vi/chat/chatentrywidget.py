@@ -29,14 +29,25 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 import vi.ui.ChatEntry
+from vi.chat.chatmessage import Message
 from vi.resources import get_resource_path
+from vi.settings.settings import GeneralSettings
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ChatEntryWidgetInvalidItem(Exception):
+    pass
+
+
+class ChatEntryWidgetDeleted(Exception):
+    pass
 
 
 class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     """This is the actual Widget which displays the Chat-Message logged, complete with Links
     """
+    _message = None
     TEXT_SIZE = 11
     SHOW_AVATAR = True
     mark_system = pyqtSignal(str)
@@ -45,24 +56,34 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
 
     # TODO: Hover over Ship-Bookmark gives Description?
     # Will not work on a Label... maybe use different type in the Widget...
-    def __init__(self, message):
+    def __init__(self, message: Message):
         # QWidget.__init__(self)
         super(ChatEntryWidget, self).__init__()
         self.setupUi(self)
+        self.LOGGER = logging.getLogger(__name__)
         self.QuestionMarkPixMap = QPixmap(get_resource_path("qmark.png")).scaledToHeight(32)
         self.avatarLabel.setPixmap(self.QuestionMarkPixMap)
-        self.message = message
+        if not isinstance(message, Message):
+            raise ChatEntryWidgetInvalidItem("not a message of type Message passed")
+        self._message = message
         self.updateText()
         self.textLabel.linkActivated.connect(self.link_clicked)
-        if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
-            ChatEntryWidget.TEXT_SIZE = 8
+        # if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
+        #     ChatEntryWidget.TEXT_SIZE = 8
+        self.TEXT_SIZE = GeneralSettings().chat_entry_font_size
         self.changeFontSize(self.TEXT_SIZE)
         if not ChatEntryWidget.SHOW_AVATAR:
             self.avatarLabel.setVisible(False)
 
+    @property
+    def message(self) -> Message:
+        return self._message
+
     def link_clicked(self, link):
+        self.LOGGER.debug(f"Link {link} clicked")
         link = six.text_type(link)
         function, parameter = link.split("/", 1)
+        self.LOGGER.debug(f"calling {function} with {parameter}")
         if function == "mark_system":
             self.mark_system.emit(parameter)
         elif function == "link":
@@ -95,7 +116,11 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             text=display_text,
             # text=self.message.message,
         )
-        self.textLabel.setText(text)
+        try:
+            self.textLabel.setText(text)
+        except Exception:
+            # widget no longer exists
+            raise ChatEntryWidgetDeleted("QLabel has been deleted")
         # self.updateTooltip(self.message.message)
 
     def updateAvatar(self, avatarData):
@@ -110,4 +135,5 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     def changeFontSize(self, newSize):
         font = self.textLabel.font()
         font.setPointSize(newSize)
+        ChatEntryWidget.TEXT_SIZE = newSize
         self.textLabel.setFont(font)

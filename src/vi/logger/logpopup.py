@@ -41,7 +41,7 @@ class LogLevelAction(QtWidgets.QAction):
 
 
 class LogLevelPopup(QMenu):
-    def __init__(self, parent, current_log_level: int = logging.WARNING):
+    def __init__(self, parent, current_log_level: int = None):
         """Context-Popup-Menu for logging levels.
 
         :param parent: parent window handler
@@ -49,6 +49,8 @@ class LogLevelPopup(QMenu):
         :type current_log_level int
         """
         super(LogLevelPopup, self).__init__(parent)
+        if not current_log_level:
+            current_log_level = logging.getLogger(self.parent().__name__).level
         self._log_level = current_log_level
         self.actions = []
         self._setup_menu()

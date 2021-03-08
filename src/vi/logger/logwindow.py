@@ -18,13 +18,14 @@
 #
 
 from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import QEvent, Qt
 from vi.cache.cache import Cache
 import logging
 import os
 from logging import LogRecord, Formatter
 from logging.handlers import QueueHandler
-from vi.logger import LogLevelPopup
+from vi.logger import LogLevelPopup, LogLevelAction
 import vi.version
 
 LOG_WINDOW_HANDLER_NAME = "_LogWindowHandler"
@@ -37,6 +38,9 @@ class LogDisplayHandler(QtWidgets.QTextEdit):
         self.setTextInteractionFlags(
             QtCore.Qt.TextSelectableByMouse or QtCore.Qt.TextBrowserInteraction
         )
+
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
+        self.parent().contextMenuEvent(event)
 
 
 class LogTextFieldHandler(logging.Handler, QtCore.QObject):
@@ -74,6 +78,9 @@ class LogTextFieldHandler(logging.Handler, QtCore.QObject):
 
 
 class LogWindow(QtWidgets.QWidget):
+    """a window showing all the Log-Messages
+    this is always active, just not always visible
+    """
     log_handler = None
     log_level = logging.WARNING
     CACHE_VISIBLE = "log_window_visible"
@@ -83,14 +90,12 @@ class LogWindow(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
-        # logging.Handler.__init__(self)
-        # self.name = __name__
         self.LOGGER = logging.getLogger(__name__)
         self.cache = Cache()
         try:
             size = self.cache.fetch(self.CACHE_SIZE)
             self.restoreGeometry(size)
-        except Exception:
+        except ValueError:
             self.setBaseSize(400, 600)
             pass
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
@@ -101,7 +106,6 @@ class LogWindow(QtWidgets.QWidget):
             self.show()
 
     def create_content(self):
-        # self.setLevel(self.cache.fetch(self.CACHE_LEVEL, default=self.log_level))
         self.log_level = self.cache.fetch(self.CACHE_LEVEL, default=self.log_level)
         self.log_handler = LogTextFieldHandler(self, self.log_level)
         vbox = QtWidgets.QVBoxLayout()
@@ -118,7 +122,6 @@ class LogWindow(QtWidgets.QWidget):
         self.get_handler().setFormatter(formatter)
         # maybe this should be only the Root Logger?
         logging.getLogger().addHandler(self.get_handler())
-        # self.LOGGER.addHandler(self.get_handler())
 
     def get_handler(self) -> LogTextFieldHandler:
         return self.log_handler
@@ -140,15 +143,15 @@ class LogWindow(QtWidgets.QWidget):
         super(LogWindow, self).closeEvent(event)
         self.cache.put(self.CACHE_VISIBLE, self.isVisible())
         self.cache.put(self.CACHE_SIZE, self.saveGeometry())
-        # close the Log-Handler
-        # self.get_handler().close()
         self.LOGGER.debug("LogWindow closeEvent")
         event.accept()
 
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         context_menu = LogLevelPopup(self, self.log_level)
-        setting = context_menu.exec_(self.mapToGlobal(event.pos()))
+        self.store_setting(context_menu.exec_(self.mapToGlobal(event.pos())))
+
+    def store_setting(self, setting: LogLevelAction):
         if setting:
             self.LOGGER.debug(
                 "Log-Level changed to %d (%s)"

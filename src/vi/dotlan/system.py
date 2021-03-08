@@ -442,7 +442,8 @@ class MySystem(System):
     def second_line(self, value: Tag):
         self._system.line_two = value
 
-    def set_status(self, new_status, alarm_time: float = time.time()):
+    def set_status(self, new_status: State, alarm_time: float = time.time()):
+        assert(isinstance(new_status, State), "Wrong State!")
         if not isinstance(alarm_time, float):
             if isinstance(alarm_time, datetime.datetime):
                 alarm_time = (
