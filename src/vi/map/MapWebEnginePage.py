@@ -18,9 +18,7 @@
 #
 
 from PyQt5.QtWebEngineWidgets import QWebEnginePage, QWebEngineContextMenuData
-from PyQt5.QtCore import pyqtSignal, QPointF, QUrl, Qt, QObject
-from PyQt5.QtWidgets import QApplication
-from PyQt5 import QtGui
+from PyQt5.QtCore import pyqtSignal, QPointF, QUrl, QObject
 from queue import Queue
 import logging
 
@@ -47,7 +45,6 @@ class MapWebEnginePage(QWebEnginePage):
         self.repositioning = False
         self.createStandardContextMenu()
 
-
     def onLoadFinished(self):
         self.load_complete = True
 
@@ -62,21 +59,17 @@ class MapWebEnginePage(QWebEnginePage):
     def zoomChanged(self, value: float):
         self.setZoomFactor(value)
 
-    def onScrollPos(self, qPointF: QPointF):
-        if qPointF == QPointF():  # empty
+    def onScrollPos(self, q_point_float: QPointF):
+        if q_point_float == QPointF():  # empty
             # we need to reposition to old good spot
             # here we need to restore the previous position
             # this still doesn't help... something still moves it to 0.0
-            qPointF = self.currentScrollPos
+            q_point_float = self.currentScrollPos
         else:
-            self.currentScrollPos = qPointF
+            self.currentScrollPos = q_point_float
+        self.LOGGER.debug(f"onScrollPos detected {q_point_float}, Load Complete: {self.load_complete}")
         if self.load_complete:
-            self.LOGGER.debug(
-                "onScrollPos detected {}, Load Complete: {}".format(
-                    qPointF, self.load_complete
-                )
-            )
-            self.scroll_detected.emit(qPointF)
+            self.scroll_detected.emit(q_point_float)
         return True
 
     def runJavaScript(self, p_str, *__args):

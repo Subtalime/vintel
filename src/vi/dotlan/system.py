@@ -25,8 +25,7 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag, ResultSet
 from vi.dotlan.colorjavascript import ColorJavaScript
 from vi.states import State
-from vi.dotlan.soups import SoupSystem, SoupUse, SoupRect
-from vi.stopwatch.mystopwatch import ViStopwatch
+from vi.dotlan.soups import SoupSystem
 
 
 class System:
@@ -51,7 +50,6 @@ class System:
             system_id: int,
     ):
         self.name = name
-        self.sw = ViStopwatch()
         self.LOGGER = logging.getLogger(__name__)
         self.svg_element = svg_element
         self.map_soup = map_soup
@@ -443,7 +441,6 @@ class MySystem(System):
         self._system.line_two = value
 
     def set_status(self, new_status: State, alarm_time: float = time.time()):
-        assert(isinstance(new_status, State), "Wrong State!")
         if not isinstance(alarm_time, float):
             if isinstance(alarm_time, datetime.datetime):
                 alarm_time = (

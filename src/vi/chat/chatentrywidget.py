@@ -30,6 +30,7 @@ from PyQt5.QtWidgets import QWidget
 
 import vi.ui.ChatEntry
 from vi.chat.chatmessage import Message
+from vi.chat.avatar import Avatar
 from vi.resources import get_resource_path
 from vi.settings.settings import GeneralSettings
 
@@ -44,34 +45,42 @@ class ChatEntryWidgetDeleted(Exception):
     pass
 
 
+class AvatarUnknown(QPixmap):
+    """Avatar image of unknown character
+    """
+    def __init__(self, image_or_path=None):
+        if not image_or_path:
+            image_or_path = get_resource_path("qmark.png")
+        else:
+            image = QImage.fromData(image_or_path)
+            image_or_path = QPixmap.fromImage(image)
+
+        super(AvatarUnknown, self).__init__(image_or_path)
+        self.scaledToHeight(32)
+
+
 class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
     """This is the actual Widget which displays the Chat-Message logged, complete with Links
     """
     _message = None
-    TEXT_SIZE = 11
+    TEXT_SIZE = GeneralSettings().chat_entry_font_size
     SHOW_AVATAR = True
     mark_system = pyqtSignal(str)
     ship_detail = pyqtSignal(str)
     enemy_detail = pyqtSignal(str)
 
-    # TODO: Hover over Ship-Bookmark gives Description?
-    # Will not work on a Label... maybe use different type in the Widget...
     def __init__(self, message: Message):
-        # QWidget.__init__(self)
         super(ChatEntryWidget, self).__init__()
         self.setupUi(self)
         self.LOGGER = logging.getLogger(__name__)
-        self.QuestionMarkPixMap = QPixmap(get_resource_path("qmark.png")).scaledToHeight(32)
-        self.avatarLabel.setPixmap(self.QuestionMarkPixMap)
         if not isinstance(message, Message):
             raise ChatEntryWidgetInvalidItem("not a message of type Message passed")
         self._message = message
-        self.updateText()
+        self.avatarLabel.setPixmap(Avatar(self.message.user))
+        # self.avatarLabel.setPixmap(AvatarUnknown())
+        self.update_text()
         self.textLabel.linkActivated.connect(self.link_clicked)
-        # if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
-        #     ChatEntryWidget.TEXT_SIZE = 8
-        self.TEXT_SIZE = GeneralSettings().chat_entry_font_size
-        self.changeFontSize(self.TEXT_SIZE)
+        self.change_font_size(self.TEXT_SIZE)
         if not ChatEntryWidget.SHOW_AVATAR:
             self.avatarLabel.setVisible(False)
 
@@ -80,10 +89,11 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         return self._message
 
     def link_clicked(self, link):
-        self.LOGGER.debug(f"Link {link} clicked")
+        """react on any hyperlink clicked within the displayed text
+        """
         link = six.text_type(link)
         function, parameter = link.split("/", 1)
-        self.LOGGER.debug(f"calling {function} with {parameter}")
+        self.LOGGER.debug(f"Link {link} has been clicked, calling {function} with {parameter}")
         if function == "mark_system":
             self.mark_system.emit(parameter)
         elif function == "link":
@@ -93,20 +103,7 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
         elif function == "ship_name":
             self.ship_detail.emit(parameter)
 
-    # doesn't work on a Label
-    def updateTooltip(self, text: str):
-        pos = text.find("title=")
-        if pos != -1:
-            title = ""
-            links = BeautifulSoup(text, "html.parser").findAll("a")
-            for link in links:
-                thistitle = link.get("title")
-                if thistitle:
-                    title = title.join(thistitle + " ")
-            if title:
-                self.textLabel.setToolTip(title)
-
-    def updateText(self):
+    def update_text(self):
         time = datetime.datetime.strftime(self.message.timestamp, "%H:%M:%S")
         display_text = "".join(str(item) for item in self.message.navigable_string.contents)
         text = u"<small>{time} - <b>{user}</b> - <i>{room}</i></small><br>{text}".format(
@@ -114,26 +111,26 @@ class ChatEntryWidget(QtWidgets.QWidget, vi.ui.ChatEntry.Ui_Form):
             room=self.message.room,
             time=time,
             text=display_text,
-            # text=self.message.message,
         )
         try:
+            self.LOGGER.debug("About to update text with '%s'", text)
             self.textLabel.setText(text)
         except Exception:
             # widget no longer exists
-            raise ChatEntryWidgetDeleted("QLabel has been deleted")
-        # self.updateTooltip(self.message.message)
+            raise ChatEntryWidgetDeleted("Widget no longer exists")
 
-    def updateAvatar(self, avatarData):
-        image = QImage.fromData(avatarData)
+    def update_avatar(self, avatar_data: bytes) -> bool:
+        """update the Avatar image
+        """
+        image = QImage.fromData(avatar_data)
         pixmap = QPixmap.fromImage(image)
         if pixmap.isNull():
             return False
-        scaledAvatar = pixmap.scaled(32, 32)
-        self.avatarLabel.setPixmap(scaledAvatar)
+        scaled_avatar = pixmap.scaled(32, 32)
+        self.avatarLabel.setPixmap(scaled_avatar)
         return True
 
-    def changeFontSize(self, newSize):
+    def change_font_size(self, new_size: int):
         font = self.textLabel.font()
-        font.setPointSize(newSize)
-        ChatEntryWidget.TEXT_SIZE = newSize
+        font.setPointSize(new_size)
         self.textLabel.setFont(font)

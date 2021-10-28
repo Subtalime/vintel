@@ -42,7 +42,7 @@ class AvatarThread(QThread):
         self.sw = Stopwatch()
         self.cache = Cache()
 
-    def add_chat_entry(self, chat_entry=None, clear_cache=False):
+    def add_chat_entry(self, chat_entry: ChatEntryWidget = None, clear_cache: bool = False):
         try:
             if clear_cache:
                 cache = Cache()
@@ -53,7 +53,7 @@ class AvatarThread(QThread):
         except Exception as e:
             self.LOGGER.error("Error in AvatarFindThread: %r", e)
 
-    def start(self, priority: "QThread.Priority" = QThread.NormalPriority) -> None:
+    def start(self, priority: QThread.Priority = QThread.NormalPriority) -> None:
         self.LOGGER.debug("Starting Avatar-Thread")
         self._active = True
         super().start(priority)

@@ -18,13 +18,10 @@
 #
 
 from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtWidgets import QMenu
-from PyQt5.QtCore import QEvent, Qt
 from vi.cache.cache import Cache
 import logging
 import os
 from logging import LogRecord, Formatter
-from logging.handlers import QueueHandler
 from vi.logger import LogLevelPopup, LogLevelAction
 import vi.version
 
@@ -81,6 +78,7 @@ class LogWindow(QtWidgets.QWidget):
     """a window showing all the Log-Messages
     this is always active, just not always visible
     """
+
     log_handler = None
     log_level = logging.WARNING
     CACHE_VISIBLE = "log_window_visible"
@@ -94,18 +92,20 @@ class LogWindow(QtWidgets.QWidget):
         self.cache = Cache()
         try:
             size = self.cache.fetch(self.CACHE_SIZE)
+            if not size:
+                raise ValueError
             self.restoreGeometry(size)
         except ValueError:
             self.setBaseSize(400, 600)
             pass
         self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)
         self.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, False)
-        self.create_content()
+        self._create_content()
         vis = self.cache.fetch(self.CACHE_VISIBLE, default=False)
         if bool(vis):
             self.show()
 
-    def create_content(self):
+    def _create_content(self):
         self.log_level = self.cache.fetch(self.CACHE_LEVEL, default=self.log_level)
         self.log_handler = LogTextFieldHandler(self, self.log_level)
         vbox = QtWidgets.QVBoxLayout()
@@ -149,9 +149,9 @@ class LogWindow(QtWidgets.QWidget):
     # popup to set Log-Level
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         context_menu = LogLevelPopup(self, self.log_level)
-        self.store_setting(context_menu.exec_(self.mapToGlobal(event.pos())))
+        self._store_setting(context_menu.exec_(self.mapToGlobal(event.pos())))
 
-    def store_setting(self, setting: LogLevelAction):
+    def _store_setting(self, setting: LogLevelAction):
         if setting:
             self.LOGGER.debug(
                 "Log-Level changed to %d (%s)"
@@ -169,4 +169,3 @@ class LogWindow(QtWidgets.QWidget):
     def hide(self) -> None:
         super(LogWindow, self).hide()
         self.LOGGER.debug("LogWindow hide-Event")
-

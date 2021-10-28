@@ -40,6 +40,7 @@ class ChatListWidget(QListWidget):
         self.setResizeMode(QListView.Adjust)
 
     def update_font_size(self, size: int):
+        self.LOGGER.debug(f"change font size to {size}")
         for item in range(self.count()):
             self.itemWidget(self.item(item)).changeFontSize(size)
 
@@ -54,6 +55,7 @@ class ChatListWidget(QListWidget):
         chat_entry_widget = ChatEntryWidget(message)
         list_widget_item = QListWidgetItem(self)
         list_widget_item.setSizeHint(chat_entry_widget.sizeHint())
+
         self.addItem(list_widget_item)
         self.setItemWidget(list_widget_item, chat_entry_widget)
 
@@ -61,6 +63,28 @@ class ChatListWidget(QListWidget):
             self.scrollToBottom()
         self.LOGGER.debug(f"finished adding {message} to list")
         return chat_entry_widget
+
+    def get_message(self, index: int = 0) -> Message:
+        """retrieve the Message in the Widget-List
+        :param index: offset within the Widget-List
+        :type index: int
+        """
+        self.LOGGER.debug(f"retrieve message {index}")
+        return self.itemWidget(self.item(index)).message
+
+    def get_widget(self, index: int = 0) -> ChatEntryWidget:
+        self.LOGGER.debug(f"retrieve widget {index}")
+        the_widget = self.itemWidget(self.item(index))
+        # this is actually returning a ChatEntryWidget... PyCharm doesn't think so
+        return the_widget
+
+    def get_message_list(self) -> list:
+        """return a list of all Messages stored in the Chat-List
+        """
+        messages = []
+        for msg in range(self.count()):
+            messages.append(self.get_message(msg))
+        return messages
 
     def prune_messages(self):
         """remove items, which have expired based on settings
@@ -73,7 +97,7 @@ class ChatListWidget(QListWidget):
         # go through the list, starting at the top
         for row in range(self.count()):
             # top message in the list
-            message = self.itemWidget(self.item(0)).message
+            message = self.get_message()
             diff = eve_now - time.mktime(message.utc_time.timetuple())
             try:
                 # check if message is older than the retaining time
@@ -81,7 +105,7 @@ class ChatListWidget(QListWidget):
                     # remove the widget from the list within the message
                     # TODO: not sure why we have this in the message.widget or even maintain this list...
                     try:
-                        message.widgets.remove(self.itemWidget(self.item(0)))
+                        message.widgets.remove(self.get_widget())
                     except ValueError:
                         self.LOGGER.error(f"Widget {message} was not logged in message.widget list")
                         pass

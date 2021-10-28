@@ -16,6 +16,7 @@
 #
 #
 from vi.states import State
+from vi.resources import get_resource_path
 from bs4 import Tag
 import datetime
 import time
@@ -29,6 +30,7 @@ class Message(object):
     message = None
     user = None
     status = None
+    _avatar = None
     # list of systems mentioned in the message
     systems = []
     # if you add the message to a widget, please add it to widgets
@@ -89,6 +91,13 @@ class Message(object):
         if not isinstance(value, Tag):
             raise ValueError("Must be of type Tag")
         self._navi_text = value
+
+    @property
+    def avatar(self) -> bytes:
+        if not self._avatar:
+            with open(get_resource_path("qmark.png"), "rb") as f:
+                self._avatar = f.read()
+        return self._avatar
 
     def __key(self):
         return self.room, self.plain_text, self.timestamp, self.user

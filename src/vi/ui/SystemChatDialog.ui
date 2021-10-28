@@ -44,7 +44,7 @@
    <item row="0" column="0">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QListWidget" name="chat">
+      <widget class="ChatListWidget" name="chatList">
        <property name="selectionMode">
         <enum>QAbstractItemView::NoSelection</enum>
        </property>
@@ -164,6 +164,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ChatListWidget</class>
+   <extends>QListWidget</extends>
+   <header>vi/chat/chatlistwidget</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

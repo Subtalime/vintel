@@ -28,8 +28,11 @@ import time
 import wave
 from collections import namedtuple
 from threading import Thread
-
-import pyglet
+try:
+    import pyglet
+    gPygletAvailable = True
+except ImportError:
+    gPygletAvailable = False
 import requests
 import six
 from six.moves import queue
@@ -60,26 +63,26 @@ class SoundManager(six.with_metaclass(Singleton)):
     _soundThread = None
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.LOGGER = logging.getLogger(__name__)
         self.soundThread = self.SoundThread()
         self.soundAvailable = self.platformSupportsAudio()
         if not self.platformSupportsSpeech():
             self.useSpokenNotifications = False
         if self.soundAvailable and self.soundThread:
-            self.soundThread.start()
+            try:
+                self.soundThread.start()
+            except UserWarning as e:
+                self.LOGGER.warning(e)
 
-    def platformSupportsAudio(self):
-        # return self.platformSupportsSpeech() or gPygletAvailable
-        return True
+    def platformSupportsAudio(self) -> bool:
+        return self.platformSupportsSpeech() or gPygletAvailable
 
-    def platformSupportsSpeech(self):
-        # if self.soundThread.isDarwin:
-        #     return True
-        return False
+    def platformSupportsSpeech(self) -> bool:
+        return self.soundThread.isDarwin
 
-    def setUseSpokenNotifications(self, newValue):
-        if newValue is not None:
-            self.useSpokenNotifications = newValue
+    def setUseSpokenNotifications(self, value: bool):
+        if value is not None:
+            self.useSpokenNotifications = value
 
     @property
     def enable_sound(self) -> bool:
@@ -89,8 +92,8 @@ class SoundManager(six.with_metaclass(Singleton)):
     def enable_sound(self, value: bool):
         GeneralSettings().sound_active = value
 
-    def playSoundFile(self, path, volume=25, message="", abbreviatedMessage=""):
-        self.logger.debug(f"put on Queue: '{path}' Volume:{volume}")
+    def playSoundFile(self, path, volume=25, message="", abbreviated_message=""):
+        self.LOGGER.debug(f"put on Queue: '{path}' Volume:{volume}")
         if self.soundAvailable and self.enable_sound:
             if self.useSpokenNotifications:
                 path = None
@@ -105,20 +108,20 @@ class SoundManager(six.with_metaclass(Singleton)):
                 else:
                     path = None
             if self.soundThread:
-                self.soundThread.queue.put((path, volume, message, abbreviatedMessage))
+                self.soundThread.queue.put((path, volume, message, abbreviated_message))
 
-    def playSound(self, name="alarm", volume=25, message="", abbreviatedMessage=""):
+    def playSound(self, name="alarm", volume=25, message="", abbreviated_message=""):
         """ Schedules the work, which is picked up by SoundThread.run()
         """
-        self.logger.debug(f"playSound: {name}")
+        self.LOGGER.debug(f"playSound: {name}")
         if self.soundAvailable and self.enable_sound:
             if self.useSpokenNotifications:
-                audioFile = None
+                audio_file = None
             else:
-                audioFile = get_sound_resource_path("{0}".format(self.SOUNDS[name]))
+                audio_file = get_sound_resource_path("{0}".format(self.SOUNDS[name]))
             if self.soundThread:
                 self.soundThread.queue.put(
-                    (audioFile, volume, message, abbreviatedMessage)
+                    (audio_file, volume, message, abbreviated_message)
                 )
 
     def quit(self):
@@ -140,10 +143,13 @@ class SoundManager(six.with_metaclass(Singleton)):
 
         def __init__(self):
             super(self.__class__, self).__init__(name="SoundThread")
-            self.logger = logging.getLogger(__name__)
-            self.logger.debug("initialize SoundThread")
-            self.player = pyglet.media.Player()
-            self.player.loop = False
+            self.LOGGER = logging.getLogger(__name__)
+            self.LOGGER.debug("initialize SoundThread")
+            try:
+                self.player = pyglet.media.Player()
+                self.player.loop = False
+            except UserWarning as e:
+                self.LOGGER.warning(e)
             self.queue = queue.Queue()
             self.active = True
             self.currently_playing = False
@@ -153,25 +159,25 @@ class SoundManager(six.with_metaclass(Singleton)):
 
         def run(self):
             while True:
-                audioFile, volume, message, abbreviatedMessage = self.queue.get()
-                self.logger.debug(
-                    "got from Queue: '%s', Active: %d", audioFile, self.active
+                audio_file, volume, message, abbreviated_message = self.queue.get()
+                self.LOGGER.debug(
+                    "got from Queue: '%s', Active: %d", audio_file, self.active
                 )
                 if not self.active:
                     return
                 if SoundManager().useSpokenNotifications and (
-                    message != "" or abbreviatedMessage != ""
+                    message != "" or abbreviated_message != ""
                 ):
-                    if abbreviatedMessage != "":
-                        message = abbreviatedMessage
+                    if abbreviated_message != "":
+                        message = abbreviated_message
                     if not self.speak(message):
-                        self.playAudioFile(audioFile, volume, False)
+                        self.playAudioFile(audio_file, volume, False)
                         LOGGER.error(
                             "SoundThread: sorry, speech not yet implemented on this platform"
                         )
                 # elif audioFile is not None:
                 else:
-                    self.playAudioFile(audioFile, volume, False)
+                    self.playAudioFile(audio_file, volume, False)
 
         def quit(self):
             self.active = False
@@ -208,7 +214,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                             / float(f.getnchannels() * f.getframerate())
                             / 2
                         )
-                    self.logger.debug(
+                    self.LOGGER.debug(
                         "'%s' Vol:%f Duration:%f", filename, volume, duration
                     )
                     src = pyglet.media.load(filename, streaming=stream)
@@ -223,7 +229,7 @@ class SoundManager(six.with_metaclass(Singleton)):
                     )
             except Exception as e:
                 # wave.open throws weird errors, hence the logging like thi
-                self.logger.error(
+                self.LOGGER.error(
                     "SoundThread.playAudioFile exception on %s: %r", filename, e
                 )
                 # self.player = media.Player()
@@ -238,19 +244,17 @@ class SoundManager(six.with_metaclass(Singleton)):
                     "say [[volm {0}]] '{1}'".format(float(self.volume) / 100.0, message)
                 )
             except Exception as e:
-                self.logger.error("SoundThread.darwinSpeak exception: %s" % message, e)
+                self.LOGGER.error("SoundThread.darwinSpeak exception: %s" % message, e)
 
         # VoiceRss
 
-        def playTTS(self, inputText=""):
-            mp3url = "http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={inputText}&hl=en-us".format(
-                **locals()
-            )
+        def playTTS(self, input_text=""):
+            mp3url = f"http://api.voicerss.org/?c=WAV&key={self.VOICE_RSS_API_KEY}&src={input_text}&hl=en-us"
             try:
                 self.playAudioFile(requests.get(mp3url, stream=True).raw)
                 time.sleep(0.5)
             except requests.exceptions.RequestException as e:
-                self.logger.error("playTTS error: %s: %r", mp3url, e)
+                self.LOGGER.error("playTTS error: %s: %r", mp3url, e)
 
         # google_tts
 
@@ -270,16 +274,16 @@ class SoundManager(six.with_metaclass(Singleton)):
             # Process inputText into chunks
             # Google TTS only accepts up to (and including) 100 characters long texts.
             # Split the text in segments of maximum 100 characters long.
-            combinedText = self.splitText(inputText)
+            combined_text = self.splitText(inputText)
 
             # Download chunks and write them to the output file
-            for idx, val in enumerate(combinedText):
+            for idx, val in enumerate(combined_text):
                 mp3url = (
                     "http://translate.google.com/translate_tts?tl=%s&q=%s&total=%s&idx=%s&ie=UTF-8&client=t&key=%s"
                     % (
                         args.language,
                         requests.utils.quote(val),
-                        len(combinedText),
+                        len(combined_text),
                         idx,
                         self.GOOGLE_TTS_API_KEY,
                     )
@@ -297,18 +301,18 @@ class SoundManager(six.with_metaclass(Singleton)):
                         )
                         time.sleep(0.5)
                     except requests.exceptions.RequestException as e:
-                        self.logger.error("audioExtractToMp3 error: %s" % mp3url, e)
+                        self.LOGGER.error("audioExtractToMp3 error: %s" % mp3url, e)
             args.output.close()
             return args.output.name
 
-        def splitText(self, inputText, maxLength=100):
+        def splitText(self, input_text, max_length=100):
             """
             Try to split between sentences to avoid interruptions mid-sentence.
             Failing that, split between words.
             See splitText_rec
             """
 
-            def splitTextRecursive(inputText, regexps, maxLength=maxLength):
+            def splitTextRecursive(i_text, regexps, m_length):
                 """
                 Split a string into substrings which are at most maxLength.
                 Tries to make each substring as big as possible without exceeding
@@ -322,40 +326,40 @@ class SoundManager(six.with_metaclass(Singleton)):
                 been used then the substrings, those will be split at maxLength.
 
                 Args:
-                    inputText: The text to split.
+                    i_text: The text to split.
                     regexps: A list of regexps.
                         If you want the separator to be included in the substrings you
                         can add parenthesis around the regular expression to create a
                         group. Eg.: '[ab]' -> '([ab])'
-
+                    m_length: Maximum length
                 Returns:
-                    a list of strings of maximum maxLength length.
+                    a list of strings of maximum m_length length.
                 """
-                if len(inputText) <= maxLength:
-                    return [inputText]
+                if len(i_text) <= m_length:
+                    return [i_text]
 
                 # Mistakenly passed a string instead of a list
                 if isinstance(regexps, str):
                     regexps = [regexps]
-                regexp = regexps.pop(0) if regexps else "(.{%d})" % maxLength
+                regexp = regexps.pop(0) if regexps else "(.{%d})" % m_length
 
-                textList = re.split(regexp, inputText)
+                textList = re.split(regexp, i_text)
                 combinedText = []
                 # First segment could be >max_length
                 combinedText.extend(
-                    splitTextRecursive(textList.pop(0), regexps, maxLength)
+                    splitTextRecursive(textList.pop(0), regexps, m_length)
                 )
                 for val in textList:
                     current = combinedText.pop()
                     concat = current + val
-                    if len(concat) <= maxLength:
+                    if len(concat) <= m_length:
                         combinedText.append(concat)
                     else:
                         combinedText.append(current)
                         # val could be > maxLength
-                        combinedText.extend(splitTextRecursive(val, regexps, maxLength))
+                        combinedText.extend(splitTextRecursive(val, regexps, m_length))
                 return combinedText
 
             return splitTextRecursive(
-                inputText.replace("\n", ""), [r"([\,|\.|;]+)", "( )"]
+                input_text.replace("\n", ""), [r"([\,|\.|;]+)", "( )"], max_length
             )
